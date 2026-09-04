@@ -7,9 +7,9 @@ namespace Pos.Infrastructure.Persistence.Repositories;
 
 public class PosDeviceRepository : IPosDeviceRepository
 {
-    private readonly ApplicationDbContext _context;
+    private readonly PosDbContext _context;
 
-    public PosDeviceRepository(ApplicationDbContext context)
+    public PosDeviceRepository(PosDbContext context)
     {
         _context = context ?? throw new ArgumentNullException(nameof(context));
     }

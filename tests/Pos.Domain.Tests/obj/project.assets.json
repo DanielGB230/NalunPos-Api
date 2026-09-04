@@ -1064,11 +1064,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "d:\\NalunPosApp\\NalunPos-Api\\tests\\Pos.Domain.Tests\\Pos.Domain.Tests.csproj",
+      "projectUniqueName": "D:\\NalunPosApp\\NalunPos-Api\\tests\\Pos.Domain.Tests\\Pos.Domain.Tests.csproj",
       "projectName": "Pos.Domain.Tests",
-      "projectPath": "d:\\NalunPosApp\\NalunPos-Api\\tests\\Pos.Domain.Tests\\Pos.Domain.Tests.csproj",
+      "projectPath": "D:\\NalunPosApp\\NalunPos-Api\\tests\\Pos.Domain.Tests\\Pos.Domain.Tests.csproj",
       "packagesPath": "C:\\Users\\Dani\\.nuget\\packages\\",
-      "outputPath": "d:\\NalunPosApp\\NalunPos-Api\\tests\\Pos.Domain.Tests\\obj\\",
+      "outputPath": "D:\\NalunPosApp\\NalunPos-Api\\tests\\Pos.Domain.Tests\\obj\\",
       "projectStyle": "PackageReference",
       "centralPackageVersionsManagementEnabled": true,
       "fallbackFolders": [
@@ -1090,8 +1090,8 @@
         "net10.0": {
           "targetAlias": "net10.0",
           "projectReferences": {
-            "d:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Domain\\Pos.Domain.csproj": {
-              "projectPath": "d:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Domain\\Pos.Domain.csproj"
+            "D:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Domain\\Pos.Domain.csproj": {
+              "projectPath": "D:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Domain\\Pos.Domain.csproj"
             }
           }
         }
@@ -1149,6 +1149,7 @@
           "FluentAssertions": "6.12.2",
           "FluentValidation": "11.11.0",
           "FluentValidation.DependencyInjectionExtensions": "11.11.0",
+          "Konscious.Security.Cryptography.Argon2": "1.3.1",
           "Microsoft.AspNetCore.Authentication.JwtBearer": "10.0.11",
           "Microsoft.AspNetCore.OpenApi": "10.0.11",
           "Microsoft.EntityFrameworkCore": "10.0.11",

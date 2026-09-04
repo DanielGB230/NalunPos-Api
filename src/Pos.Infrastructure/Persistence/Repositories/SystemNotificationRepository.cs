@@ -7,9 +7,9 @@ namespace Pos.Infrastructure.Persistence.Repositories;
 
 public class SystemNotificationRepository : ISystemNotificationRepository
 {
-    private readonly ApplicationDbContext _context;
+    private readonly PosDbContext _context;
 
-    public SystemNotificationRepository(ApplicationDbContext context)
+    public SystemNotificationRepository(PosDbContext context)
     {
         _context = context ?? throw new ArgumentNullException(nameof(context));
     }

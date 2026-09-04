@@ -1,3 +1,4 @@
+using Pos.Api.Extensions;
 using Pos.Application.Common.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -33,31 +34,31 @@ public class PosDevicesController : ControllerBase
     [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(PosDeviceDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<PosDeviceDto>> GetPosDeviceById(Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetPosDeviceById(Guid id, CancellationToken cancellationToken)
     {
         var query = new GetPosDeviceByIdQuery(id);
         var result = await _dispatcher.SendAsync(query, cancellationToken);
-        return Ok(result);
+        return this.ToActionResult(result);
     }
 
     [HttpPost]
     [ProducesResponseType(typeof(PosDeviceDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<PosDeviceDto>> RegisterPosDevice(
+    public async Task<IActionResult> RegisterPosDevice(
         [FromBody] RegisterPosDeviceCommand command,
         CancellationToken cancellationToken)
     {
         var result = await _dispatcher.SendAsync(command, cancellationToken);
-        return CreatedAtAction(nameof(GetPosDeviceById), new { id = result.Id }, result);
+        return this.ToActionResult(result);
     }
 
     [HttpPost("{id:guid}/ping")]
     [ProducesResponseType(typeof(PosDeviceDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<PosDeviceDto>> PingPosDevice(Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> PingPosDevice(Guid id, CancellationToken cancellationToken)
     {
         var command = new PingPosDeviceCommand(id);
         var result = await _dispatcher.SendAsync(command, cancellationToken);
-        return Ok(result);
+        return this.ToActionResult(result);
     }
 }

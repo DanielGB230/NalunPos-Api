@@ -1,14 +1,14 @@
 using Pos.Application.Common.Interfaces;
 using Pos.Application.AI.Abstractions;
 using Pos.Application.AI.DTOs;
-using Pos.Domain.Exceptions;
+using Pos.Domain.Common;
 using Pos.Domain.Interfaces;
 
 namespace Pos.Application.AI.Queries;
 
-public record GetDemandForecastQuery(Guid ProductId, int DaysAhead = 30) : IQuery<DemandForecastDto>;
+public record GetDemandForecastQuery(Guid ProductId, int DaysAhead = 30) : IQuery<Result<DemandForecastDto>>;
 
-public class GetDemandForecastQueryHandler : IQueryHandler<GetDemandForecastQuery, DemandForecastDto>
+public class GetDemandForecastQueryHandler : IQueryHandler<GetDemandForecastQuery, Result<DemandForecastDto>>
 {
     private readonly IDemandForecastCapability _forecastCapability;
     private readonly IProductRepository _productRepository;
@@ -21,21 +21,26 @@ public class GetDemandForecastQueryHandler : IQueryHandler<GetDemandForecastQuer
         _productRepository = productRepository ?? throw new ArgumentNullException(nameof(productRepository));
     }
 
-    public async Task<DemandForecastDto> HandleAsync(GetDemandForecastQuery request, CancellationToken cancellationToken)
+    public async Task<Result<DemandForecastDto>> HandleAsync(GetDemandForecastQuery request, CancellationToken cancellationToken)
     {
-        var product = await _productRepository.GetByIdAsync(request.ProductId, cancellationToken)
-            ?? throw new ProductNotFoundException(request.ProductId);
+        var product = await _productRepository.GetByIdAsync(request.ProductId, cancellationToken);
+        if (product == null)
+        {
+            return Result.Fail<DemandForecastDto>(DomainError.NotFound("Product.NotFound", $"No se encontró el producto con el ID '{request.ProductId}'."));
+        }
 
         int predictedQuantity = await _forecastCapability.PredictRequiredStockAsync(
             request.ProductId,
             request.DaysAhead,
             cancellationToken);
 
-        return new DemandForecastDto(
+        var dto = new DemandForecastDto(
             request.ProductId,
             request.DaysAhead,
             predictedQuantity,
             DateTime.UtcNow
         );
+
+        return Result.Ok(dto);
     }
 }

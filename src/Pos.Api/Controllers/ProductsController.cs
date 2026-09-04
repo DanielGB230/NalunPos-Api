@@ -1,5 +1,6 @@
 using Pos.Application.Common.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using Pos.Api.Extensions;
 using Pos.Application.Common.Models;
 using Pos.Application.Products.Commands;
 using Pos.Application.Products.DTOs;
@@ -35,30 +36,32 @@ public class ProductsController : ControllerBase
 
     [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(ProductDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<ProductDto>> GetProductById(Guid id, CancellationToken cancellationToken)
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetProductById(Guid id, CancellationToken cancellationToken)
     {
         var query = new GetProductByIdQuery(id);
         var result = await _dispatcher.SendAsync(query, cancellationToken);
-        return Ok(result);
+        return this.ToActionResult(result);
     }
 
     [HttpPost]
-    [ProducesResponseType(typeof(ProductDto), StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<ProductDto>> CreateProduct(
+    [ProducesResponseType(typeof(ProductDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> CreateProduct(
         [FromBody] CreateProductCommand command,
         CancellationToken cancellationToken)
     {
         var result = await _dispatcher.SendAsync(command, cancellationToken);
-        return CreatedAtAction(nameof(GetProductById), new { id = result.Id }, result);
+        return this.ToActionResult(result);
     }
 
     [HttpPut("{id:guid}")]
     [ProducesResponseType(typeof(ProductDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<ProductDto>> UpdateProduct(
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateProduct(
         Guid id,
         [FromBody] UpdateProductCommand command,
         CancellationToken cancellationToken)
@@ -69,14 +72,14 @@ public class ProductsController : ControllerBase
         }
 
         var result = await _dispatcher.SendAsync(command, cancellationToken);
-        return Ok(result);
+        return this.ToActionResult(result);
     }
 
     [HttpPatch("{id:guid}/price")]
     [ProducesResponseType(typeof(ProductDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<ProductDto>> UpdateProductPrice(
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateProductPrice(
         Guid id,
         [FromBody] UpdateProductPriceCommand command,
         CancellationToken cancellationToken)
@@ -87,16 +90,16 @@ public class ProductsController : ControllerBase
         }
 
         var result = await _dispatcher.SendAsync(command, cancellationToken);
-        return Ok(result);
+        return this.ToActionResult(result);
     }
 
     [HttpDelete("{id:guid}")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(bool), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DeleteProduct(Guid id, CancellationToken cancellationToken)
     {
         var command = new DeleteProductCommand(id);
-        await _dispatcher.SendAsync(command, cancellationToken);
-        return NoContent();
+        var result = await _dispatcher.SendAsync(command, cancellationToken);
+        return this.ToActionResult(result);
     }
 }

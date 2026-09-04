@@ -1,3 +1,4 @@
+using Pos.Api.Extensions;
 using Pos.Application.Common.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -34,21 +35,21 @@ public class NotificationsController : ControllerBase
     [HttpPost]
     [ProducesResponseType(typeof(SystemNotificationDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<SystemNotificationDto>> CreateNotification(
+    public async Task<IActionResult> CreateNotification(
         [FromBody] CreateSystemNotificationCommand command,
         CancellationToken cancellationToken)
     {
         var result = await _dispatcher.SendAsync(command, cancellationToken);
-        return CreatedAtAction(nameof(GetUserNotifications), new { userId = result.UserId }, result);
+        return this.ToActionResult(result);
     }
 
     [HttpPost("{id:guid}/read")]
     [ProducesResponseType(typeof(SystemNotificationDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<SystemNotificationDto>> MarkAsRead(Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> MarkAsRead(Guid id, CancellationToken cancellationToken)
     {
         var command = new MarkNotificationAsReadCommand(id);
         var result = await _dispatcher.SendAsync(command, cancellationToken);
-        return Ok(result);
+        return this.ToActionResult(result);
     }
 }

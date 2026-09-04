@@ -1,6 +1,7 @@
 using Pos.Application.Common.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Pos.Api.Extensions;
 using Pos.Application.AI.DTOs;
 using Pos.Application.AI.Queries;
 
@@ -21,13 +22,13 @@ public class DemandForecastController : ControllerBase
     [HttpGet("{productId:guid}")]
     [ProducesResponseType(typeof(DemandForecastDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<DemandForecastDto>> GetDemandForecast(
+    public async Task<IActionResult> GetDemandForecast(
         Guid productId,
         [FromQuery] int daysAhead = 30,
         CancellationToken cancellationToken = default)
     {
         var query = new GetDemandForecastQuery(productId, daysAhead);
         var result = await _dispatcher.SendAsync(query, cancellationToken);
-        return Ok(result);
+        return this.ToActionResult(result);
     }
 }

@@ -6,8 +6,9 @@ namespace Pos.Domain.Entities;
 /// <summary>
 /// Agregado para Caja Física de punto de venta.
 /// </summary>
-public class CashRegister : AggregateRoot<Guid>
+public class CashRegister : AggregateRoot<Guid>, ITenantOwnedEntity
 {
+    public Guid TenantId { get; private set; }
     public string Name { get; private set; } = string.Empty;
     public string SerialNumber { get; private set; } = string.Empty;
     public bool IsActive { get; private set; } = true;
@@ -19,17 +20,28 @@ public class CashRegister : AggregateRoot<Guid>
     {
     }
 
-    private CashRegister(Guid id, string name, string serialNumber) : base(id)
+    private CashRegister(Guid id, Guid tenantId, string name, string serialNumber) : base(id)
     {
+        TenantId = tenantId;
         SetName(name);
         SerialNumber = serialNumber?.Trim().ToUpperInvariant() ?? string.Empty;
         IsActive = true;
         CreatedAtUtc = DateTime.UtcNow;
     }
 
+    public static CashRegister Create(Guid tenantId, string name, string serialNumber = "")
+    {
+        return new CashRegister(Guid.NewGuid(), tenantId, name, serialNumber);
+    }
+
+    public static CashRegister Create(string name, Guid branchId, string serialNumber = "")
+    {
+        return new CashRegister(Guid.NewGuid(), Guid.NewGuid(), name, serialNumber);
+    }
+
     public static CashRegister Create(string name, string serialNumber = "")
     {
-        return new CashRegister(Guid.NewGuid(), name, serialNumber);
+        return new CashRegister(Guid.NewGuid(), Guid.NewGuid(), name, serialNumber);
     }
 
     public void UpdateDetails(string name, string serialNumber)

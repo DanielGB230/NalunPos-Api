@@ -1,6 +1,7 @@
 using Pos.Application.Common.Interfaces;
 using FluentValidation;
 using Pos.Application.Products.DTOs;
+using Pos.Domain.Common;
 using Pos.Domain.Entities;
 using Pos.Domain.Exceptions;
 using Pos.Domain.Interfaces;
@@ -18,7 +19,7 @@ public record CreateProductCommand(
     string? Barcode = null,
     decimal? CostAmount = null,
     int InitialStock = 0
-) : ICommand<ProductDto>;
+) : ICommand<Result<ProductDto>>;
 
 public class CreateProductCommandValidator : AbstractValidator<CreateProductCommand>
 {
@@ -53,7 +54,7 @@ public class CreateProductCommandValidator : AbstractValidator<CreateProductComm
     }
 }
 
-public class CreateProductCommandHandler : ICommandHandler<CreateProductCommand, ProductDto>
+public class CreateProductCommandHandler : ICommandHandler<CreateProductCommand, Result<ProductDto>>
 {
     private readonly IProductRepository _productRepository;
     private readonly ICategoryRepository _categoryRepository;
@@ -69,35 +70,52 @@ public class CreateProductCommandHandler : ICommandHandler<CreateProductCommand,
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
     }
 
-    public async Task<ProductDto> HandleAsync(CreateProductCommand request, CancellationToken cancellationToken)
+    public async Task<Result<ProductDto>> HandleAsync(CreateProductCommand request, CancellationToken cancellationToken)
     {
-        var category = await _categoryRepository.GetByIdAsync(request.CategoryId, cancellationToken)
-            ?? throw new CategoryNotFoundException(request.CategoryId);
+        ArgumentNullException.ThrowIfNull(request);
+
+        var category = await _categoryRepository.GetByIdAsync(request.CategoryId, cancellationToken);
+        if (category == null)
+        {
+            return Result.Fail<ProductDto>(DomainError.NotFound(
+                "Category.NotFound",
+                $"No se encontró la categoría con ID '{request.CategoryId}'."));
+        }
 
         var skuVo = Sku.Create(request.Sku);
         bool skuExists = await _productRepository.ExistsBySkuAsync(skuVo, null, cancellationToken);
         if (skuExists)
         {
-            throw new DomainException($"Ya existe un producto con el SKU '{request.Sku}'.");
+            return Result.Fail<ProductDto>(DomainError.Conflict(
+                "Product.SkuAlreadyExists",
+                $"Ya existe un producto registrado con el SKU '{request.Sku}'."));
         }
 
-        var priceVo = Money.Create(request.PriceAmount, request.Currency);
-        var costVo = request.CostAmount.HasValue ? Money.Create(request.CostAmount.Value, request.Currency) : null;
-        var barcodeVo = !string.IsNullOrWhiteSpace(request.Barcode) ? Barcode.Create(request.Barcode) : null;
+        Product product;
+        try
+        {
+            var priceVo = Money.Create(request.PriceAmount, request.Currency);
+            var costVo = request.CostAmount.HasValue ? Money.Create(request.CostAmount.Value, request.Currency) : null;
+            var barcodeVo = !string.IsNullOrWhiteSpace(request.Barcode) ? Barcode.Create(request.Barcode) : null;
 
-        var product = Product.Create(
-            request.Name,
-            skuVo,
-            priceVo,
-            request.CategoryId,
-            request.Description,
-            barcodeVo,
-            costVo,
-            request.InitialStock);
+            product = Product.Create(
+                request.Name,
+                skuVo,
+                priceVo,
+                request.CategoryId,
+                request.Description,
+                barcodeVo,
+                costVo,
+                request.InitialStock);
+        }
+        catch (DomainException ex)
+        {
+            return Result.Fail<ProductDto>(DomainError.Validation("Product.Invalid", ex.Message));
+        }
 
         await _productRepository.AddAsync(product, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return ProductDto.FromEntity(product);
+        return Result.Ok(ProductDto.FromEntity(product));
     }
 }

@@ -1,3 +1,4 @@
+using Pos.Api.Extensions;
 using Pos.Application.Common.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Pos.Application.Categories.Commands;
@@ -35,29 +36,29 @@ public class CategoriesController : ControllerBase
     [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(CategoryDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<CategoryDto>> GetCategoryById(Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetCategoryById(Guid id, CancellationToken cancellationToken)
     {
         var query = new GetCategoryByIdQuery(id);
         var result = await _dispatcher.SendAsync(query, cancellationToken);
-        return Ok(result);
+        return this.ToActionResult(result);
     }
 
     [HttpPost]
     [ProducesResponseType(typeof(CategoryDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<CategoryDto>> CreateCategory(
+    public async Task<IActionResult> CreateCategory(
         [FromBody] CreateCategoryCommand command,
         CancellationToken cancellationToken)
     {
         var result = await _dispatcher.SendAsync(command, cancellationToken);
-        return CreatedAtAction(nameof(GetCategoryById), new { id = result.Id }, result);
+        return this.ToActionResult(result);
     }
 
     [HttpPut("{id:guid}")]
     [ProducesResponseType(typeof(CategoryDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<CategoryDto>> UpdateCategory(
+    public async Task<IActionResult> UpdateCategory(
         Guid id,
         [FromBody] UpdateCategoryCommand command,
         CancellationToken cancellationToken)
@@ -68,7 +69,7 @@ public class CategoriesController : ControllerBase
         }
 
         var result = await _dispatcher.SendAsync(command, cancellationToken);
-        return Ok(result);
+        return this.ToActionResult(result);
     }
 
     [HttpDelete("{id:guid}")]
@@ -77,7 +78,7 @@ public class CategoriesController : ControllerBase
     public async Task<IActionResult> DeleteCategory(Guid id, CancellationToken cancellationToken)
     {
         var command = new DeleteCategoryCommand(id);
-        await _dispatcher.SendAsync(command, cancellationToken);
-        return NoContent();
+        var result = await _dispatcher.SendAsync(command, cancellationToken);
+        return this.ToActionResult(result);
     }
 }

@@ -219,3 +219,4 @@ D:\NalunPosApp\NalunPos-Api\tests\Pos.Application.Tests\obj\Debug\net10.0\Pos.Ap
 D:\NalunPosApp\NalunPos-Api\tests\Pos.Application.Tests\obj\Debug\net10.0\Pos.Application.Tests.genruntimeconfig.cache
 D:\NalunPosApp\NalunPos-Api\tests\Pos.Application.Tests\obj\Debug\net10.0\ref\Pos.Application.Tests.dll
 d:\NalunPosApp\NalunPos-Api\tests\Pos.Application.Tests\bin\Debug\net10.0\Microsoft.Extensions.Logging.Abstractions.dll
+d:\NalunPosApp\NalunPos-Api\tests\Pos.Application.Tests\obj\Debug\net10.0\Pos.Application.Tests.sourcelink.json

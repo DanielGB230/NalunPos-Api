@@ -1,13 +1,13 @@
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Sales.DTOs;
-using Pos.Domain.Exceptions;
+using Pos.Domain.Common;
 using Pos.Domain.Interfaces;
 
 namespace Pos.Application.Sales.Queries;
 
-public record GetSaleByIdQuery(Guid Id) : IQuery<SaleDto>;
+public record GetSaleByIdQuery(Guid Id) : IQuery<Result<SaleDto>>;
 
-public class GetSaleByIdQueryHandler : IQueryHandler<GetSaleByIdQuery, SaleDto>
+public class GetSaleByIdQueryHandler : IQueryHandler<GetSaleByIdQuery, Result<SaleDto>>
 {
     private readonly ISaleRepository _saleRepository;
 
@@ -16,11 +16,18 @@ public class GetSaleByIdQueryHandler : IQueryHandler<GetSaleByIdQuery, SaleDto>
         _saleRepository = saleRepository ?? throw new ArgumentNullException(nameof(saleRepository));
     }
 
-    public async Task<SaleDto> HandleAsync(GetSaleByIdQuery request, CancellationToken cancellationToken)
+    public async Task<Result<SaleDto>> HandleAsync(GetSaleByIdQuery request, CancellationToken cancellationToken)
     {
-        var sale = await _saleRepository.GetByIdAsync(request.Id, cancellationToken)
-            ?? throw new SaleNotFoundException(request.Id);
+        ArgumentNullException.ThrowIfNull(request);
 
-        return SaleDto.FromEntity(sale);
+        var sale = await _saleRepository.GetByIdAsync(request.Id, cancellationToken);
+        if (sale == null)
+        {
+            return Result.Fail<SaleDto>(DomainError.NotFound(
+                "Sale.NotFound",
+                $"No se encontró la venta con ID '{request.Id}'."));
+        }
+
+        return Result.Ok(SaleDto.FromEntity(sale));
     }
 }

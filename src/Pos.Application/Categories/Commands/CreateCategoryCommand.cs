@@ -5,9 +5,11 @@ using Pos.Domain.Entities;
 using Pos.Domain.Exceptions;
 using Pos.Domain.Interfaces;
 
+using Pos.Domain.Common;
+
 namespace Pos.Application.Categories.Commands;
 
-public record CreateCategoryCommand(string Name, string? Description) : ICommand<CategoryDto>;
+public record CreateCategoryCommand(string Name, string? Description) : ICommand<Result<CategoryDto>>;
 
 public class CreateCategoryCommandValidator : AbstractValidator<CreateCategoryCommand>
 {
@@ -22,7 +24,7 @@ public class CreateCategoryCommandValidator : AbstractValidator<CreateCategoryCo
     }
 }
 
-public class CreateCategoryCommandHandler : ICommandHandler<CreateCategoryCommand, CategoryDto>
+public class CreateCategoryCommandHandler : ICommandHandler<CreateCategoryCommand, Result<CategoryDto>>
 {
     private readonly ICategoryRepository _categoryRepository;
     private readonly IUnitOfWork _unitOfWork;
@@ -33,19 +35,27 @@ public class CreateCategoryCommandHandler : ICommandHandler<CreateCategoryComman
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
     }
 
-    public async Task<CategoryDto> HandleAsync(CreateCategoryCommand request, CancellationToken cancellationToken)
+    public async Task<Result<CategoryDto>> HandleAsync(CreateCategoryCommand request, CancellationToken cancellationToken)
     {
         bool nameExists = await _categoryRepository.ExistsByNameAsync(request.Name, null, cancellationToken);
         if (nameExists)
         {
-            throw new DomainException($"Ya existe una categoría con el nombre '{request.Name}'.");
+            return Result.Fail<CategoryDto>(DomainError.Conflict("Category.AlreadyExists", $"Ya existe una categoría con el nombre '{request.Name}'."));
         }
 
-        var category = Category.Create(request.Name, request.Description);
+        Category category;
+        try
+        {
+            category = Category.Create(request.Name, request.Description);
+        }
+        catch (DomainException ex)
+        {
+            return Result.Fail<CategoryDto>(DomainError.Validation("Category.Invalid", ex.Message));
+        }
 
         await _categoryRepository.AddAsync(category, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return CategoryDto.FromEntity(category);
+        return Result.Ok(CategoryDto.FromEntity(category));
     }
 }

@@ -6,6 +6,8 @@ using Pos.Domain.Exceptions;
 using Pos.Domain.Interfaces;
 using Pos.Domain.ValueObjects;
 
+using Pos.Domain.Common;
+
 namespace Pos.Application.Customers.Commands;
 
 public record CreateCustomerCommand(
@@ -18,7 +20,7 @@ public record CreateCustomerCommand(
     string? City = null,
     string? ZipCode = null,
     string? Country = null
-) : ICommand<CustomerDto>;
+) : ICommand<Result<CustomerDto>>;
 
 public class CreateCustomerCommandValidator : AbstractValidator<CreateCustomerCommand>
 {
@@ -37,7 +39,7 @@ public class CreateCustomerCommandValidator : AbstractValidator<CreateCustomerCo
     }
 }
 
-public class CreateCustomerCommandHandler : ICommandHandler<CreateCustomerCommand, CustomerDto>
+public class CreateCustomerCommandHandler : ICommandHandler<CreateCustomerCommand, Result<CustomerDto>>
 {
     private readonly ICustomerRepository _customerRepository;
     private readonly IUnitOfWork _unitOfWork;
@@ -48,32 +50,48 @@ public class CreateCustomerCommandHandler : ICommandHandler<CreateCustomerComman
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
     }
 
-    public async Task<CustomerDto> HandleAsync(CreateCustomerCommand request, CancellationToken cancellationToken)
+    public async Task<Result<CustomerDto>> HandleAsync(CreateCustomerCommand request, CancellationToken cancellationToken)
     {
-        var taxIdVo = TaxId.Create(request.TaxId, request.TaxCountryCode);
+        TaxId taxIdVo;
+        try
+        {
+            taxIdVo = TaxId.Create(request.TaxId, request.TaxCountryCode);
+        }
+        catch (DomainException ex)
+        {
+            return Result.Fail<CustomerDto>(DomainError.Validation("Customer.InvalidTaxId", ex.Message));
+        }
 
         bool taxIdExists = await _customerRepository.ExistsByTaxIdAsync(taxIdVo, null, cancellationToken);
         if (taxIdExists)
         {
-            throw new DomainException($"Ya existe un cliente registrado con el TaxId '{request.TaxId}'.");
+            return Result.Fail<CustomerDto>(DomainError.Conflict("Customer.AlreadyExists", $"Ya existe un cliente registrado con el TaxId '{request.TaxId}'."));
         }
 
         Address? addressVo = null;
-        if (!string.IsNullOrWhiteSpace(request.Street) && !string.IsNullOrWhiteSpace(request.City) && !string.IsNullOrWhiteSpace(request.Country))
+        Customer customer;
+        try
         {
-            addressVo = Address.Create(request.Street, request.City, request.ZipCode ?? "", request.Country);
-        }
+            if (!string.IsNullOrWhiteSpace(request.Street) && !string.IsNullOrWhiteSpace(request.City) && !string.IsNullOrWhiteSpace(request.Country))
+            {
+                addressVo = Address.Create(request.Street, request.City, request.ZipCode ?? "", request.Country);
+            }
 
-        var customer = Customer.Create(
-            request.FullName,
-            taxIdVo,
-            request.Email,
-            request.Phone,
-            addressVo);
+            customer = Customer.Create(
+                request.FullName,
+                taxIdVo,
+                request.Email,
+                request.Phone,
+                addressVo);
+        }
+        catch (DomainException ex)
+        {
+            return Result.Fail<CustomerDto>(DomainError.Validation("Customer.Invalid", ex.Message));
+        }
 
         await _customerRepository.AddAsync(customer, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return CustomerDto.FromEntity(customer);
+        return Result.Ok(CustomerDto.FromEntity(customer));
     }
 }

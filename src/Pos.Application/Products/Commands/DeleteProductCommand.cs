@@ -1,12 +1,12 @@
 using Pos.Application.Common.Interfaces;
-using Pos.Domain.Exceptions;
+using Pos.Domain.Common;
 using Pos.Domain.Interfaces;
 
 namespace Pos.Application.Products.Commands;
 
-public record DeleteProductCommand(Guid Id) : ICommand<bool>;
+public record DeleteProductCommand(Guid Id) : ICommand<Result<bool>>;
 
-public class DeleteProductCommandHandler : ICommandHandler<DeleteProductCommand, bool>
+public class DeleteProductCommandHandler : ICommandHandler<DeleteProductCommand, Result<bool>>
 {
     private readonly IProductRepository _productRepository;
     private readonly IUnitOfWork _unitOfWork;
@@ -17,14 +17,21 @@ public class DeleteProductCommandHandler : ICommandHandler<DeleteProductCommand,
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
     }
 
-    public async Task<bool> HandleAsync(DeleteProductCommand request, CancellationToken cancellationToken)
+    public async Task<Result<bool>> HandleAsync(DeleteProductCommand request, CancellationToken cancellationToken)
     {
-        var product = await _productRepository.GetByIdAsync(request.Id, cancellationToken)
-            ?? throw new ProductNotFoundException(request.Id);
+        ArgumentNullException.ThrowIfNull(request);
+
+        var product = await _productRepository.GetByIdAsync(request.Id, cancellationToken);
+        if (product == null)
+        {
+            return Result.Fail<bool>(DomainError.NotFound(
+                "Product.NotFound",
+                $"No se encontró el producto con ID '{request.Id}'."));
+        }
 
         _productRepository.Delete(product);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return true;
+        return Result.Ok(true);
     }
 }

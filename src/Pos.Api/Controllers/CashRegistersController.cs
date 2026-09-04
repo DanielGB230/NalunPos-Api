@@ -1,5 +1,6 @@
 using Pos.Application.Common.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using Pos.Api.Extensions;
 using Pos.Application.CashRegisters.Commands;
 using Pos.Application.CashRegisters.DTOs;
 using Pos.Application.CashRegisters.Queries;
@@ -38,25 +39,28 @@ public class CashRegistersController : ControllerBase
     }
 
     [HttpPost("sessions/open")]
-    [ProducesResponseType(typeof(CashRegisterSessionDto), StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<CashRegisterSessionDto>> OpenSession(
+    [ProducesResponseType(typeof(CashRegisterSessionDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> OpenSession(
         [FromBody] OpenCashRegisterSessionCommand command,
         CancellationToken cancellationToken)
     {
         var result = await _dispatcher.SendAsync(command, cancellationToken);
-        return CreatedAtAction(nameof(GetActiveSession), new { registerId = result.CashRegisterId }, result);
+        return this.ToActionResult(result);
     }
 
     [HttpPost("sessions/close")]
     [ProducesResponseType(typeof(CashRegisterSessionDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<CashRegisterSessionDto>> CloseSession(
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> CloseSession(
         [FromBody] CloseCashRegisterSessionCommand command,
         CancellationToken cancellationToken)
     {
         var result = await _dispatcher.SendAsync(command, cancellationToken);
-        return Ok(result);
+        return this.ToActionResult(result);
     }
 
     [HttpGet("{registerId:guid}/active-session")]

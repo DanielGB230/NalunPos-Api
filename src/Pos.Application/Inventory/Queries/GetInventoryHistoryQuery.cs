@@ -1,7 +1,7 @@
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Common.Models;
 using Pos.Application.Inventory.DTOs;
-using Pos.Domain.Exceptions;
+using Pos.Domain.Common;
 using Pos.Domain.Interfaces;
 
 namespace Pos.Application.Inventory.Queries;
@@ -10,9 +10,9 @@ public record GetInventoryHistoryQuery(
     Guid ProductId,
     int PageNumber = 1,
     int PageSize = 10
-) : IQuery<PagedResult<InventoryMovementDto>>;
+) : IQuery<Result<PagedResult<InventoryMovementDto>>>;
 
-public class GetInventoryHistoryQueryHandler : IQueryHandler<GetInventoryHistoryQuery, PagedResult<InventoryMovementDto>>
+public class GetInventoryHistoryQueryHandler : IQueryHandler<GetInventoryHistoryQuery, Result<PagedResult<InventoryMovementDto>>>
 {
     private readonly IInventoryRepository _inventoryRepository;
     private readonly IProductRepository _productRepository;
@@ -25,10 +25,13 @@ public class GetInventoryHistoryQueryHandler : IQueryHandler<GetInventoryHistory
         _productRepository = productRepository ?? throw new ArgumentNullException(nameof(productRepository));
     }
 
-    public async Task<PagedResult<InventoryMovementDto>> HandleAsync(GetInventoryHistoryQuery request, CancellationToken cancellationToken)
+    public async Task<Result<PagedResult<InventoryMovementDto>>> HandleAsync(GetInventoryHistoryQuery request, CancellationToken cancellationToken)
     {
-        var product = await _productRepository.GetByIdAsync(request.ProductId, cancellationToken)
-            ?? throw new ProductNotFoundException(request.ProductId);
+        var product = await _productRepository.GetByIdAsync(request.ProductId, cancellationToken);
+        if (product == null)
+        {
+            return Result.Fail<PagedResult<InventoryMovementDto>>(DomainError.NotFound("Product.NotFound", $"No se encontró el producto con el ID '{request.ProductId}'."));
+        }
 
         var (items, totalCount) = await _inventoryRepository.GetMovementsHistoryPagedAsync(
             request.ProductId,
@@ -38,6 +41,7 @@ public class GetInventoryHistoryQueryHandler : IQueryHandler<GetInventoryHistory
 
         var dtos = items.Select(InventoryMovementDto.FromEntity).ToList();
 
-        return new PagedResult<InventoryMovementDto>(dtos, request.PageNumber, request.PageSize, totalCount);
+        var pagedResult = new PagedResult<InventoryMovementDto>(dtos, request.PageNumber, request.PageSize, totalCount);
+        return Result.Ok(pagedResult);
     }
 }

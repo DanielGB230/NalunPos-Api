@@ -5,13 +5,15 @@ using Pos.Domain.Entities;
 using Pos.Domain.Exceptions;
 using Pos.Domain.Interfaces;
 
+using Pos.Domain.Common;
+
 namespace Pos.Application.Notifications.Commands;
 
 public record CreateSystemNotificationCommand(
     Guid UserId,
     string Title,
     string Message
-) : ICommand<SystemNotificationDto>;
+) : ICommand<Result<SystemNotificationDto>>;
 
 public class CreateSystemNotificationCommandValidator : AbstractValidator<CreateSystemNotificationCommand>
 {
@@ -28,7 +30,7 @@ public class CreateSystemNotificationCommandValidator : AbstractValidator<Create
     }
 }
 
-public class CreateSystemNotificationCommandHandler : ICommandHandler<CreateSystemNotificationCommand, SystemNotificationDto>
+public class CreateSystemNotificationCommandHandler : ICommandHandler<CreateSystemNotificationCommand, Result<SystemNotificationDto>>
 {
     private readonly ISystemNotificationRepository _notificationRepository;
     private readonly IUserRepository _userRepository;
@@ -47,12 +49,23 @@ public class CreateSystemNotificationCommandHandler : ICommandHandler<CreateSyst
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
     }
 
-    public async Task<SystemNotificationDto> HandleAsync(CreateSystemNotificationCommand request, CancellationToken cancellationToken)
+    public async Task<Result<SystemNotificationDto>> HandleAsync(CreateSystemNotificationCommand request, CancellationToken cancellationToken)
     {
-        var user = await _userRepository.GetByIdAsync(request.UserId, cancellationToken)
-            ?? throw new UserNotFoundException(request.UserId);
+        var user = await _userRepository.GetByIdAsync(request.UserId, cancellationToken);
+        if (user == null)
+        {
+            return Result.Fail<SystemNotificationDto>(DomainError.NotFound("User.NotFound", $"No se encontró el usuario con el ID '{request.UserId}'."));
+        }
 
-        var notification = SystemNotification.Create(request.UserId, request.Title, request.Message);
+        SystemNotification notification;
+        try
+        {
+            notification = SystemNotification.Create(request.UserId, request.Title, request.Message);
+        }
+        catch (DomainException ex)
+        {
+            return Result.Fail<SystemNotificationDto>(DomainError.Validation("SystemNotification.Invalid", ex.Message));
+        }
 
         await _notificationRepository.AddAsync(notification, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -60,6 +73,6 @@ public class CreateSystemNotificationCommandHandler : ICommandHandler<CreateSyst
         // Enviar notificación Push en tiempo real mediante la Capa Anti-Corrupción (ACL)
         await _pushNotificationService.SendToUserAsync(request.UserId, request.Title, request.Message, cancellationToken);
 
-        return SystemNotificationDto.FromEntity(notification);
+        return Result.Ok(SystemNotificationDto.FromEntity(notification));
     }
 }

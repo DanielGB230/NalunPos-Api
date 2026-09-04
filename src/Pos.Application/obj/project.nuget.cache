@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "cGobKAiLqpU=",
+  "dgSpecHash": "aJgBnIKDXwY=",
   "success": true,
-  "projectFilePath": "d:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Application\\Pos.Application.csproj",
+  "projectFilePath": "D:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Application\\Pos.Application.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\Dani\\.nuget\\packages\\fluentvalidation\\11.11.0\\fluentvalidation.11.11.0.nupkg.sha512",
     "C:\\Users\\Dani\\.nuget\\packages\\fluentvalidation.dependencyinjectionextensions\\11.11.0\\fluentvalidation.dependencyinjectionextensions.11.11.0.nupkg.sha512",

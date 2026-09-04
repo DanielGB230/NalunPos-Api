@@ -1,3 +1,4 @@
+using Pos.Api.Extensions;
 using Pos.Application.Common.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -33,29 +34,29 @@ public class BranchesController : ControllerBase
     [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(BranchDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<BranchDto>> GetBranchById(Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetBranchById(Guid id, CancellationToken cancellationToken)
     {
         var query = new GetBranchByIdQuery(id);
         var result = await _dispatcher.SendAsync(query, cancellationToken);
-        return Ok(result);
+        return this.ToActionResult(result);
     }
 
     [HttpPost]
     [ProducesResponseType(typeof(BranchDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<BranchDto>> CreateBranch(
+    public async Task<IActionResult> CreateBranch(
         [FromBody] CreateBranchCommand command,
         CancellationToken cancellationToken)
     {
         var result = await _dispatcher.SendAsync(command, cancellationToken);
-        return CreatedAtAction(nameof(GetBranchById), new { id = result.Id }, result);
+        return this.ToActionResult(result);
     }
 
     [HttpPut("{id:guid}")]
     [ProducesResponseType(typeof(BranchDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<BranchDto>> UpdateBranch(
+    public async Task<IActionResult> UpdateBranch(
         Guid id,
         [FromBody] UpdateBranchCommand command,
         CancellationToken cancellationToken)
@@ -66,6 +67,6 @@ public class BranchesController : ControllerBase
         }
 
         var result = await _dispatcher.SendAsync(command, cancellationToken);
-        return Ok(result);
+        return this.ToActionResult(result);
     }
 }

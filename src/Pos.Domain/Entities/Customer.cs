@@ -9,8 +9,9 @@ namespace Pos.Domain.Entities;
 /// Agregado para Cliente del POS.
 /// Encapsulamiento estricto: setters privados, mutación mediante métodos de negocio.
 /// </summary>
-public class Customer : AggregateRoot<Guid>
+public class Customer : AggregateRoot<Guid>, ITenantOwnedEntity
 {
+    public Guid TenantId { get; private set; }
     public string FullName { get; private set; } = string.Empty;
     public string Email { get; private set; } = string.Empty;
     public string Phone { get; private set; } = string.Empty;

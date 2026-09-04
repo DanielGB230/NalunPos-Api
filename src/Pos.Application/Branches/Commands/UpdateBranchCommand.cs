@@ -1,6 +1,7 @@
 using Pos.Application.Common.Interfaces;
 using FluentValidation;
 using Pos.Application.Branches.DTOs;
+using Pos.Domain.Common;
 using Pos.Domain.Exceptions;
 using Pos.Domain.Interfaces;
 using Pos.Domain.ValueObjects;
@@ -16,7 +17,7 @@ public record UpdateBranchCommand(
     string Country,
     string PhoneNumber,
     bool IsActive
-) : ICommand<BranchDto>;
+) : ICommand<Result<BranchDto>>;
 
 public class UpdateBranchCommandValidator : AbstractValidator<UpdateBranchCommand>
 {
@@ -36,7 +37,7 @@ public class UpdateBranchCommandValidator : AbstractValidator<UpdateBranchComman
     }
 }
 
-public class UpdateBranchCommandHandler : ICommandHandler<UpdateBranchCommand, BranchDto>
+public class UpdateBranchCommandHandler : ICommandHandler<UpdateBranchCommand, Result<BranchDto>>
 {
     private readonly IBranchRepository _branchRepository;
     private readonly IUnitOfWork _unitOfWork;
@@ -47,19 +48,29 @@ public class UpdateBranchCommandHandler : ICommandHandler<UpdateBranchCommand, B
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
     }
 
-    public async Task<BranchDto> HandleAsync(UpdateBranchCommand request, CancellationToken cancellationToken)
+    public async Task<Result<BranchDto>> HandleAsync(UpdateBranchCommand request, CancellationToken cancellationToken)
     {
-        var branch = await _branchRepository.GetByIdAsync(request.Id, cancellationToken)
-            ?? throw new BranchNotFoundException(request.Id);
+        var branch = await _branchRepository.GetByIdAsync(request.Id, cancellationToken);
+        if (branch == null)
+        {
+            return Result.Fail<BranchDto>(DomainError.NotFound("Branch.NotFound", $"No se encontró la sucursal con el ID '{request.Id}'."));
+        }
 
         bool exists = await _branchRepository.ExistsByNameAsync(request.Name, request.Id, cancellationToken);
         if (exists)
         {
-            throw new DomainException($"Ya existe otra sucursal registrada con el nombre '{request.Name}'.");
+            return Result.Fail<BranchDto>(DomainError.Conflict("Branch.AlreadyExists", $"Ya existe otra sucursal registrada con el nombre '{request.Name}'."));
         }
 
-        var address = Address.Create(request.Street, request.City, request.ZipCode, request.Country);
-        branch.UpdateDetails(request.Name, address, request.PhoneNumber);
+        try
+        {
+            var address = Address.Create(request.Street, request.City, request.ZipCode, request.Country);
+            branch.UpdateDetails(request.Name, address, request.PhoneNumber);
+        }
+        catch (DomainException ex)
+        {
+            return Result.Fail<BranchDto>(DomainError.Validation("Branch.Invalid", ex.Message));
+        }
 
         if (request.IsActive && !branch.IsActive)
         {
@@ -73,6 +84,6 @@ public class UpdateBranchCommandHandler : ICommandHandler<UpdateBranchCommand, B
         _branchRepository.Update(branch);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return BranchDto.FromEntity(branch);
+        return Result.Ok(BranchDto.FromEntity(branch));
     }
 }

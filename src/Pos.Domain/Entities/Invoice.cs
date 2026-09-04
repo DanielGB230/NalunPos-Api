@@ -9,8 +9,9 @@ namespace Pos.Domain.Entities;
 /// <summary>
 /// Agregado Raíz para el Comprobante de Facturación Electrónica (Factura/Boleta).
 /// </summary>
-public class Invoice : AggregateRoot<Guid>
+public class Invoice : AggregateRoot<Guid>, ITenantOwnedEntity
 {
+    public Guid TenantId { get; private set; }
     public Guid SaleId { get; private set; }
     public InvoiceDocumentType DocumentType { get; private set; }
     public string DocumentNumber { get; private set; } = string.Empty;

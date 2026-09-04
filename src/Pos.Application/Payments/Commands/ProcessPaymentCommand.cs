@@ -1,6 +1,7 @@
 using FluentValidation;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Payments.DTOs;
+using Pos.Domain.Common;
 using Pos.Domain.Entities;
 using Pos.Domain.Enums;
 using Pos.Domain.Exceptions;
@@ -15,7 +16,7 @@ public record ProcessPaymentCommand(
     PaymentMethod Method,
     string Currency = "USD",
     string? ExternalReference = null
-) : ICommand<PaymentDto>;
+) : ICommand<Result<PaymentDto>>;
 
 public class ProcessPaymentCommandValidator : AbstractValidator<ProcessPaymentCommand>
 {
@@ -32,7 +33,7 @@ public class ProcessPaymentCommandValidator : AbstractValidator<ProcessPaymentCo
     }
 }
 
-public class ProcessPaymentCommandHandler : ICommandHandler<ProcessPaymentCommand, PaymentDto>
+public class ProcessPaymentCommandHandler : ICommandHandler<ProcessPaymentCommand, Result<PaymentDto>>
 {
     private readonly IPaymentRepository _paymentRepository;
     private readonly ISaleRepository _saleRepository;
@@ -54,13 +55,28 @@ public class ProcessPaymentCommandHandler : ICommandHandler<ProcessPaymentComman
         _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
     }
 
-    public async Task<PaymentDto> HandleAsync(ProcessPaymentCommand request, CancellationToken cancellationToken)
+    public async Task<Result<PaymentDto>> HandleAsync(ProcessPaymentCommand request, CancellationToken cancellationToken)
     {
-        var sale = await _saleRepository.GetByIdAsync(request.SaleId, cancellationToken)
-            ?? throw new SaleNotFoundException(request.SaleId);
+        ArgumentNullException.ThrowIfNull(request);
 
-        var amountMoney = Money.Create(request.Amount, request.Currency);
-        var payment = Payment.Create(request.SaleId, amountMoney, request.Method, request.ExternalReference);
+        var sale = await _saleRepository.GetByIdAsync(request.SaleId, cancellationToken);
+        if (sale == null)
+        {
+            return Result.Fail<PaymentDto>(DomainError.NotFound(
+                "Sale.NotFound",
+                $"No se encontró la venta especificada con ID '{request.SaleId}'."));
+        }
+
+        Payment payment;
+        try
+        {
+            var amountMoney = Money.Create(request.Amount, request.Currency);
+            payment = Payment.Create(request.SaleId, amountMoney, request.Method, request.ExternalReference);
+        }
+        catch (DomainException ex)
+        {
+            return Result.Fail<PaymentDto>(DomainError.Validation("Payment.Invalid", ex.Message));
+        }
 
         // Invocar a la Capa Anti-Corrupción (ACL) para pasarela externa
         var gatewayResult = await _paymentGateway.ProcessPaymentAsync(payment, cancellationToken);
@@ -84,6 +100,13 @@ public class ProcessPaymentCommandHandler : ICommandHandler<ProcessPaymentComman
         }
         payment.ClearDomainEvents();
 
-        return PaymentDto.FromEntity(payment);
+        if (!gatewayResult.IsSuccess)
+        {
+            return Result.Fail<PaymentDto>(DomainError.Validation(
+                "Payment.GatewayDeclined",
+                gatewayResult.ErrorMessage ?? "El pago fue rechazado por la entidad financiera."));
+        }
+
+        return Result.Ok(PaymentDto.FromEntity(payment));
     }
 }

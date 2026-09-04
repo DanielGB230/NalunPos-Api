@@ -7,9 +7,9 @@ namespace Pos.Infrastructure.Persistence.Repositories;
 
 public class CategoryRepository : ICategoryRepository
 {
-    private readonly ApplicationDbContext _context;
+    private readonly PosDbContext _context;
 
-    public CategoryRepository(ApplicationDbContext context)
+    public CategoryRepository(PosDbContext context)
     {
         _context = context ?? throw new ArgumentNullException(nameof(context));
     }

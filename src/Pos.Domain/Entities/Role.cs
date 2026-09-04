@@ -8,10 +8,11 @@ namespace Pos.Domain.Entities;
 /// Agregado para Rol y Permisos (RBAC).
 /// Completamente desacoplado de Microsoft.AspNetCore.Identity.
 /// </summary>
-public class Role : AggregateRoot<Guid>
+public class Role : AggregateRoot<Guid>, ITenantOwnedEntity
 {
     private readonly List<string> _permissions = [];
 
+    public Guid TenantId { get; private set; }
     public string Name { get; private set; } = string.Empty;
     public string? Description { get; private set; }
 

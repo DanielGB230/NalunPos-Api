@@ -3,11 +3,13 @@ using Pos.Application.Purchases.DTOs;
 using Pos.Domain.Exceptions;
 using Pos.Domain.Interfaces;
 
+using Pos.Domain.Common;
+
 namespace Pos.Application.Purchases.Commands;
 
-public record CompletePurchaseCommand(Guid Id) : ICommand<PurchaseDto>;
+public record CompletePurchaseCommand(Guid Id) : ICommand<Result<PurchaseDto>>;
 
-public class CompletePurchaseCommandHandler : ICommandHandler<CompletePurchaseCommand, PurchaseDto>
+public class CompletePurchaseCommandHandler : ICommandHandler<CompletePurchaseCommand, Result<PurchaseDto>>
 {
     private readonly IPurchaseRepository _purchaseRepository;
     private readonly IUnitOfWork _unitOfWork;
@@ -23,12 +25,22 @@ public class CompletePurchaseCommandHandler : ICommandHandler<CompletePurchaseCo
         _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
     }
 
-    public async Task<PurchaseDto> HandleAsync(CompletePurchaseCommand request, CancellationToken cancellationToken)
+    public async Task<Result<PurchaseDto>> HandleAsync(CompletePurchaseCommand request, CancellationToken cancellationToken)
     {
-        var purchase = await _purchaseRepository.GetByIdAsync(request.Id, cancellationToken)
-            ?? throw new PurchaseNotFoundException(request.Id);
+        var purchase = await _purchaseRepository.GetByIdAsync(request.Id, cancellationToken);
+        if (purchase == null)
+        {
+            return Result.Fail<PurchaseDto>(DomainError.NotFound("Purchase.NotFound", $"No se encontró la orden de compra con el ID '{request.Id}'."));
+        }
 
-        purchase.Complete();
+        try
+        {
+            purchase.Complete();
+        }
+        catch (DomainException ex)
+        {
+            return Result.Fail<PurchaseDto>(DomainError.Validation("Purchase.InvalidState", ex.Message));
+        }
 
         _purchaseRepository.Update(purchase);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -40,6 +52,6 @@ public class CompletePurchaseCommandHandler : ICommandHandler<CompletePurchaseCo
         }
         purchase.ClearDomainEvents();
 
-        return PurchaseDto.FromEntity(purchase);
+        return Result.Ok(PurchaseDto.FromEntity(purchase));
     }
 }

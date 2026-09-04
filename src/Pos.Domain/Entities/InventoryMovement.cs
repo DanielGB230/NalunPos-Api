@@ -9,8 +9,9 @@ namespace Pos.Domain.Entities;
 /// Agregado inmutable (Append-Only / Kardex) para registrar cada movimiento físico de inventario.
 /// Los registros de Kardex nunca se modifican ni eliminan.
 /// </summary>
-public class InventoryMovement : AggregateRoot<Guid>
+public class InventoryMovement : AggregateRoot<Guid>, ITenantOwnedEntity
 {
+    public Guid TenantId { get; private set; }
     public Guid ProductId { get; private set; }
     public decimal Quantity { get; private set; }
     public InventoryMovementType MovementType { get; private set; }

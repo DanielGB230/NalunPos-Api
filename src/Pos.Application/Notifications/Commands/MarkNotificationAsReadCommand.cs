@@ -1,13 +1,13 @@
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Notifications.DTOs;
-using Pos.Domain.Exceptions;
+using Pos.Domain.Common;
 using Pos.Domain.Interfaces;
 
 namespace Pos.Application.Notifications.Commands;
 
-public record MarkNotificationAsReadCommand(Guid Id) : ICommand<SystemNotificationDto>;
+public record MarkNotificationAsReadCommand(Guid Id) : ICommand<Result<SystemNotificationDto>>;
 
-public class MarkNotificationAsReadCommandHandler : ICommandHandler<MarkNotificationAsReadCommand, SystemNotificationDto>
+public class MarkNotificationAsReadCommandHandler : ICommandHandler<MarkNotificationAsReadCommand, Result<SystemNotificationDto>>
 {
     private readonly ISystemNotificationRepository _notificationRepository;
     private readonly IUnitOfWork _unitOfWork;
@@ -20,16 +20,19 @@ public class MarkNotificationAsReadCommandHandler : ICommandHandler<MarkNotifica
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
     }
 
-    public async Task<SystemNotificationDto> HandleAsync(MarkNotificationAsReadCommand request, CancellationToken cancellationToken)
+    public async Task<Result<SystemNotificationDto>> HandleAsync(MarkNotificationAsReadCommand request, CancellationToken cancellationToken)
     {
-        var notification = await _notificationRepository.GetByIdAsync(request.Id, cancellationToken)
-            ?? throw new SystemNotificationNotFoundException(request.Id);
+        var notification = await _notificationRepository.GetByIdAsync(request.Id, cancellationToken);
+        if (notification == null)
+        {
+            return Result.Fail<SystemNotificationDto>(DomainError.NotFound("SystemNotification.NotFound", $"No se encontró la notificación con el ID '{request.Id}'."));
+        }
 
         notification.MarkAsRead();
 
         _notificationRepository.Update(notification);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return SystemNotificationDto.FromEntity(notification);
+        return Result.Ok(SystemNotificationDto.FromEntity(notification));
     }
 }

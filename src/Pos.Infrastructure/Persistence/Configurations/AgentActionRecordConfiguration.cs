@@ -16,6 +16,9 @@ public class AgentActionRecordConfiguration : IEntityTypeConfiguration<AgentActi
         builder.Property(a => a.Id)
             .ValueGeneratedNever();
 
+        builder.Property(a => a.TenantId)
+            .IsRequired();
+
         builder.Property(a => a.AgentId)
             .IsRequired()
             .HasMaxLength(100);
@@ -42,6 +45,7 @@ public class AgentActionRecordConfiguration : IEntityTypeConfiguration<AgentActi
 
         builder.Property(a => a.ReviewedAtUtc);
 
+        builder.HasIndex(a => a.TenantId);
         builder.HasIndex(a => a.AgentId);
         builder.HasIndex(a => a.Status);
         builder.HasIndex(a => a.CreatedAtUtc);

@@ -7,8 +7,9 @@ namespace Pos.Domain.Entities;
 /// <summary>
 /// Entidad de línea de detalle de compra dentro del agregado Purchase.
 /// </summary>
-public class PurchaseLineItem : Entity<Guid>
+public class PurchaseLineItem : Entity<Guid>, ITenantOwnedEntity
 {
+    public Guid TenantId { get; private set; }
     public Guid ProductId { get; private set; }
     public string ProductName { get; private set; } = string.Empty;
     public decimal Quantity { get; private set; }

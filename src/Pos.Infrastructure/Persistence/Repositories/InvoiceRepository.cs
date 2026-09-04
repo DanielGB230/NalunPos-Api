@@ -7,9 +7,9 @@ namespace Pos.Infrastructure.Persistence.Repositories;
 
 public class InvoiceRepository : IInvoiceRepository
 {
-    private readonly ApplicationDbContext _context;
+    private readonly PosDbContext _context;
 
-    public InvoiceRepository(ApplicationDbContext context)
+    public InvoiceRepository(PosDbContext context)
     {
         _context = context ?? throw new ArgumentNullException(nameof(context));
     }

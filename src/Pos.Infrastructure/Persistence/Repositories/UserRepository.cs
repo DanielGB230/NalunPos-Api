@@ -7,9 +7,9 @@ namespace Pos.Infrastructure.Persistence.Repositories;
 
 public class UserRepository : IUserRepository
 {
-    private readonly ApplicationDbContext _context;
+    private readonly PosDbContext _context;
 
-    public UserRepository(ApplicationDbContext context)
+    public UserRepository(PosDbContext context)
     {
         _context = context ?? throw new ArgumentNullException(nameof(context));
     }
@@ -21,8 +21,28 @@ public class UserRepository : IUserRepository
 
     public async Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrWhiteSpace(email)) return null;
         string normalized = email.Trim().ToLowerInvariant();
-        return await _context.Users.FirstOrDefaultAsync(u => u.Email == normalized, cancellationToken);
+        var emailVo = new Pos.Domain.ValueObjects.Email(normalized);
+        return await _context.Users.FirstOrDefaultAsync(u => u.Email == emailVo, cancellationToken);
+    }
+
+    public async Task<bool> ExistsByEmailAsync(string email, Guid? excludeId = null, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(email)) return false;
+        string normalized = email.Trim().ToLowerInvariant();
+        var emailVo = new Pos.Domain.ValueObjects.Email(normalized);
+        return await _context.Users.AnyAsync(u => u.Email == emailVo && (excludeId == null || u.Id != excludeId.Value), cancellationToken);
+    }
+
+    public async Task AddAsync(User user, CancellationToken cancellationToken = default)
+    {
+        await _context.Users.AddAsync(user, cancellationToken);
+    }
+
+    public void Update(User user)
+    {
+        _context.Users.Update(user);
     }
 
     public async Task<(IReadOnlyList<User> Items, int TotalCount)> GetPagedAsync(
@@ -44,8 +64,7 @@ public class UserRepository : IUserRepository
             string pattern = $"%{searchTerm.Trim()}%";
             query = query.Where(u =>
                 EF.Functions.Like(u.FirstName, pattern) ||
-                EF.Functions.Like(u.LastName, pattern) ||
-                EF.Functions.Like(u.Email, pattern));
+                EF.Functions.Like(u.LastName, pattern));
         }
 
         int totalCount = await query.CountAsync(cancellationToken);
@@ -58,21 +77,5 @@ public class UserRepository : IUserRepository
             .ToListAsync(cancellationToken);
 
         return (items, totalCount);
-    }
-
-    public async Task<bool> ExistsByEmailAsync(string email, Guid? excludeId = null, CancellationToken cancellationToken = default)
-    {
-        string normalized = email.Trim().ToLowerInvariant();
-        return await _context.Users.AnyAsync(u => u.Email == normalized && (excludeId == null || u.Id != excludeId.Value), cancellationToken);
-    }
-
-    public async Task AddAsync(User user, CancellationToken cancellationToken = default)
-    {
-        await _context.Users.AddAsync(user, cancellationToken);
-    }
-
-    public void Update(User user)
-    {
-        _context.Users.Update(user);
     }
 }

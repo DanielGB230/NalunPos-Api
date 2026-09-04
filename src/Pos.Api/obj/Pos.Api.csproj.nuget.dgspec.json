@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "d:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Api\\Pos.Api.csproj": {}
+    "D:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Api\\Pos.Api.csproj": {}
   },
   "projects": {
-    "d:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Api\\Pos.Api.csproj": {
+    "D:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Api\\Pos.Api.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "d:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Api\\Pos.Api.csproj",
+        "projectUniqueName": "D:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Api\\Pos.Api.csproj",
         "projectName": "Pos.Api",
-        "projectPath": "d:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Api\\Pos.Api.csproj",
+        "projectPath": "D:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Api\\Pos.Api.csproj",
         "packagesPath": "C:\\Users\\Dani\\.nuget\\packages\\",
-        "outputPath": "d:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Api\\obj\\",
+        "outputPath": "D:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Api\\obj\\",
         "projectStyle": "PackageReference",
         "centralPackageVersionsManagementEnabled": true,
         "fallbackFolders": [
@@ -33,11 +33,11 @@
           "net10.0": {
             "targetAlias": "net10.0",
             "projectReferences": {
-              "d:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Application\\Pos.Application.csproj": {
-                "projectPath": "d:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Application\\Pos.Application.csproj"
+              "D:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Application\\Pos.Application.csproj": {
+                "projectPath": "D:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Application\\Pos.Application.csproj"
               },
-              "d:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Infrastructure\\Pos.Infrastructure.csproj": {
-                "projectPath": "d:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Infrastructure\\Pos.Infrastructure.csproj"
+              "D:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Infrastructure\\Pos.Infrastructure.csproj": {
+                "projectPath": "D:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Infrastructure\\Pos.Infrastructure.csproj"
               }
             }
           }
@@ -92,6 +92,7 @@
             "FluentAssertions": "6.12.2",
             "FluentValidation": "11.11.0",
             "FluentValidation.DependencyInjectionExtensions": "11.11.0",
+            "Konscious.Security.Cryptography.Argon2": "1.3.1",
             "Microsoft.AspNetCore.Authentication.JwtBearer": "10.0.11",
             "Microsoft.AspNetCore.OpenApi": "10.0.11",
             "Microsoft.EntityFrameworkCore": "10.0.11",
@@ -547,14 +548,14 @@
         }
       }
     },
-    "d:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Application\\Pos.Application.csproj": {
+    "D:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Application\\Pos.Application.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "d:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Application\\Pos.Application.csproj",
+        "projectUniqueName": "D:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Application\\Pos.Application.csproj",
         "projectName": "Pos.Application",
-        "projectPath": "d:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Application\\Pos.Application.csproj",
+        "projectPath": "D:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Application\\Pos.Application.csproj",
         "packagesPath": "C:\\Users\\Dani\\.nuget\\packages\\",
-        "outputPath": "d:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Application\\obj\\",
+        "outputPath": "D:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Application\\obj\\",
         "projectStyle": "PackageReference",
         "centralPackageVersionsManagementEnabled": true,
         "fallbackFolders": [
@@ -576,8 +577,8 @@
           "net10.0": {
             "targetAlias": "net10.0",
             "projectReferences": {
-              "d:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Domain\\Pos.Domain.csproj": {
-                "projectPath": "d:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Domain\\Pos.Domain.csproj"
+              "D:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Domain\\Pos.Domain.csproj": {
+                "projectPath": "D:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Domain\\Pos.Domain.csproj"
               }
             }
           }
@@ -625,6 +626,7 @@
             "FluentAssertions": "6.12.2",
             "FluentValidation": "11.11.0",
             "FluentValidation.DependencyInjectionExtensions": "11.11.0",
+            "Konscious.Security.Cryptography.Argon2": "1.3.1",
             "Microsoft.AspNetCore.Authentication.JwtBearer": "10.0.11",
             "Microsoft.AspNetCore.OpenApi": "10.0.11",
             "Microsoft.EntityFrameworkCore": "10.0.11",
@@ -937,14 +939,14 @@
         }
       }
     },
-    "d:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Domain\\Pos.Domain.csproj": {
+    "D:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Domain\\Pos.Domain.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "d:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Domain\\Pos.Domain.csproj",
+        "projectUniqueName": "D:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Domain\\Pos.Domain.csproj",
         "projectName": "Pos.Domain",
-        "projectPath": "d:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Domain\\Pos.Domain.csproj",
+        "projectPath": "D:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Domain\\Pos.Domain.csproj",
         "packagesPath": "C:\\Users\\Dani\\.nuget\\packages\\",
-        "outputPath": "d:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Domain\\obj\\",
+        "outputPath": "D:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Domain\\obj\\",
         "projectStyle": "PackageReference",
         "centralPackageVersionsManagementEnabled": true,
         "fallbackFolders": [
@@ -994,6 +996,7 @@
             "FluentAssertions": "6.12.2",
             "FluentValidation": "11.11.0",
             "FluentValidation.DependencyInjectionExtensions": "11.11.0",
+            "Konscious.Security.Cryptography.Argon2": "1.3.1",
             "Microsoft.AspNetCore.Authentication.JwtBearer": "10.0.11",
             "Microsoft.AspNetCore.OpenApi": "10.0.11",
             "Microsoft.EntityFrameworkCore": "10.0.11",
@@ -1306,14 +1309,14 @@
         }
       }
     },
-    "d:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Infrastructure\\Pos.Infrastructure.csproj": {
+    "D:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Infrastructure\\Pos.Infrastructure.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "d:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Infrastructure\\Pos.Infrastructure.csproj",
+        "projectUniqueName": "D:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Infrastructure\\Pos.Infrastructure.csproj",
         "projectName": "Pos.Infrastructure",
-        "projectPath": "d:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Infrastructure\\Pos.Infrastructure.csproj",
+        "projectPath": "D:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Infrastructure\\Pos.Infrastructure.csproj",
         "packagesPath": "C:\\Users\\Dani\\.nuget\\packages\\",
-        "outputPath": "d:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Infrastructure\\obj\\",
+        "outputPath": "D:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Infrastructure\\obj\\",
         "projectStyle": "PackageReference",
         "centralPackageVersionsManagementEnabled": true,
         "fallbackFolders": [
@@ -1335,11 +1338,11 @@
           "net10.0": {
             "targetAlias": "net10.0",
             "projectReferences": {
-              "d:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Application\\Pos.Application.csproj": {
-                "projectPath": "d:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Application\\Pos.Application.csproj"
+              "D:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Application\\Pos.Application.csproj": {
+                "projectPath": "D:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Application\\Pos.Application.csproj"
               },
-              "d:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Domain\\Pos.Domain.csproj": {
-                "projectPath": "d:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Domain\\Pos.Domain.csproj"
+              "D:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Domain\\Pos.Domain.csproj": {
+                "projectPath": "D:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Domain\\Pos.Domain.csproj"
               }
             }
           }
@@ -1370,6 +1373,11 @@
               "version": "[4.0.3, )",
               "versionCentrallyManaged": true
             },
+            "Konscious.Security.Cryptography.Argon2": {
+              "target": "Package",
+              "version": "[1.3.1, )",
+              "versionCentrallyManaged": true
+            },
             "Microsoft.EntityFrameworkCore": {
               "target": "Package",
               "version": "[10.0.11, )",
@@ -1397,6 +1405,7 @@
             "FluentAssertions": "6.12.2",
             "FluentValidation": "11.11.0",
             "FluentValidation.DependencyInjectionExtensions": "11.11.0",
+            "Konscious.Security.Cryptography.Argon2": "1.3.1",
             "Microsoft.AspNetCore.Authentication.JwtBearer": "10.0.11",
             "Microsoft.AspNetCore.OpenApi": "10.0.11",
             "Microsoft.EntityFrameworkCore": "10.0.11",

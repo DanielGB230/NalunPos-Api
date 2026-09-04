@@ -1,5 +1,6 @@
 using Pos.Application.Common.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using Pos.Api.Extensions;
 using Pos.Application.Common.Models;
 using Pos.Application.Sales.Commands;
 using Pos.Application.Sales.DTOs;
@@ -36,22 +37,24 @@ public class SalesController : ControllerBase
 
     [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(SaleDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<SaleDto>> GetSaleById(Guid id, CancellationToken cancellationToken)
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetSaleById(Guid id, CancellationToken cancellationToken)
     {
         var query = new GetSaleByIdQuery(id);
         var result = await _dispatcher.SendAsync(query, cancellationToken);
-        return Ok(result);
+        return this.ToActionResult(result);
     }
 
     [HttpPost]
-    [ProducesResponseType(typeof(SaleDto), StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<SaleDto>> CreateSale(
+    [ProducesResponseType(typeof(SaleDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> CreateSale(
         [FromBody] CreateSaleCommand command,
         CancellationToken cancellationToken)
     {
         var result = await _dispatcher.SendAsync(command, cancellationToken);
-        return CreatedAtAction(nameof(GetSaleById), new { id = result.Id }, result);
+        return this.ToActionResult(result);
     }
 }

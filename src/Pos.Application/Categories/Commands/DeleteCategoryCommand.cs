@@ -1,12 +1,12 @@
 using Pos.Application.Common.Interfaces;
-using Pos.Domain.Exceptions;
+using Pos.Domain.Common;
 using Pos.Domain.Interfaces;
 
 namespace Pos.Application.Categories.Commands;
 
-public record DeleteCategoryCommand(Guid Id) : ICommand<bool>;
+public record DeleteCategoryCommand(Guid Id) : ICommand<Result<bool>>;
 
-public class DeleteCategoryCommandHandler : ICommandHandler<DeleteCategoryCommand, bool>
+public class DeleteCategoryCommandHandler : ICommandHandler<DeleteCategoryCommand, Result<bool>>
 {
     private readonly ICategoryRepository _categoryRepository;
     private readonly IUnitOfWork _unitOfWork;
@@ -17,14 +17,17 @@ public class DeleteCategoryCommandHandler : ICommandHandler<DeleteCategoryComman
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
     }
 
-    public async Task<bool> HandleAsync(DeleteCategoryCommand request, CancellationToken cancellationToken)
+    public async Task<Result<bool>> HandleAsync(DeleteCategoryCommand request, CancellationToken cancellationToken)
     {
-        var category = await _categoryRepository.GetByIdAsync(request.Id, cancellationToken)
-            ?? throw new CategoryNotFoundException(request.Id);
+        var category = await _categoryRepository.GetByIdAsync(request.Id, cancellationToken);
+        if (category == null)
+        {
+            return Result.Fail<bool>(DomainError.NotFound("Category.NotFound", $"No se encontró la categoría con el ID '{request.Id}'."));
+        }
 
         _categoryRepository.Delete(category);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return true;
+        return Result.Ok(true);
     }
 }

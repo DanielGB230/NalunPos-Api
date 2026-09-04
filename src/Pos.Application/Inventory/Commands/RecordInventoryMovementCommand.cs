@@ -1,6 +1,7 @@
 using Pos.Application.Common.Interfaces;
 using FluentValidation;
 using Pos.Application.Inventory.DTOs;
+using Pos.Domain.Common;
 using Pos.Domain.Entities;
 using Pos.Domain.Enums;
 using Pos.Domain.Exceptions;
@@ -14,7 +15,7 @@ public record RecordInventoryMovementCommand(
     InventoryMovementType MovementType,
     Guid? ReferenceId = null,
     string? Notes = null
-) : ICommand<InventoryMovementDto>;
+) : ICommand<Result<InventoryMovementDto>>;
 
 public class RecordInventoryMovementCommandValidator : AbstractValidator<RecordInventoryMovementCommand>
 {
@@ -34,7 +35,7 @@ public class RecordInventoryMovementCommandValidator : AbstractValidator<RecordI
     }
 }
 
-public class RecordInventoryMovementCommandHandler : ICommandHandler<RecordInventoryMovementCommand, InventoryMovementDto>
+public class RecordInventoryMovementCommandHandler : ICommandHandler<RecordInventoryMovementCommand, Result<InventoryMovementDto>>
 {
     private readonly IInventoryRepository _inventoryRepository;
     private readonly IProductRepository _productRepository;
@@ -50,10 +51,17 @@ public class RecordInventoryMovementCommandHandler : ICommandHandler<RecordInven
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
     }
 
-    public async Task<InventoryMovementDto> HandleAsync(RecordInventoryMovementCommand request, CancellationToken cancellationToken)
+    public async Task<Result<InventoryMovementDto>> HandleAsync(RecordInventoryMovementCommand request, CancellationToken cancellationToken)
     {
-        var product = await _productRepository.GetByIdAsync(request.ProductId, cancellationToken)
-            ?? throw new ProductNotFoundException(request.ProductId);
+        ArgumentNullException.ThrowIfNull(request);
+
+        var product = await _productRepository.GetByIdAsync(request.ProductId, cancellationToken);
+        if (product == null)
+        {
+            return Result.Fail<InventoryMovementDto>(DomainError.NotFound(
+                "Product.NotFound",
+                $"No se encontró el producto con ID '{request.ProductId}'."));
+        }
 
         // Si es una salida, verificar stock suficiente en Kardex
         if (request.Quantity < 0)
@@ -61,25 +69,35 @@ public class RecordInventoryMovementCommandHandler : ICommandHandler<RecordInven
             decimal currentStock = await _inventoryRepository.GetCurrentStockAsync(request.ProductId, cancellationToken);
             if (currentStock + request.Quantity < 0)
             {
-                throw new DomainException($"Stock Kardex insuficiente para el producto '{product.Name}'. Stock actual: {currentStock}, ajuste: {request.Quantity}.");
+                return Result.Fail<InventoryMovementDto>(DomainError.Validation(
+                    "Inventory.InsufficientStock",
+                    $"Stock Kardex insuficiente para el producto '{product.Name}'. Stock actual: {currentStock}, ajuste solicitado: {request.Quantity}."));
             }
         }
 
-        var movement = InventoryMovement.Record(
-            request.ProductId,
-            request.Quantity,
-            request.MovementType,
-            request.ReferenceId,
-            request.Notes);
+        InventoryMovement movement;
+        try
+        {
+            movement = InventoryMovement.Record(
+                request.ProductId,
+                request.Quantity,
+                request.MovementType,
+                request.ReferenceId,
+                request.Notes);
 
-        // Actualiza la proyección del Agregado de Producto
-        product.AdjustStock((int)request.Quantity);
+            // Actualiza la proyección del Agregado de Producto
+            product.AdjustStock((int)request.Quantity);
+        }
+        catch (DomainException ex)
+        {
+            return Result.Fail<InventoryMovementDto>(DomainError.Validation("Inventory.Invalid", ex.Message));
+        }
 
         await _inventoryRepository.AddMovementAsync(movement, cancellationToken);
         _productRepository.Update(product);
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return InventoryMovementDto.FromEntity(movement);
+        return Result.Ok(InventoryMovementDto.FromEntity(movement));
     }
 }

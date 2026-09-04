@@ -1,6 +1,7 @@
 using Pos.Application.Common.Interfaces;
 using FluentValidation;
 using Pos.Application.AI.DTOs;
+using Pos.Domain.Common;
 using Pos.Domain.Entities;
 using Pos.Domain.Enums;
 using Pos.Domain.Exceptions;
@@ -13,7 +14,7 @@ public record ProposeAgentActionCommand(
     string ProposedActionType,
     string PayloadJson,
     RiskLevel RiskLevel
-) : ICommand<AgentActionRecordDto>;
+) : ICommand<Result<AgentActionRecordDto>>;
 
 public class ProposeAgentActionCommandValidator : AbstractValidator<ProposeAgentActionCommand>
 {
@@ -33,21 +34,35 @@ public class ProposeAgentActionCommandValidator : AbstractValidator<ProposeAgent
     }
 }
 
-public class ProposeAgentActionCommandHandler : ICommandHandler<ProposeAgentActionCommand, AgentActionRecordDto>
+public class ProposeAgentActionCommandHandler : ICommandHandler<ProposeAgentActionCommand, Result<AgentActionRecordDto>>
 {
     private readonly IAgentActionRecordRepository _repository;
+    private readonly ICurrentTenantContext _tenantContext;
     private readonly IUnitOfWork _unitOfWork;
 
     public ProposeAgentActionCommandHandler(
         IAgentActionRecordRepository repository,
+        ICurrentTenantContext tenantContext,
         IUnitOfWork unitOfWork)
     {
         _repository = repository ?? throw new ArgumentNullException(nameof(repository));
+        _tenantContext = tenantContext ?? throw new ArgumentNullException(nameof(tenantContext));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
     }
 
-    public async Task<AgentActionRecordDto> HandleAsync(ProposeAgentActionCommand request, CancellationToken cancellationToken)
+    public async Task<Result<AgentActionRecordDto>> HandleAsync(ProposeAgentActionCommand request, CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(request);
+
+        if (!_tenantContext.TenantId.HasValue || _tenantContext.TenantId.Value == Guid.Empty)
+        {
+            return Result.Fail<AgentActionRecordDto>(DomainError.Validation(
+                "Tenant.Required",
+                "Se requiere un contexto de tenant activo para proponer acciones de agente IA."));
+        }
+
+        Guid tenantId = _tenantContext.TenantId.Value;
+
         // Idempotencia: Verificar si ya existe una propuesta idéntica en estado pendiente
         bool exists = await _repository.ExistsPendingActionAsync(
             request.AgentId,
@@ -57,18 +72,29 @@ public class ProposeAgentActionCommandHandler : ICommandHandler<ProposeAgentActi
 
         if (exists)
         {
-            throw new DomainException($"Ya existe una propuesta pendiente idéntica para el agente '{request.AgentId}' y la acción '{request.ProposedActionType}'.");
+            return Result.Fail<AgentActionRecordDto>(DomainError.Conflict(
+                "AgentAction.AlreadyExists",
+                $"Ya existe una propuesta pendiente idéntica para el agente '{request.AgentId}' y la acción '{request.ProposedActionType}'."));
         }
 
-        var record = AgentActionRecord.Create(
-            request.AgentId,
-            request.ProposedActionType,
-            request.PayloadJson,
-            request.RiskLevel);
+        AgentActionRecord record;
+        try
+        {
+            record = AgentActionRecord.Create(
+                tenantId,
+                request.AgentId,
+                request.ProposedActionType,
+                request.PayloadJson,
+                request.RiskLevel);
+        }
+        catch (DomainException ex)
+        {
+            return Result.Fail<AgentActionRecordDto>(DomainError.Validation("AgentAction.Invalid", ex.Message));
+        }
 
         await _repository.AddAsync(record, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return AgentActionRecordDto.FromEntity(record);
+        return Result.Ok(AgentActionRecordDto.FromEntity(record));
     }
 }

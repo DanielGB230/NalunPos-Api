@@ -7,8 +7,9 @@ namespace Pos.Domain.Entities;
 /// <summary>
 /// Entidad para Registro de Auditoría de cambios en el sistema POS.
 /// </summary>
-public class AuditLog : Entity<Guid>
+public class AuditLog : Entity<Guid>, ITenantOwnedEntity
 {
+    public Guid TenantId { get; private set; }
     public string TableName { get; private set; } = string.Empty;
     public string RecordId { get; private set; } = string.Empty;
     public AuditAction Action { get; private set; }
@@ -23,6 +24,7 @@ public class AuditLog : Entity<Guid>
 
     private AuditLog(
         Guid id,
+        Guid tenantId,
         string tableName,
         string recordId,
         AuditAction action,
@@ -40,6 +42,7 @@ public class AuditLog : Entity<Guid>
             throw new DomainException("El ID del registro auditado es requerido.");
         }
 
+        TenantId = tenantId;
         TableName = tableName.Trim();
         RecordId = recordId.Trim();
         Action = action;
@@ -50,6 +53,7 @@ public class AuditLog : Entity<Guid>
     }
 
     public static AuditLog Create(
+        Guid tenantId,
         string tableName,
         string recordId,
         AuditAction action,
@@ -57,6 +61,6 @@ public class AuditLog : Entity<Guid>
         string? oldValues = null,
         string? newValues = null)
     {
-        return new AuditLog(Guid.NewGuid(), tableName, recordId, action, userId, oldValues, newValues);
+        return new AuditLog(Guid.NewGuid(), tenantId, tableName, recordId, action, userId, oldValues, newValues);
     }
 }

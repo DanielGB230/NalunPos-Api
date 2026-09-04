@@ -8,9 +8,9 @@ namespace Pos.Infrastructure.Persistence.Repositories;
 
 public class SupplierRepository : ISupplierRepository
 {
-    private readonly ApplicationDbContext _context;
+    private readonly PosDbContext _context;
 
-    public SupplierRepository(ApplicationDbContext context)
+    public SupplierRepository(PosDbContext context)
     {
         _context = context ?? throw new ArgumentNullException(nameof(context));
     }

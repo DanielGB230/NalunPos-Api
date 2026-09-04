@@ -28,3 +28,4 @@ D:\NalunPosApp\NalunPos-Api\src\Pos.Application\bin\Debug\net10.0\Pos.Domain.dll
 D:\NalunPosApp\NalunPos-Api\src\Pos.Application\bin\Debug\net10.0\Pos.Domain.pdb
 D:\NalunPosApp\NalunPos-Api\src\Pos.Application\obj\Debug\net10.0\Pos.Appl.C60C9B19.Up2Date
 D:\NalunPosApp\NalunPos-Api\src\Pos.Application\obj\Debug\net10.0\ref\Pos.Application.dll
+d:\NalunPosApp\NalunPos-Api\src\Pos.Application\obj\Debug\net10.0\Pos.Application.sourcelink.json

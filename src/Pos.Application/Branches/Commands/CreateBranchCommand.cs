@@ -1,6 +1,7 @@
 using Pos.Application.Common.Interfaces;
 using FluentValidation;
 using Pos.Application.Branches.DTOs;
+using Pos.Domain.Common;
 using Pos.Domain.Entities;
 using Pos.Domain.Exceptions;
 using Pos.Domain.Interfaces;
@@ -15,7 +16,7 @@ public record CreateBranchCommand(
     string ZipCode,
     string Country,
     string PhoneNumber = ""
-) : ICommand<BranchDto>;
+) : ICommand<Result<BranchDto>>;
 
 public class CreateBranchCommandValidator : AbstractValidator<CreateBranchCommand>
 {
@@ -32,7 +33,7 @@ public class CreateBranchCommandValidator : AbstractValidator<CreateBranchComman
     }
 }
 
-public class CreateBranchCommandHandler : ICommandHandler<CreateBranchCommand, BranchDto>
+public class CreateBranchCommandHandler : ICommandHandler<CreateBranchCommand, Result<BranchDto>>
 {
     private readonly IBranchRepository _branchRepository;
     private readonly IUnitOfWork _unitOfWork;
@@ -43,20 +44,29 @@ public class CreateBranchCommandHandler : ICommandHandler<CreateBranchCommand, B
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
     }
 
-    public async Task<BranchDto> HandleAsync(CreateBranchCommand request, CancellationToken cancellationToken)
+    public async Task<Result<BranchDto>> HandleAsync(CreateBranchCommand request, CancellationToken cancellationToken)
     {
         bool exists = await _branchRepository.ExistsByNameAsync(request.Name, null, cancellationToken);
         if (exists)
         {
-            throw new DomainException($"Ya existe una sucursal registrada con el nombre '{request.Name}'.");
+            return Result.Fail<BranchDto>(DomainError.Conflict("Branch.AlreadyExists", $"Ya existe una sucursal registrada con el nombre '{request.Name}'."));
         }
 
-        var address = Address.Create(request.Street, request.City, request.ZipCode, request.Country);
-        var branch = Branch.Create(request.Name, address, request.PhoneNumber);
+        Address address;
+        Branch branch;
+        try
+        {
+            address = Address.Create(request.Street, request.City, request.ZipCode, request.Country);
+            branch = Branch.Create(request.Name, address, request.PhoneNumber);
+        }
+        catch (DomainException ex)
+        {
+            return Result.Fail<BranchDto>(DomainError.Validation("Branch.Invalid", ex.Message));
+        }
 
         await _branchRepository.AddAsync(branch, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return BranchDto.FromEntity(branch);
+        return Result.Ok(BranchDto.FromEntity(branch));
     }
 }

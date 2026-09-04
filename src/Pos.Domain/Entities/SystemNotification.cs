@@ -7,8 +7,9 @@ namespace Pos.Domain.Entities;
 /// <summary>
 /// Entidad/Agregado para Notificaciones de Sistema dirigidas a usuarios.
 /// </summary>
-public class SystemNotification : AggregateRoot<Guid>
+public class SystemNotification : AggregateRoot<Guid>, ITenantOwnedEntity
 {
+    public Guid TenantId { get; private set; }
     public Guid UserId { get; private set; }
     public string Title { get; private set; } = string.Empty;
     public string Message { get; private set; } = string.Empty;

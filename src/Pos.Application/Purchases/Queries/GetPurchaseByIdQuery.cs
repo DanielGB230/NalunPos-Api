@@ -1,13 +1,13 @@
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Purchases.DTOs;
-using Pos.Domain.Exceptions;
+using Pos.Domain.Common;
 using Pos.Domain.Interfaces;
 
 namespace Pos.Application.Purchases.Queries;
 
-public record GetPurchaseByIdQuery(Guid Id) : IQuery<PurchaseDto>;
+public record GetPurchaseByIdQuery(Guid Id) : IQuery<Result<PurchaseDto>>;
 
-public class GetPurchaseByIdQueryHandler : IQueryHandler<GetPurchaseByIdQuery, PurchaseDto>
+public class GetPurchaseByIdQueryHandler : IQueryHandler<GetPurchaseByIdQuery, Result<PurchaseDto>>
 {
     private readonly IPurchaseRepository _purchaseRepository;
 
@@ -16,11 +16,14 @@ public class GetPurchaseByIdQueryHandler : IQueryHandler<GetPurchaseByIdQuery, P
         _purchaseRepository = purchaseRepository ?? throw new ArgumentNullException(nameof(purchaseRepository));
     }
 
-    public async Task<PurchaseDto> HandleAsync(GetPurchaseByIdQuery request, CancellationToken cancellationToken)
+    public async Task<Result<PurchaseDto>> HandleAsync(GetPurchaseByIdQuery request, CancellationToken cancellationToken)
     {
-        var purchase = await _purchaseRepository.GetByIdAsync(request.Id, cancellationToken)
-            ?? throw new PurchaseNotFoundException(request.Id);
+        var purchase = await _purchaseRepository.GetByIdAsync(request.Id, cancellationToken);
+        if (purchase == null)
+        {
+            return Result.Fail<PurchaseDto>(DomainError.NotFound("Purchase.NotFound", $"No se encontró la orden de compra con el ID '{request.Id}'."));
+        }
 
-        return PurchaseDto.FromEntity(purchase);
+        return Result.Ok(PurchaseDto.FromEntity(purchase));
     }
 }

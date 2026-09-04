@@ -6,6 +6,8 @@ using Pos.Domain.Exceptions;
 using Pos.Domain.Interfaces;
 using Pos.Domain.ValueObjects;
 
+using Pos.Domain.Common;
+
 namespace Pos.Application.Suppliers.Commands;
 
 public record CreateSupplierCommand(
@@ -19,7 +21,7 @@ public record CreateSupplierCommand(
     string ContactName,
     string Email,
     string Phone
-) : ICommand<SupplierDto>;
+) : ICommand<Result<SupplierDto>>;
 
 public class CreateSupplierCommandValidator : AbstractValidator<CreateSupplierCommand>
 {
@@ -48,7 +50,7 @@ public class CreateSupplierCommandValidator : AbstractValidator<CreateSupplierCo
     }
 }
 
-public class CreateSupplierCommandHandler : ICommandHandler<CreateSupplierCommand, SupplierDto>
+public class CreateSupplierCommandHandler : ICommandHandler<CreateSupplierCommand, Result<SupplierDto>>
 {
     private readonly ISupplierRepository _supplierRepository;
     private readonly IUnitOfWork _unitOfWork;
@@ -59,29 +61,45 @@ public class CreateSupplierCommandHandler : ICommandHandler<CreateSupplierComman
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
     }
 
-    public async Task<SupplierDto> HandleAsync(CreateSupplierCommand request, CancellationToken cancellationToken)
+    public async Task<Result<SupplierDto>> HandleAsync(CreateSupplierCommand request, CancellationToken cancellationToken)
     {
-        var taxIdVo = TaxId.Create(request.TaxId, request.TaxCountryCode);
+        TaxId taxIdVo;
+        try
+        {
+            taxIdVo = TaxId.Create(request.TaxId, request.TaxCountryCode);
+        }
+        catch (DomainException ex)
+        {
+            return Result.Fail<SupplierDto>(DomainError.Validation("Supplier.InvalidTaxId", ex.Message));
+        }
 
         bool taxIdExists = await _supplierRepository.ExistsByTaxIdAsync(taxIdVo, null, cancellationToken);
         if (taxIdExists)
         {
-            throw new DomainException($"Ya existe un proveedor registrado con el TaxId '{request.TaxId}'.");
+            return Result.Fail<SupplierDto>(DomainError.Conflict("Supplier.AlreadyExists", $"Ya existe un proveedor registrado con el TaxId '{request.TaxId}'."));
         }
 
-        var addressVo = Address.Create(request.Street, request.City, request.ZipCode, request.Country);
-
-        var supplier = Supplier.Create(
-            request.Name,
-            taxIdVo,
-            addressVo,
-            request.ContactName,
-            request.Email,
-            request.Phone);
+        Address addressVo;
+        Supplier supplier;
+        try
+        {
+            addressVo = Address.Create(request.Street, request.City, request.ZipCode, request.Country);
+            supplier = Supplier.Create(
+                request.Name,
+                taxIdVo,
+                addressVo,
+                request.ContactName,
+                request.Email,
+                request.Phone);
+        }
+        catch (DomainException ex)
+        {
+            return Result.Fail<SupplierDto>(DomainError.Validation("Supplier.Invalid", ex.Message));
+        }
 
         await _supplierRepository.AddAsync(supplier, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return SupplierDto.FromEntity(supplier);
+        return Result.Ok(SupplierDto.FromEntity(supplier));
     }
 }

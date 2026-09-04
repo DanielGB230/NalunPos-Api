@@ -5,13 +5,15 @@ using Pos.Domain.Entities;
 using Pos.Domain.Exceptions;
 using Pos.Domain.Interfaces;
 
+using Pos.Domain.Common;
+
 namespace Pos.Application.PosDevices.Commands;
 
 public record RegisterPosDeviceCommand(
     Guid BranchId,
     string Name,
     string SerialNumber
-) : ICommand<PosDeviceDto>;
+) : ICommand<Result<PosDeviceDto>>;
 
 public class RegisterPosDeviceCommandValidator : AbstractValidator<RegisterPosDeviceCommand>
 {
@@ -28,7 +30,7 @@ public class RegisterPosDeviceCommandValidator : AbstractValidator<RegisterPosDe
     }
 }
 
-public class RegisterPosDeviceCommandHandler : ICommandHandler<RegisterPosDeviceCommand, PosDeviceDto>
+public class RegisterPosDeviceCommandHandler : ICommandHandler<RegisterPosDeviceCommand, Result<PosDeviceDto>>
 {
     private readonly IPosDeviceRepository _posDeviceRepository;
     private readonly IBranchRepository _branchRepository;
@@ -44,22 +46,33 @@ public class RegisterPosDeviceCommandHandler : ICommandHandler<RegisterPosDevice
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
     }
 
-    public async Task<PosDeviceDto> HandleAsync(RegisterPosDeviceCommand request, CancellationToken cancellationToken)
+    public async Task<Result<PosDeviceDto>> HandleAsync(RegisterPosDeviceCommand request, CancellationToken cancellationToken)
     {
-        var branch = await _branchRepository.GetByIdAsync(request.BranchId, cancellationToken)
-            ?? throw new BranchNotFoundException(request.BranchId);
+        var branch = await _branchRepository.GetByIdAsync(request.BranchId, cancellationToken);
+        if (branch == null)
+        {
+            return Result.Fail<PosDeviceDto>(DomainError.NotFound("Branch.NotFound", $"No se encontró la sucursal con el ID '{request.BranchId}'."));
+        }
 
         bool serialExists = await _posDeviceRepository.ExistsBySerialNumberAsync(request.SerialNumber, null, cancellationToken);
         if (serialExists)
         {
-            throw new DomainException($"Ya existe un dispositivo POS registrado con la serie/MAC '{request.SerialNumber}'.");
+            return Result.Fail<PosDeviceDto>(DomainError.Conflict("PosDevice.AlreadyExists", $"Ya existe un dispositivo POS registrado con la serie/MAC '{request.SerialNumber}'."));
         }
 
-        var device = PosDevice.Create(request.BranchId, request.Name, request.SerialNumber);
+        PosDevice device;
+        try
+        {
+            device = PosDevice.Create(request.BranchId, request.Name, request.SerialNumber);
+        }
+        catch (DomainException ex)
+        {
+            return Result.Fail<PosDeviceDto>(DomainError.Validation("PosDevice.Invalid", ex.Message));
+        }
 
         await _posDeviceRepository.AddAsync(device, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return PosDeviceDto.FromEntity(device);
+        return Result.Ok(PosDeviceDto.FromEntity(device));
     }
 }

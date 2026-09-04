@@ -206,3 +206,4 @@ D:\NalunPosApp\NalunPos-Api\tests\Pos.Domain.Tests\obj\Debug\net10.0\Pos.Domain.
 D:\NalunPosApp\NalunPos-Api\tests\Pos.Domain.Tests\obj\Debug\net10.0\Pos.Doma.73BFB48D.Up2Date
 D:\NalunPosApp\NalunPos-Api\tests\Pos.Domain.Tests\obj\Debug\net10.0\Pos.Domain.Tests.genruntimeconfig.cache
 D:\NalunPosApp\NalunPos-Api\tests\Pos.Domain.Tests\obj\Debug\net10.0\ref\Pos.Domain.Tests.dll
+d:\NalunPosApp\NalunPos-Api\tests\Pos.Domain.Tests\obj\Debug\net10.0\Pos.Domain.Tests.sourcelink.json

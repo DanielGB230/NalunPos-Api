@@ -8,9 +8,11 @@ namespace Pos.Domain.Entities;
 /// <summary>
 /// Agregado Raíz para Gobernanza de Agentes IA (Secciones 7 y 20).
 /// Garantiza la trazabilidad obligatoria y el mecanismo "Human-in-the-loop" para acciones autónomas sugeridas.
+/// Pertenece a un Tenant específico para asegurar el aislamiento multi-tenant en la auditoría de agentes.
 /// </summary>
-public class AgentActionRecord : AggregateRoot<Guid>
+public class AgentActionRecord : AggregateRoot<Guid>, ITenantOwnedEntity
 {
+    public Guid TenantId { get; private set; }
     public string AgentId { get; private set; } = string.Empty;
     public string ProposedActionType { get; private set; } = string.Empty;
     public string PayloadJson { get; private set; } = string.Empty;
@@ -26,11 +28,17 @@ public class AgentActionRecord : AggregateRoot<Guid>
 
     private AgentActionRecord(
         Guid id,
+        Guid tenantId,
         string agentId,
         string proposedActionType,
         string payloadJson,
         RiskLevel riskLevel) : base(id)
     {
+        if (tenantId == Guid.Empty)
+        {
+            throw new DomainException("El ID del tenant es requerido para registrar la acción del agente IA.");
+        }
+
         if (string.IsNullOrWhiteSpace(agentId))
         {
             throw new DomainException("El ID del agente IA es requerido.");
@@ -46,6 +54,7 @@ public class AgentActionRecord : AggregateRoot<Guid>
             throw new DomainException("El payload JSON de la propuesta no puede estar vacío.");
         }
 
+        TenantId = tenantId;
         AgentId = agentId.Trim();
         ProposedActionType = proposedActionType.Trim();
         PayloadJson = payloadJson.Trim();
@@ -58,12 +67,13 @@ public class AgentActionRecord : AggregateRoot<Guid>
     }
 
     public static AgentActionRecord Create(
+        Guid tenantId,
         string agentId,
         string proposedActionType,
         string payloadJson,
         RiskLevel riskLevel)
     {
-        return new AgentActionRecord(Guid.NewGuid(), agentId, proposedActionType, payloadJson, riskLevel);
+        return new AgentActionRecord(Guid.NewGuid(), tenantId, agentId, proposedActionType, payloadJson, riskLevel);
     }
 
     public void Approve(Guid reviewerUserId)

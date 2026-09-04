@@ -7,8 +7,9 @@ namespace Pos.Domain.Entities;
 /// <summary>
 /// Agregado Raíz para Dispositivo o Terminal POS físico registrado en una Sucursal.
 /// </summary>
-public class PosDevice : AggregateRoot<Guid>
+public class PosDevice : AggregateRoot<Guid>, ITenantOwnedEntity
 {
+    public Guid TenantId { get; private set; }
     public Guid BranchId { get; private set; }
     public string Name { get; private set; } = string.Empty;
     public string SerialNumber { get; private set; } = string.Empty;

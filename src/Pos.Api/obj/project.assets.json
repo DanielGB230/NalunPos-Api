@@ -93,6 +93,35 @@
           }
         }
       },
+      "Konscious.Security.Cryptography.Argon2/1.3.1": {
+        "type": "package",
+        "dependencies": {
+          "Konscious.Security.Cryptography.Blake2": "1.1.1"
+        },
+        "compile": {
+          "lib/net8.0/Konscious.Security.Cryptography.Argon2.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net8.0/Konscious.Security.Cryptography.Argon2.dll": {
+            "related": ".xml"
+          }
+        }
+      },
+      "Konscious.Security.Cryptography.Blake2/1.1.1": {
+        "type": "package",
+        "compile": {
+          "lib/net8.0/Konscious.Security.Cryptography.Blake2.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net8.0/Konscious.Security.Cryptography.Blake2.dll": {
+            "related": ".xml"
+          }
+        }
+      },
       "Microsoft.AspNetCore.Authentication.JwtBearer/10.0.11": {
         "type": "package",
         "dependencies": {
@@ -1239,6 +1268,7 @@
         "framework": ".NETCoreApp,Version=v10.0",
         "dependencies": {
           "BCrypt.Net-Next": "4.0.3",
+          "Konscious.Security.Cryptography.Argon2": "1.3.1",
           "Microsoft.EntityFrameworkCore": "10.0.11",
           "Microsoft.EntityFrameworkCore.InMemory": "10.0.11",
           "Microsoft.EntityFrameworkCore.SqlServer": "10.0.11",
@@ -1388,6 +1418,44 @@
         "lib/netstandard2.0/Humanizer.dll",
         "lib/netstandard2.0/Humanizer.xml",
         "logo.png"
+      ]
+    },
+    "Konscious.Security.Cryptography.Argon2/1.3.1": {
+      "sha512": "T+OAGwzYYXftahpOxO7J4xA5K6urxwGnWQf3M+Jpi+76Azv/0T3M5SuN+h7/QvXuiqNw3ZEZ5QqVLI5ygDAylw==",
+      "type": "package",
+      "path": "konscious.security.cryptography.argon2/1.3.1",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "konscious.security.cryptography.argon2.1.3.1.nupkg.sha512",
+        "konscious.security.cryptography.argon2.nuspec",
+        "lib/net46/Konscious.Security.Cryptography.Argon2.dll",
+        "lib/net46/Konscious.Security.Cryptography.Argon2.xml",
+        "lib/net6.0/Konscious.Security.Cryptography.Argon2.dll",
+        "lib/net6.0/Konscious.Security.Cryptography.Argon2.xml",
+        "lib/net8.0/Konscious.Security.Cryptography.Argon2.dll",
+        "lib/net8.0/Konscious.Security.Cryptography.Argon2.xml",
+        "lib/netstandard1.3/Konscious.Security.Cryptography.Argon2.dll",
+        "lib/netstandard1.3/Konscious.Security.Cryptography.Argon2.xml"
+      ]
+    },
+    "Konscious.Security.Cryptography.Blake2/1.1.1": {
+      "sha512": "odwOyzj/J/lHJZNwFWJGU/LRecBShupAJ2S8TQqZfhUe9niHzu/voBYK5wuVKsvSpzbfupKQYZguVyIk1sgOkQ==",
+      "type": "package",
+      "path": "konscious.security.cryptography.blake2/1.1.1",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "konscious.security.cryptography.blake2.1.1.1.nupkg.sha512",
+        "konscious.security.cryptography.blake2.nuspec",
+        "lib/net46/Konscious.Security.Cryptography.Blake2.dll",
+        "lib/net46/Konscious.Security.Cryptography.Blake2.xml",
+        "lib/net6.0/Konscious.Security.Cryptography.Blake2.dll",
+        "lib/net6.0/Konscious.Security.Cryptography.Blake2.xml",
+        "lib/net8.0/Konscious.Security.Cryptography.Blake2.dll",
+        "lib/net8.0/Konscious.Security.Cryptography.Blake2.xml",
+        "lib/netstandard1.3/Konscious.Security.Cryptography.Blake2.dll",
+        "lib/netstandard1.3/Konscious.Security.Cryptography.Blake2.xml"
       ]
     },
     "Microsoft.AspNetCore.Authentication.JwtBearer/10.0.11": {
@@ -3531,11 +3599,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "d:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Api\\Pos.Api.csproj",
+      "projectUniqueName": "D:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Api\\Pos.Api.csproj",
       "projectName": "Pos.Api",
-      "projectPath": "d:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Api\\Pos.Api.csproj",
+      "projectPath": "D:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Api\\Pos.Api.csproj",
       "packagesPath": "C:\\Users\\Dani\\.nuget\\packages\\",
-      "outputPath": "d:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Api\\obj\\",
+      "outputPath": "D:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Api\\obj\\",
       "projectStyle": "PackageReference",
       "centralPackageVersionsManagementEnabled": true,
       "fallbackFolders": [
@@ -3557,11 +3625,11 @@
         "net10.0": {
           "targetAlias": "net10.0",
           "projectReferences": {
-            "d:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Application\\Pos.Application.csproj": {
-              "projectPath": "d:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Application\\Pos.Application.csproj"
+            "D:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Application\\Pos.Application.csproj": {
+              "projectPath": "D:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Application\\Pos.Application.csproj"
             },
-            "d:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Infrastructure\\Pos.Infrastructure.csproj": {
-              "projectPath": "d:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Infrastructure\\Pos.Infrastructure.csproj"
+            "D:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Infrastructure\\Pos.Infrastructure.csproj": {
+              "projectPath": "D:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Infrastructure\\Pos.Infrastructure.csproj"
             }
           }
         }
@@ -3616,6 +3684,7 @@
           "FluentAssertions": "6.12.2",
           "FluentValidation": "11.11.0",
           "FluentValidation.DependencyInjectionExtensions": "11.11.0",
+          "Konscious.Security.Cryptography.Argon2": "1.3.1",
           "Microsoft.AspNetCore.Authentication.JwtBearer": "10.0.11",
           "Microsoft.AspNetCore.OpenApi": "10.0.11",
           "Microsoft.EntityFrameworkCore": "10.0.11",

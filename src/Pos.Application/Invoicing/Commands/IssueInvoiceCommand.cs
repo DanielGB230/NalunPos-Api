@@ -7,6 +7,8 @@ using Pos.Domain.Exceptions;
 using Pos.Domain.Interfaces;
 using Pos.Domain.ValueObjects;
 
+using Pos.Domain.Common;
+
 namespace Pos.Application.Invoicing.Commands;
 
 public record IssueInvoiceCommand(
@@ -15,7 +17,7 @@ public record IssueInvoiceCommand(
     string DocumentNumber,
     string CustomerTaxId,
     string CustomerTaxCountryCode = "PE"
-) : ICommand<InvoiceDto>;
+) : ICommand<Result<InvoiceDto>>;
 
 public class IssueInvoiceCommandValidator : AbstractValidator<IssueInvoiceCommand>
 {
@@ -32,7 +34,7 @@ public class IssueInvoiceCommandValidator : AbstractValidator<IssueInvoiceComman
     }
 }
 
-public class IssueInvoiceCommandHandler : ICommandHandler<IssueInvoiceCommand, InvoiceDto>
+public class IssueInvoiceCommandHandler : ICommandHandler<IssueInvoiceCommand, Result<InvoiceDto>>
 {
     private readonly IInvoiceRepository _invoiceRepository;
     private readonly ISaleRepository _saleRepository;
@@ -54,24 +56,35 @@ public class IssueInvoiceCommandHandler : ICommandHandler<IssueInvoiceCommand, I
         _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
     }
 
-    public async Task<InvoiceDto> HandleAsync(IssueInvoiceCommand request, CancellationToken cancellationToken)
+    public async Task<Result<InvoiceDto>> HandleAsync(IssueInvoiceCommand request, CancellationToken cancellationToken)
     {
-        var sale = await _saleRepository.GetByIdAsync(request.SaleId, cancellationToken)
-            ?? throw new SaleNotFoundException(request.SaleId);
+        var sale = await _saleRepository.GetByIdAsync(request.SaleId, cancellationToken);
+        if (sale == null)
+        {
+            return Result.Fail<InvoiceDto>(DomainError.NotFound("Sale.NotFound", $"No se encontró la venta con el ID '{request.SaleId}'."));
+        }
 
         var existingInvoice = await _invoiceRepository.GetBySaleIdAsync(request.SaleId, cancellationToken);
         if (existingInvoice != null)
         {
-            throw new DomainException($"Ya existe un documento de facturación emitido para la venta (ID: {existingInvoice.Id}).");
+            return Result.Fail<InvoiceDto>(DomainError.Conflict("Invoice.AlreadyIssued", $"Ya existe un documento de facturación emitido para la venta (ID: {existingInvoice.Id})."));
         }
 
-        var taxIdVo = TaxId.Create(request.CustomerTaxId, request.CustomerTaxCountryCode);
-        var invoice = Invoice.Create(
-            request.SaleId,
-            request.DocumentType,
-            request.DocumentNumber,
-            taxIdVo,
-            sale.Total);
+        Invoice invoice;
+        try
+        {
+            var taxIdVo = TaxId.Create(request.CustomerTaxId, request.CustomerTaxCountryCode);
+            invoice = Invoice.Create(
+                request.SaleId,
+                request.DocumentType,
+                request.DocumentNumber,
+                taxIdVo,
+                sale.Total);
+        }
+        catch (DomainException ex)
+        {
+            return Result.Fail<InvoiceDto>(DomainError.Validation("Invoice.Invalid", ex.Message));
+        }
 
         await _invoiceRepository.AddAsync(invoice, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -97,6 +110,6 @@ public class IssueInvoiceCommandHandler : ICommandHandler<IssueInvoiceCommand, I
         }
         invoice.ClearDomainEvents();
 
-        return InvoiceDto.FromEntity(invoice);
+        return Result.Ok(InvoiceDto.FromEntity(invoice));
     }
 }

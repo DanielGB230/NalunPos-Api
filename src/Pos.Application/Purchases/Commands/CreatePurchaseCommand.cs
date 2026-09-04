@@ -6,6 +6,8 @@ using Pos.Domain.Exceptions;
 using Pos.Domain.Interfaces;
 using Pos.Domain.ValueObjects;
 
+using Pos.Domain.Common;
+
 namespace Pos.Application.Purchases.Commands;
 
 public record CreatePurchaseItemDto(
@@ -20,7 +22,7 @@ public record CreatePurchaseCommand(
     string OrderNumber,
     List<CreatePurchaseItemDto> LineItems,
     string Currency = "USD"
-) : ICommand<PurchaseDto>;
+) : ICommand<Result<PurchaseDto>>;
 
 public class CreatePurchaseCommandValidator : AbstractValidator<CreatePurchaseCommand>
 {
@@ -45,7 +47,7 @@ public class CreatePurchaseCommandValidator : AbstractValidator<CreatePurchaseCo
     }
 }
 
-public class CreatePurchaseCommandHandler : ICommandHandler<CreatePurchaseCommand, PurchaseDto>
+public class CreatePurchaseCommandHandler : ICommandHandler<CreatePurchaseCommand, Result<PurchaseDto>>
 {
     private readonly IPurchaseRepository _purchaseRepository;
     private readonly ISupplierRepository _supplierRepository;
@@ -61,27 +63,38 @@ public class CreatePurchaseCommandHandler : ICommandHandler<CreatePurchaseComman
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
     }
 
-    public async Task<PurchaseDto> HandleAsync(CreatePurchaseCommand request, CancellationToken cancellationToken)
+    public async Task<Result<PurchaseDto>> HandleAsync(CreatePurchaseCommand request, CancellationToken cancellationToken)
     {
-        var supplier = await _supplierRepository.GetByIdAsync(request.SupplierId, cancellationToken)
-            ?? throw new SupplierNotFoundException(request.SupplierId);
+        var supplier = await _supplierRepository.GetByIdAsync(request.SupplierId, cancellationToken);
+        if (supplier == null)
+        {
+            return Result.Fail<PurchaseDto>(DomainError.NotFound("Supplier.NotFound", $"No se encontró el proveedor con el ID '{request.SupplierId}'."));
+        }
 
-        var lineItems = request.LineItems.Select(item => PurchaseLineItem.Create(
-            item.ProductId,
-            item.ProductName,
-            item.Quantity,
-            Money.Create(item.UnitPriceAmount, request.Currency)
-        )).ToList();
+        Purchase purchase;
+        try
+        {
+            var lineItems = request.LineItems.Select(item => PurchaseLineItem.Create(
+                item.ProductId,
+                item.ProductName,
+                item.Quantity,
+                Money.Create(item.UnitPriceAmount, request.Currency)
+            )).ToList();
 
-        var purchase = Purchase.Create(
-            request.SupplierId,
-            request.OrderNumber,
-            lineItems,
-            request.Currency);
+            purchase = Purchase.Create(
+                request.SupplierId,
+                request.OrderNumber,
+                lineItems,
+                request.Currency);
+        }
+        catch (DomainException ex)
+        {
+            return Result.Fail<PurchaseDto>(DomainError.Validation("Purchase.Invalid", ex.Message));
+        }
 
         await _purchaseRepository.AddAsync(purchase, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return PurchaseDto.FromEntity(purchase);
+        return Result.Ok(PurchaseDto.FromEntity(purchase));
     }
 }

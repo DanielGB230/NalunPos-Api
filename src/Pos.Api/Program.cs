@@ -1,18 +1,24 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Pos.Api.BackgroundServices;
 using Pos.Api.Middleware;
 using Pos.Application;
 using Pos.Infrastructure;
+using Pos.Infrastructure.Persistence.Context;
+using Pos.Infrastructure.Persistence.Seed;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Inyección de dependencias de capas Clean Architecture
+// Inyección de dependencias de capas Clean Architecture (Application + Infrastructure)
 builder.Services
     .AddApplicationServices()
     .AddInfrastructureServices(builder.Configuration);
+
+// Registro de configuración para OutboxWorker
+builder.Services.Configure<OutboxSettings>(builder.Configuration.GetSection(OutboxSettings.SectionName));
 
 // Registro de Background Worker para el patrón Transactional Outbox
 builder.Services.AddHostedService<OutboxProcessorBackgroundService>();
@@ -41,6 +47,30 @@ builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
+// Ejecución de la siembra del SuperAdmin al arrancar la aplicación
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    var logger = services.GetRequiredService<ILogger<Program>>();
+
+    try
+    {
+        var dbContext = services.GetRequiredService<PosDbContext>();
+        if (app.Environment.IsDevelopment() && dbContext.Database.IsSqlServer())
+        {
+            logger.LogInformation("Aplicando migraciones de base de datos pendientes...");
+            await dbContext.Database.MigrateAsync();
+        }
+
+        var seeder = services.GetRequiredService<SuperAdminSeeder>();
+        await seeder.SeedAsync();
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Ocurrió un error al ejecutar la siembra del SuperAdmin en el inicio.");
+    }
+}
+
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 if (app.Environment.IsDevelopment())
@@ -60,5 +90,5 @@ app.MapControllers();
 
 app.Run();
 
-// Hacer la clase Program accesible para WebApplicationFactory en tests de integración futuros
+// Clase accesible para WebApplicationFactory en tests de integración
 public partial class Program;

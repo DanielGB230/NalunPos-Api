@@ -261,3 +261,6 @@ D:\NalunPosApp\NalunPos-Api\src\Pos.Api\bin\Debug\net10.0\runtimes\osx-x64\nativ
 D:\NalunPosApp\NalunPos-Api\src\Pos.Api\bin\Debug\net10.0\runtimes\win-arm64\native\msalruntime_arm64.dll
 D:\NalunPosApp\NalunPos-Api\src\Pos.Api\bin\Debug\net10.0\runtimes\win-x64\native\msalruntime.dll
 D:\NalunPosApp\NalunPos-Api\src\Pos.Api\bin\Debug\net10.0\runtimes\win-x86\native\msalruntime_x86.dll
+d:\NalunPosApp\NalunPos-Api\src\Pos.Api\bin\Debug\net10.0\Konscious.Security.Cryptography.Argon2.dll
+d:\NalunPosApp\NalunPos-Api\src\Pos.Api\bin\Debug\net10.0\Konscious.Security.Cryptography.Blake2.dll
+d:\NalunPosApp\NalunPos-Api\src\Pos.Api\obj\Debug\net10.0\Pos.Api.sourcelink.json

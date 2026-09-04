@@ -9,8 +9,9 @@ namespace Pos.Domain.Entities;
 /// <summary>
 /// Agregado para Turno / Sesión de Caja (Apertura y Cierre).
 /// </summary>
-public class CashRegisterSession : AggregateRoot<Guid>
+public class CashRegisterSession : AggregateRoot<Guid>, ITenantOwnedEntity
 {
+    public Guid TenantId { get; private set; }
     public Guid CashRegisterId { get; private set; }
     public Guid UserId { get; private set; }
     public DateTime OpenedAtUtc { get; private set; }

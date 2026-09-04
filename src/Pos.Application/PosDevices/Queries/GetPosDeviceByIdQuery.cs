@@ -1,13 +1,13 @@
 using Pos.Application.Common.Interfaces;
 using Pos.Application.PosDevices.DTOs;
-using Pos.Domain.Exceptions;
+using Pos.Domain.Common;
 using Pos.Domain.Interfaces;
 
 namespace Pos.Application.PosDevices.Queries;
 
-public record GetPosDeviceByIdQuery(Guid Id) : IQuery<PosDeviceDto>;
+public record GetPosDeviceByIdQuery(Guid Id) : IQuery<Result<PosDeviceDto>>;
 
-public class GetPosDeviceByIdQueryHandler : IQueryHandler<GetPosDeviceByIdQuery, PosDeviceDto>
+public class GetPosDeviceByIdQueryHandler : IQueryHandler<GetPosDeviceByIdQuery, Result<PosDeviceDto>>
 {
     private readonly IPosDeviceRepository _posDeviceRepository;
 
@@ -16,11 +16,14 @@ public class GetPosDeviceByIdQueryHandler : IQueryHandler<GetPosDeviceByIdQuery,
         _posDeviceRepository = posDeviceRepository ?? throw new ArgumentNullException(nameof(posDeviceRepository));
     }
 
-    public async Task<PosDeviceDto> HandleAsync(GetPosDeviceByIdQuery request, CancellationToken cancellationToken)
+    public async Task<Result<PosDeviceDto>> HandleAsync(GetPosDeviceByIdQuery request, CancellationToken cancellationToken)
     {
-        var device = await _posDeviceRepository.GetByIdAsync(request.Id, cancellationToken)
-            ?? throw new PosDeviceNotFoundException(request.Id);
+        var device = await _posDeviceRepository.GetByIdAsync(request.Id, cancellationToken);
+        if (device == null)
+        {
+            return Result.Fail<PosDeviceDto>(DomainError.NotFound("PosDevice.NotFound", $"No se encontró el dispositivo POS con el ID '{request.Id}'."));
+        }
 
-        return PosDeviceDto.FromEntity(device);
+        return Result.Ok(PosDeviceDto.FromEntity(device));
     }
 }

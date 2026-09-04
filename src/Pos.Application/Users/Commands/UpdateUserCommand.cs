@@ -6,6 +6,8 @@ using Pos.Domain.Exceptions;
 using Pos.Domain.Interfaces;
 using Pos.Domain.ValueObjects;
 
+using Pos.Domain.Common;
+
 namespace Pos.Application.Users.Commands;
 
 public record UpdateUserCommand(
@@ -16,7 +18,7 @@ public record UpdateUserCommand(
     UserRole Role,
     Guid? TenantId,
     bool IsActive
-) : ICommand<UserDto>;
+) : ICommand<Result<UserDto>>;
 
 public class UpdateUserCommandValidator : AbstractValidator<UpdateUserCommand>
 {
@@ -37,7 +39,7 @@ public class UpdateUserCommandValidator : AbstractValidator<UpdateUserCommand>
     }
 }
 
-public class UpdateUserCommandHandler : ICommandHandler<UpdateUserCommand, UserDto>
+public class UpdateUserCommandHandler : ICommandHandler<UpdateUserCommand, Result<UserDto>>
 {
     private readonly IUserRepository _userRepository;
     private readonly IUnitOfWork _unitOfWork;
@@ -50,20 +52,30 @@ public class UpdateUserCommandHandler : ICommandHandler<UpdateUserCommand, UserD
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
     }
 
-    public async Task<UserDto> HandleAsync(UpdateUserCommand request, CancellationToken cancellationToken)
+    public async Task<Result<UserDto>> HandleAsync(UpdateUserCommand request, CancellationToken cancellationToken)
     {
-        var user = await _userRepository.GetByIdAsync(request.Id, cancellationToken)
-            ?? throw new UserNotFoundException(request.Id);
+        var user = await _userRepository.GetByIdAsync(request.Id, cancellationToken);
+        if (user == null)
+        {
+            return Result.Fail<UserDto>(DomainError.NotFound("User.NotFound", $"No se encontró el usuario con el ID '{request.Id}'."));
+        }
 
         bool emailExists = await _userRepository.ExistsByEmailAsync(request.Email, request.Id, cancellationToken);
         if (emailExists)
         {
-            throw new DomainException($"Ya existe otro usuario registrado con el correo '{request.Email}'.");
+            return Result.Fail<UserDto>(DomainError.Conflict("User.AlreadyExists", $"Ya existe otro usuario registrado con el correo '{request.Email}'."));
         }
 
-        user.UpdateDetails(request.FirstName, request.LastName);
-        user.UpdateEmail(new Email(request.Email));
-        user.ChangeRole(request.Role, request.TenantId);
+        try
+        {
+            user.UpdateDetails(request.FirstName, request.LastName);
+            user.UpdateEmail(new Email(request.Email));
+            user.ChangeRole(request.Role, request.TenantId);
+        }
+        catch (DomainException ex)
+        {
+            return Result.Fail<UserDto>(DomainError.Validation("User.Invalid", ex.Message));
+        }
 
         if (request.IsActive && !user.IsActive)
         {
@@ -77,6 +89,6 @@ public class UpdateUserCommandHandler : ICommandHandler<UpdateUserCommand, UserD
         _userRepository.Update(user);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return UserDto.FromEntity(user);
+        return Result.Ok(UserDto.FromEntity(user));
     }
 }

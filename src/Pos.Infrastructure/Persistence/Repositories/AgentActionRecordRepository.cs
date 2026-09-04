@@ -8,9 +8,9 @@ namespace Pos.Infrastructure.Persistence.Repositories;
 
 public class AgentActionRecordRepository : IAgentActionRecordRepository
 {
-    private readonly ApplicationDbContext _context;
+    private readonly PosDbContext _context;
 
-    public AgentActionRecordRepository(ApplicationDbContext context)
+    public AgentActionRecordRepository(PosDbContext context)
     {
         _context = context ?? throw new ArgumentNullException(nameof(context));
     }

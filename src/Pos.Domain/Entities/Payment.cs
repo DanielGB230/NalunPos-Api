@@ -10,8 +10,9 @@ namespace Pos.Domain.Entities;
 /// Agregado para el Registro de Pago de una Venta.
 /// CUMPLIMIENTO PCI-DSS (Sección 12 Prompt Maestro): Queda PROHIBIDO modelar PAN, CVV o fechas de caducidad.
 /// </summary>
-public class Payment : AggregateRoot<Guid>
+public class Payment : AggregateRoot<Guid>, ITenantOwnedEntity
 {
+    public Guid TenantId { get; private set; }
     public Guid SaleId { get; private set; }
     public Money Amount { get; private set; } = null!;
     public PaymentMethod Method { get; private set; }

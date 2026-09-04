@@ -8,9 +8,9 @@ namespace Pos.Infrastructure.Persistence.Repositories;
 
 public class CashRegisterRepository : ICashRegisterRepository
 {
-    private readonly ApplicationDbContext _context;
+    private readonly PosDbContext _context;
 
-    public CashRegisterRepository(ApplicationDbContext context)
+    public CashRegisterRepository(PosDbContext context)
     {
         _context = context ?? throw new ArgumentNullException(nameof(context));
     }

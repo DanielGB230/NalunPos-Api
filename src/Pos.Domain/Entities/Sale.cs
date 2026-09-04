@@ -9,10 +9,11 @@ namespace Pos.Domain.Entities;
 /// <summary>
 /// Agregado Raíz para la Transacción Comercial de Venta (POS).
 /// </summary>
-public class Sale : AggregateRoot<Guid>
+public class Sale : AggregateRoot<Guid>, ITenantOwnedEntity
 {
     private readonly List<SaleLineItem> _lineItems = [];
 
+    public Guid TenantId { get; private set; }
     public string ReceiptNumber { get; private set; } = string.Empty;
     public Guid SessionId { get; private set; }
     public Guid? CustomerId { get; private set; }

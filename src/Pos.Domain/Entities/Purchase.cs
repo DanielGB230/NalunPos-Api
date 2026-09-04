@@ -9,10 +9,11 @@ namespace Pos.Domain.Entities;
 /// <summary>
 /// Agregado Raíz para la Orden de Compra a Proveedores.
 /// </summary>
-public class Purchase : AggregateRoot<Guid>
+public class Purchase : AggregateRoot<Guid>, ITenantOwnedEntity
 {
     private readonly List<PurchaseLineItem> _lineItems = [];
 
+    public Guid TenantId { get; private set; }
     public Guid SupplierId { get; private set; }
     public string OrderNumber { get; private set; } = string.Empty;
     public Money TotalAmount { get; private set; } = null!;

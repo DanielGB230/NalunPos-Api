@@ -1,12 +1,16 @@
-using Pos.Application.Common.Interfaces;
 using Microsoft.AspNetCore.Mvc;
-using Pos.Application.Authentication.DTOs;
-using Pos.Application.Authentication.Queries;
+using Pos.Api.Extensions;
+using Pos.Application.Authentication.Commands.Login;
+using Pos.Application.Common.Interfaces;
 
 namespace Pos.Api.Controllers;
 
+/// <summary>
+/// Controlador de Autenticación del Sistema POS SaaS.
+/// Ultra-delgado: Delega el 100% de la ejecución a IDispatcher.
+/// </summary>
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/v1/auth")]
 public class AuthController : ControllerBase
 {
     private readonly IDispatcher _dispatcher;
@@ -16,14 +20,21 @@ public class AuthController : ControllerBase
         _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
     }
 
+    /// <summary>
+    /// Autentica a un usuario (SuperAdmin o miembro de Tenant) con sus credenciales.
+    /// </summary>
+    /// <param name="command">Command de inicio de sesión (email y contraseña)</param>
+    /// <param name="cancellationToken">Token de cancelación</param>
+    /// <returns>Respuesta con Token JWT y datos de perfil</returns>
     [HttpPost("login")]
-    [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<ActionResult<AuthResponseDto>> Login(
-        [FromBody] LoginQuery query,
+    [ProducesResponseType(typeof(LoginResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> Login(
+        [FromBody] LoginCommand command,
         CancellationToken cancellationToken)
     {
-        var result = await _dispatcher.SendAsync(query, cancellationToken);
-        return Ok(result);
+        var result = await _dispatcher.SendAsync(command, cancellationToken);
+        return this.ToActionResult(result);
     }
 }

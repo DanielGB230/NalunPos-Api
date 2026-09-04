@@ -1,13 +1,13 @@
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Categories.DTOs;
-using Pos.Domain.Exceptions;
+using Pos.Domain.Common;
 using Pos.Domain.Interfaces;
 
 namespace Pos.Application.Categories.Queries;
 
-public record GetCategoryByIdQuery(Guid Id) : IQuery<CategoryDto>;
+public record GetCategoryByIdQuery(Guid Id) : IQuery<Result<CategoryDto>>;
 
-public class GetCategoryByIdQueryHandler : IQueryHandler<GetCategoryByIdQuery, CategoryDto>
+public class GetCategoryByIdQueryHandler : IQueryHandler<GetCategoryByIdQuery, Result<CategoryDto>>
 {
     private readonly ICategoryRepository _categoryRepository;
 
@@ -16,11 +16,14 @@ public class GetCategoryByIdQueryHandler : IQueryHandler<GetCategoryByIdQuery, C
         _categoryRepository = categoryRepository ?? throw new ArgumentNullException(nameof(categoryRepository));
     }
 
-    public async Task<CategoryDto> HandleAsync(GetCategoryByIdQuery request, CancellationToken cancellationToken)
+    public async Task<Result<CategoryDto>> HandleAsync(GetCategoryByIdQuery request, CancellationToken cancellationToken)
     {
-        var category = await _categoryRepository.GetByIdAsync(request.Id, cancellationToken)
-            ?? throw new CategoryNotFoundException(request.Id);
+        var category = await _categoryRepository.GetByIdAsync(request.Id, cancellationToken);
+        if (category == null)
+        {
+            return Result.Fail<CategoryDto>(DomainError.NotFound("Category.NotFound", $"No se encontró la categoría con el ID '{request.Id}'."));
+        }
 
-        return CategoryDto.FromEntity(category);
+        return Result.Ok(CategoryDto.FromEntity(category));
     }
 }

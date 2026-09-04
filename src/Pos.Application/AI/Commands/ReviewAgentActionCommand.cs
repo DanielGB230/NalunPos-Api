@@ -1,6 +1,7 @@
 using FluentValidation;
 using Pos.Application.AI.DTOs;
 using Pos.Application.Common.Interfaces;
+using Pos.Domain.Common;
 using Pos.Domain.Exceptions;
 using Pos.Domain.Interfaces;
 
@@ -9,7 +10,7 @@ namespace Pos.Application.AI.Commands;
 public record ReviewAgentActionCommand(
     Guid RecordId,
     bool Approve
-) : ICommand<AgentActionRecordDto>;
+) : ICommand<Result<AgentActionRecordDto>>;
 
 public class ReviewAgentActionCommandValidator : AbstractValidator<ReviewAgentActionCommand>
 {
@@ -20,7 +21,7 @@ public class ReviewAgentActionCommandValidator : AbstractValidator<ReviewAgentAc
     }
 }
 
-public class ReviewAgentActionCommandHandler : ICommandHandler<ReviewAgentActionCommand, AgentActionRecordDto>
+public class ReviewAgentActionCommandHandler : ICommandHandler<ReviewAgentActionCommand, Result<AgentActionRecordDto>>
 {
     private readonly IAgentActionRecordRepository _repository;
     private readonly ICurrentUserService _currentUserService;
@@ -39,21 +40,35 @@ public class ReviewAgentActionCommandHandler : ICommandHandler<ReviewAgentAction
         _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
     }
 
-    public async Task<AgentActionRecordDto> HandleAsync(ReviewAgentActionCommand request, CancellationToken cancellationToken)
+    public async Task<Result<AgentActionRecordDto>> HandleAsync(ReviewAgentActionCommand request, CancellationToken cancellationToken)
     {
-        var record = await _repository.GetByIdAsync(request.RecordId, cancellationToken)
-            ?? throw new AgentActionRecordNotFoundException(request.RecordId);
-
-        Guid reviewerUserId = _currentUserService.UserId
-            ?? throw new UnauthorizedDomainException("Se requiere un usuario autenticado para revisar propuestas de agentes IA.");
-
-        if (request.Approve)
+        var record = await _repository.GetByIdAsync(request.RecordId, cancellationToken);
+        if (record == null)
         {
-            record.Approve(reviewerUserId);
+            return Result.Fail<AgentActionRecordDto>(DomainError.NotFound("AgentActionRecord.NotFound", $"No se encontró el registro de propuesta con el ID '{request.RecordId}'."));
         }
-        else
+
+        if (!_currentUserService.UserId.HasValue)
         {
-            record.Reject(reviewerUserId);
+            return Result.Fail<AgentActionRecordDto>(DomainError.Unauthorized("User.Unauthenticated", "Se requiere un usuario autenticado para revisar propuestas de agentes IA."));
+        }
+
+        Guid reviewerUserId = _currentUserService.UserId.Value;
+
+        try
+        {
+            if (request.Approve)
+            {
+                record.Approve(reviewerUserId);
+            }
+            else
+            {
+                record.Reject(reviewerUserId);
+            }
+        }
+        catch (DomainException ex)
+        {
+            return Result.Fail<AgentActionRecordDto>(DomainError.Validation("AgentActionRecord.Invalid", ex.Message));
         }
 
         _repository.Update(record);
@@ -65,6 +80,6 @@ public class ReviewAgentActionCommandHandler : ICommandHandler<ReviewAgentAction
         }
         record.ClearDomainEvents();
 
-        return AgentActionRecordDto.FromEntity(record);
+        return Result.Ok(AgentActionRecordDto.FromEntity(record));
     }
 }

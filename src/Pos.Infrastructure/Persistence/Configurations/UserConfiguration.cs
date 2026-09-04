@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Pos.Domain.Entities;
+using Pos.Domain.ValueObjects;
 
 namespace Pos.Infrastructure.Persistence.Configurations;
 
@@ -26,19 +27,16 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.Email)
             .HasConversion(
                 email => email.Value,
-                value => new Pos.Domain.ValueObjects.Email(value))
+                value => new Email(value))
             .IsRequired()
-            .HasMaxLength(150);
+            .HasMaxLength(256);
 
         builder.Property(u => u.PasswordHash)
             .HasConversion(
                 hash => hash.Value,
-                value => new Pos.Domain.ValueObjects.PasswordHash(value))
+                value => new PasswordHash(value))
             .IsRequired()
             .HasMaxLength(256);
-
-        builder.Property(u => u.IsActive)
-            .IsRequired();
 
         builder.Property(u => u.Role)
             .IsRequired()
@@ -46,6 +44,9 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             .HasMaxLength(50);
 
         builder.Property(u => u.TenantId);
+
+        builder.Property(u => u.IsActive)
+            .IsRequired();
 
         builder.Property(u => u.CreatedAtUtc)
             .IsRequired();

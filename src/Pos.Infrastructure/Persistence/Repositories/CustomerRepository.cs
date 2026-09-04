@@ -8,9 +8,9 @@ namespace Pos.Infrastructure.Persistence.Repositories;
 
 public class CustomerRepository : ICustomerRepository
 {
-    private readonly ApplicationDbContext _context;
+    private readonly PosDbContext _context;
 
-    public CustomerRepository(ApplicationDbContext context)
+    public CustomerRepository(PosDbContext context)
     {
         _context = context ?? throw new ArgumentNullException(nameof(context));
     }

@@ -1,3 +1,4 @@
+using Pos.Api.Extensions;
 using Pos.Application.Common.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Pos.Application.Common.Models;
@@ -36,32 +37,32 @@ public class PurchasesController : ControllerBase
     [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(PurchaseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<PurchaseDto>> GetPurchaseById(Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetPurchaseById(Guid id, CancellationToken cancellationToken)
     {
         var query = new GetPurchaseByIdQuery(id);
         var result = await _dispatcher.SendAsync(query, cancellationToken);
-        return Ok(result);
+        return this.ToActionResult(result);
     }
 
     [HttpPost]
     [ProducesResponseType(typeof(PurchaseDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<PurchaseDto>> CreatePurchase(
+    public async Task<IActionResult> CreatePurchase(
         [FromBody] CreatePurchaseCommand command,
         CancellationToken cancellationToken)
     {
         var result = await _dispatcher.SendAsync(command, cancellationToken);
-        return CreatedAtAction(nameof(GetPurchaseById), new { id = result.Id }, result);
+        return this.ToActionResult(result);
     }
 
     [HttpPost("{id:guid}/complete")]
     [ProducesResponseType(typeof(PurchaseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<PurchaseDto>> CompletePurchase(Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> CompletePurchase(Guid id, CancellationToken cancellationToken)
     {
         var command = new CompletePurchaseCommand(id);
         var result = await _dispatcher.SendAsync(command, cancellationToken);
-        return Ok(result);
+        return this.ToActionResult(result);
     }
 }

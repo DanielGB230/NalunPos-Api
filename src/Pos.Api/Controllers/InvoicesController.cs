@@ -1,3 +1,4 @@
+using Pos.Api.Extensions;
 using Pos.Application.Common.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Pos.Application.Invoicing.Commands;
@@ -20,21 +21,21 @@ public class InvoicesController : ControllerBase
     [HttpPost]
     [ProducesResponseType(typeof(InvoiceDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<InvoiceDto>> IssueInvoice(
+    public async Task<IActionResult> IssueInvoice(
         [FromBody] IssueInvoiceCommand command,
         CancellationToken cancellationToken)
     {
         var result = await _dispatcher.SendAsync(command, cancellationToken);
-        return CreatedAtAction(nameof(GetInvoiceById), new { id = result.Id }, result);
+        return this.ToActionResult(result);
     }
 
     [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(InvoiceDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<InvoiceDto>> GetInvoiceById(Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetInvoiceById(Guid id, CancellationToken cancellationToken)
     {
         var query = new GetInvoiceByIdQuery(id);
         var result = await _dispatcher.SendAsync(query, cancellationToken);
-        return Ok(result);
+        return this.ToActionResult(result);
     }
 }

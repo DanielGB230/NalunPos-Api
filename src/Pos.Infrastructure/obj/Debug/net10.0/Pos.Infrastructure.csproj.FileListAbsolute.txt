@@ -32,3 +32,4 @@ D:\NalunPosApp\NalunPos-Api\src\Pos.Infrastructure\bin\Debug\net10.0\Pos.Applica
 D:\NalunPosApp\NalunPos-Api\src\Pos.Infrastructure\bin\Debug\net10.0\Pos.Domain.pdb
 D:\NalunPosApp\NalunPos-Api\src\Pos.Infrastructure\obj\Debug\net10.0\Pos.Infr.75A01CEF.Up2Date
 D:\NalunPosApp\NalunPos-Api\src\Pos.Infrastructure\obj\Debug\net10.0\ref\Pos.Infrastructure.dll
+d:\NalunPosApp\NalunPos-Api\src\Pos.Infrastructure\obj\Debug\net10.0\Pos.Infrastructure.sourcelink.json

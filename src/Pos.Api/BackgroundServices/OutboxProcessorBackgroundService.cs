@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.IntegrationEvents.Contracts;
 using Pos.Infrastructure.Persistence.Context;
@@ -9,28 +10,36 @@ namespace Pos.Api.BackgroundServices;
 /// <summary>
 /// Background Worker del patrón Transactional Outbox (Sección 10).
 /// Procesa periódicamente los registros pendientes en OutboxMessages y los publica a través del IEventBus.
+/// Respeta estrictamente el intervalo configurado usando PeriodicTimer de .NET.
 /// </summary>
 public class OutboxProcessorBackgroundService : BackgroundService
 {
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<OutboxProcessorBackgroundService> _logger;
+    private readonly OutboxSettings _options;
 
     public OutboxProcessorBackgroundService(
         IServiceScopeFactory scopeFactory,
-        ILogger<OutboxProcessorBackgroundService> logger)
+        ILogger<OutboxProcessorBackgroundService> logger,
+        IOptions<OutboxSettings> options)
     {
         _scopeFactory = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         if (_logger.IsEnabled(LogLevel.Information))
         {
-            _logger.LogInformation("Iniciando OutboxProcessorBackgroundService...");
+            _logger.LogInformation(
+                "Iniciando OutboxProcessorBackgroundService con intervalo de {IntervalSeconds} segundos...",
+                _options.PollingIntervalSeconds);
         }
 
-        while (!stoppingToken.IsCancellationRequested)
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(Math.Max(1, _options.PollingIntervalSeconds)));
+
+        while (await timer.WaitForNextTickAsync(stoppingToken))
         {
             try
             {
@@ -43,15 +52,13 @@ public class OutboxProcessorBackgroundService : BackgroundService
                     _logger.LogError(ex, "Error no controlado al procesar mensajes del Outbox.");
                 }
             }
-
-            await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
         }
     }
 
     private async Task ProcessOutboxMessagesAsync(CancellationToken cancellationToken)
     {
         using var scope = _scopeFactory.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var dbContext = scope.ServiceProvider.GetRequiredService<PosDbContext>();
         var eventBus = scope.ServiceProvider.GetRequiredService<IEventBus>();
 
         var pendingMessages = await dbContext.OutboxMessages

@@ -7,6 +7,8 @@ namespace Pos.Domain.Tests;
 
 public class AuditLogTests
 {
+    private static readonly Guid TestTenantId = Guid.NewGuid();
+
     [Fact]
     public void CreateAuditLogWithValidParametersShouldInstantiateLog()
     {
@@ -16,10 +18,11 @@ public class AuditLogTests
         Guid userId = Guid.NewGuid();
 
         // Act
-        var audit = AuditLog.Create(tableName, recordId, AuditAction.Update, userId, "{\"Price\":100}", "{\"Price\":120}");
+        var audit = AuditLog.Create(TestTenantId, tableName, recordId, AuditAction.Update, userId, "{\"Price\":100}", "{\"Price\":120}");
 
         // Assert
         Assert.NotEqual(Guid.Empty, audit.Id);
+        Assert.Equal(TestTenantId, audit.TenantId);
         Assert.Equal(tableName, audit.TableName);
         Assert.Equal(recordId, audit.RecordId);
         Assert.Equal(AuditAction.Update, audit.Action);
@@ -31,6 +34,6 @@ public class AuditLogTests
     {
         // Arrange & Act & Assert
         Assert.Throws<DomainException>(() =>
-            AuditLog.Create("", "123", AuditAction.Insert));
+            AuditLog.Create(TestTenantId, "", "123", AuditAction.Insert));
     }
 }

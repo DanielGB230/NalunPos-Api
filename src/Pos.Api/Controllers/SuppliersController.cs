@@ -1,3 +1,4 @@
+using Pos.Api.Extensions;
 using Pos.Application.Common.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Pos.Application.Common.Models;
@@ -35,29 +36,29 @@ public class SuppliersController : ControllerBase
     [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(SupplierDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<SupplierDto>> GetSupplierById(Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetSupplierById(Guid id, CancellationToken cancellationToken)
     {
         var query = new GetSupplierByIdQuery(id);
         var result = await _dispatcher.SendAsync(query, cancellationToken);
-        return Ok(result);
+        return this.ToActionResult(result);
     }
 
     [HttpPost]
     [ProducesResponseType(typeof(SupplierDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<SupplierDto>> CreateSupplier(
+    public async Task<IActionResult> CreateSupplier(
         [FromBody] CreateSupplierCommand command,
         CancellationToken cancellationToken)
     {
         var result = await _dispatcher.SendAsync(command, cancellationToken);
-        return CreatedAtAction(nameof(GetSupplierById), new { id = result.Id }, result);
+        return this.ToActionResult(result);
     }
 
     [HttpPut("{id:guid}")]
     [ProducesResponseType(typeof(SupplierDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<SupplierDto>> UpdateSupplier(
+    public async Task<IActionResult> UpdateSupplier(
         Guid id,
         [FromBody] UpdateSupplierCommand command,
         CancellationToken cancellationToken)
@@ -68,7 +69,7 @@ public class SuppliersController : ControllerBase
         }
 
         var result = await _dispatcher.SendAsync(command, cancellationToken);
-        return Ok(result);
+        return this.ToActionResult(result);
     }
 
     [HttpPatch("{id:guid}/deactivate")]
@@ -77,7 +78,7 @@ public class SuppliersController : ControllerBase
     public async Task<IActionResult> DeactivateSupplier(Guid id, CancellationToken cancellationToken)
     {
         var command = new DeactivateSupplierCommand(id);
-        await _dispatcher.SendAsync(command, cancellationToken);
-        return NoContent();
+        var result = await _dispatcher.SendAsync(command, cancellationToken);
+        return this.ToActionResult(result);
     }
 }

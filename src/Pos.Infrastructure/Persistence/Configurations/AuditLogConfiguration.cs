@@ -15,6 +15,9 @@ public class AuditLogConfiguration : IEntityTypeConfiguration<AuditLog>
         builder.Property(a => a.Id)
             .ValueGeneratedNever();
 
+        builder.Property(a => a.TenantId)
+            .IsRequired();
+
         builder.Property(a => a.TableName)
             .IsRequired()
             .HasMaxLength(100);
@@ -36,6 +39,7 @@ public class AuditLogConfiguration : IEntityTypeConfiguration<AuditLog>
 
         builder.Property(a => a.NewValues);
 
+        builder.HasIndex(a => a.TenantId);
         builder.HasIndex(a => a.TableName);
         builder.HasIndex(a => a.RecordId);
         builder.HasIndex(a => a.UserId);

@@ -8,9 +8,9 @@ namespace Pos.Infrastructure.Persistence.Repositories;
 
 public class ProductRepository : IProductRepository
 {
-    private readonly ApplicationDbContext _context;
+    private readonly PosDbContext _context;
 
-    public ProductRepository(ApplicationDbContext context)
+    public ProductRepository(PosDbContext context)
     {
         _context = context ?? throw new ArgumentNullException(nameof(context));
     }

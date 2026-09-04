@@ -1,6 +1,7 @@
 using Pos.Application.Common.Interfaces;
 using FluentValidation;
 using Pos.Application.Sales.DTOs;
+using Pos.Domain.Common;
 using Pos.Domain.Entities;
 using Pos.Domain.Enums;
 using Pos.Domain.Exceptions;
@@ -23,7 +24,7 @@ public record CreateSaleCommand(
     List<CreateSaleItemDto> LineItems,
     decimal TaxRatePercentage = 0m,
     string Currency = "USD"
-) : ICommand<SaleDto>;
+) : ICommand<Result<SaleDto>>;
 
 public class CreateSaleCommandValidator : AbstractValidator<CreateSaleCommand>
 {
@@ -48,7 +49,7 @@ public class CreateSaleCommandValidator : AbstractValidator<CreateSaleCommand>
     }
 }
 
-public class CreateSaleCommandHandler : ICommandHandler<CreateSaleCommand, SaleDto>
+public class CreateSaleCommandHandler : ICommandHandler<CreateSaleCommand, Result<SaleDto>>
 {
     private readonly ISaleRepository _saleRepository;
     private readonly ICashRegisterRepository _registerRepository;
@@ -70,36 +71,58 @@ public class CreateSaleCommandHandler : ICommandHandler<CreateSaleCommand, SaleD
         _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
     }
 
-    public async Task<SaleDto> HandleAsync(CreateSaleCommand request, CancellationToken cancellationToken)
+    public async Task<Result<SaleDto>> HandleAsync(CreateSaleCommand request, CancellationToken cancellationToken)
     {
-        var session = await _registerRepository.GetSessionByIdAsync(request.SessionId, cancellationToken)
-            ?? throw new CashRegisterSessionNotFoundException(request.SessionId);
+        ArgumentNullException.ThrowIfNull(request);
+
+        var session = await _registerRepository.GetSessionByIdAsync(request.SessionId, cancellationToken);
+        if (session == null)
+        {
+            return Result.Fail<SaleDto>(DomainError.NotFound(
+                "CashRegisterSession.NotFound",
+                $"No se encontró la sesión de caja con ID '{request.SessionId}'."));
+        }
 
         if (session.Status != SessionStatus.Open)
         {
-            throw new DomainException("La sesión de caja especificada no se encuentra abierta.");
+            return Result.Fail<SaleDto>(DomainError.Conflict(
+                "CashRegisterSession.Closed",
+                "La sesión de caja especificada no se encuentra abierta."));
         }
 
         if (request.CustomerId.HasValue && request.CustomerId.Value != Guid.Empty)
         {
-            var customer = await _customerRepository.GetByIdAsync(request.CustomerId.Value, cancellationToken)
-                ?? throw new CustomerNotFoundException(request.CustomerId.Value);
+            var customer = await _customerRepository.GetByIdAsync(request.CustomerId.Value, cancellationToken);
+            if (customer == null)
+            {
+                return Result.Fail<SaleDto>(DomainError.NotFound(
+                    "Customer.NotFound",
+                    $"No se encontró el cliente especificado con ID '{request.CustomerId.Value}'."));
+            }
         }
 
-        var lineItems = request.LineItems.Select(item => SaleLineItem.Create(
-            item.ProductId,
-            item.ProductName,
-            item.Quantity,
-            Money.Create(item.UnitPriceAmount, request.Currency)
-        )).ToList();
+        Sale sale;
+        try
+        {
+            var lineItems = request.LineItems.Select(item => SaleLineItem.Create(
+                item.ProductId,
+                item.ProductName,
+                item.Quantity,
+                Money.Create(item.UnitPriceAmount, request.Currency)
+            )).ToList();
 
-        var sale = Sale.Create(
-            request.ReceiptNumber,
-            request.SessionId,
-            request.CustomerId,
-            lineItems,
-            request.TaxRatePercentage,
-            request.Currency);
+            sale = Sale.Create(
+                request.ReceiptNumber,
+                request.SessionId,
+                request.CustomerId,
+                lineItems,
+                request.TaxRatePercentage,
+                request.Currency);
+        }
+        catch (DomainException ex)
+        {
+            return Result.Fail<SaleDto>(DomainError.Validation("Sale.Invalid", ex.Message));
+        }
 
         await _saleRepository.AddAsync(sale, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -111,6 +134,6 @@ public class CreateSaleCommandHandler : ICommandHandler<CreateSaleCommand, SaleD
         }
         sale.ClearDomainEvents();
 
-        return SaleDto.FromEntity(sale);
+        return Result.Ok(SaleDto.FromEntity(sale));
     }
 }

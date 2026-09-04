@@ -1,13 +1,13 @@
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Branches.DTOs;
-using Pos.Domain.Exceptions;
+using Pos.Domain.Common;
 using Pos.Domain.Interfaces;
 
 namespace Pos.Application.Branches.Queries;
 
-public record GetBranchByIdQuery(Guid Id) : IQuery<BranchDto>;
+public record GetBranchByIdQuery(Guid Id) : IQuery<Result<BranchDto>>;
 
-public class GetBranchByIdQueryHandler : IQueryHandler<GetBranchByIdQuery, BranchDto>
+public class GetBranchByIdQueryHandler : IQueryHandler<GetBranchByIdQuery, Result<BranchDto>>
 {
     private readonly IBranchRepository _branchRepository;
 
@@ -16,11 +16,14 @@ public class GetBranchByIdQueryHandler : IQueryHandler<GetBranchByIdQuery, Branc
         _branchRepository = branchRepository ?? throw new ArgumentNullException(nameof(branchRepository));
     }
 
-    public async Task<BranchDto> HandleAsync(GetBranchByIdQuery request, CancellationToken cancellationToken)
+    public async Task<Result<BranchDto>> HandleAsync(GetBranchByIdQuery request, CancellationToken cancellationToken)
     {
-        var branch = await _branchRepository.GetByIdAsync(request.Id, cancellationToken)
-            ?? throw new BranchNotFoundException(request.Id);
+        var branch = await _branchRepository.GetByIdAsync(request.Id, cancellationToken);
+        if (branch == null)
+        {
+            return Result.Fail<BranchDto>(DomainError.NotFound("Branch.NotFound", $"No se encontró la sucursal con el ID '{request.Id}'."));
+        }
 
-        return BranchDto.FromEntity(branch);
+        return Result.Ok(BranchDto.FromEntity(branch));
     }
 }

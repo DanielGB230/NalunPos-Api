@@ -7,6 +7,8 @@ namespace Pos.Domain.Tests;
 
 public class AgentActionRecordTests
 {
+    private static readonly Guid TestTenantId = Guid.NewGuid();
+
     [Fact]
     public void CreateAgentActionRecordShouldInstantiatePendingApprovalRecord()
     {
@@ -16,10 +18,11 @@ public class AgentActionRecordTests
         string payloadJson = "{\"ProductId\":\"" + Guid.NewGuid() + "\",\"Quantity\":50}";
 
         // Act
-        var record = AgentActionRecord.Create(agentId, actionType, payloadJson, RiskLevel.High);
+        var record = AgentActionRecord.Create(TestTenantId, agentId, actionType, payloadJson, RiskLevel.High);
 
         // Assert
         Assert.NotEqual(Guid.Empty, record.Id);
+        Assert.Equal(TestTenantId, record.TenantId);
         Assert.Equal(agentId, record.AgentId);
         Assert.Equal(actionType, record.ProposedActionType);
         Assert.Equal(payloadJson, record.PayloadJson);
@@ -33,7 +36,7 @@ public class AgentActionRecordTests
     public void ApproveRecordByHumanUserShouldChangeStatusToApproved()
     {
         // Arrange
-        var record = AgentActionRecord.Create("Bot1", "Action1", "{}", RiskLevel.Medium);
+        var record = AgentActionRecord.Create(TestTenantId, "Bot1", "Action1", "{}", RiskLevel.Medium);
         Guid reviewerUserId = Guid.NewGuid();
 
         // Act
@@ -50,7 +53,7 @@ public class AgentActionRecordTests
     public void RejectRecordByHumanUserShouldChangeStatusToRejected()
     {
         // Arrange
-        var record = AgentActionRecord.Create("Bot1", "Action1", "{}", RiskLevel.Low);
+        var record = AgentActionRecord.Create(TestTenantId, "Bot1", "Action1", "{}", RiskLevel.Low);
         Guid reviewerUserId = Guid.NewGuid();
 
         // Act
@@ -65,7 +68,7 @@ public class AgentActionRecordTests
     public void MarkAsExecutedWithoutPriorApprovalShouldThrowInvalidAgentActionStateException()
     {
         // Arrange
-        var record = AgentActionRecord.Create("Bot1", "Action1", "{}", RiskLevel.High);
+        var record = AgentActionRecord.Create(TestTenantId, "Bot1", "Action1", "{}", RiskLevel.High);
 
         // Act & Assert
         Assert.Throws<InvalidAgentActionStateException>(() =>

@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "dS4f2T4wvnA=",
+  "dgSpecHash": "NsqiHKY8/V0=",
   "success": true,
-  "projectFilePath": "d:\\NalunPosApp\\NalunPos-Api\\tests\\Pos.Infrastructure.Tests\\Pos.Infrastructure.Tests.csproj",
+  "projectFilePath": "D:\\NalunPosApp\\NalunPos-Api\\tests\\Pos.Infrastructure.Tests\\Pos.Infrastructure.Tests.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\Dani\\.nuget\\packages\\azure.core\\1.50.0\\azure.core.1.50.0.nupkg.sha512",
     "C:\\Users\\Dani\\.nuget\\packages\\azure.identity\\1.17.1\\azure.identity.1.17.1.nupkg.sha512",
@@ -11,6 +11,8 @@
     "C:\\Users\\Dani\\.nuget\\packages\\fluentassertions\\6.12.2\\fluentassertions.6.12.2.nupkg.sha512",
     "C:\\Users\\Dani\\.nuget\\packages\\fluentvalidation\\11.11.0\\fluentvalidation.11.11.0.nupkg.sha512",
     "C:\\Users\\Dani\\.nuget\\packages\\fluentvalidation.dependencyinjectionextensions\\11.11.0\\fluentvalidation.dependencyinjectionextensions.11.11.0.nupkg.sha512",
+    "C:\\Users\\Dani\\.nuget\\packages\\konscious.security.cryptography.argon2\\1.3.1\\konscious.security.cryptography.argon2.1.3.1.nupkg.sha512",
+    "C:\\Users\\Dani\\.nuget\\packages\\konscious.security.cryptography.blake2\\1.1.1\\konscious.security.cryptography.blake2.1.1.1.nupkg.sha512",
     "C:\\Users\\Dani\\.nuget\\packages\\microsoft.bcl.asyncinterfaces\\8.0.0\\microsoft.bcl.asyncinterfaces.8.0.0.nupkg.sha512",
     "C:\\Users\\Dani\\.nuget\\packages\\microsoft.codecoverage\\17.13.0\\microsoft.codecoverage.17.13.0.nupkg.sha512",
     "C:\\Users\\Dani\\.nuget\\packages\\microsoft.data.sqlclient\\6.1.6\\microsoft.data.sqlclient.6.1.6.nupkg.sha512",

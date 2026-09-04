@@ -4,9 +4,11 @@ using Pos.Application.Categories.DTOs;
 using Pos.Domain.Exceptions;
 using Pos.Domain.Interfaces;
 
+using Pos.Domain.Common;
+
 namespace Pos.Application.Categories.Commands;
 
-public record UpdateCategoryCommand(Guid Id, string Name, string? Description, bool IsActive) : ICommand<CategoryDto>;
+public record UpdateCategoryCommand(Guid Id, string Name, string? Description, bool IsActive) : ICommand<Result<CategoryDto>>;
 
 public class UpdateCategoryCommandValidator : AbstractValidator<UpdateCategoryCommand>
 {
@@ -24,7 +26,7 @@ public class UpdateCategoryCommandValidator : AbstractValidator<UpdateCategoryCo
     }
 }
 
-public class UpdateCategoryCommandHandler : ICommandHandler<UpdateCategoryCommand, CategoryDto>
+public class UpdateCategoryCommandHandler : ICommandHandler<UpdateCategoryCommand, Result<CategoryDto>>
 {
     private readonly ICategoryRepository _categoryRepository;
     private readonly IUnitOfWork _unitOfWork;
@@ -35,18 +37,28 @@ public class UpdateCategoryCommandHandler : ICommandHandler<UpdateCategoryComman
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
     }
 
-    public async Task<CategoryDto> HandleAsync(UpdateCategoryCommand request, CancellationToken cancellationToken)
+    public async Task<Result<CategoryDto>> HandleAsync(UpdateCategoryCommand request, CancellationToken cancellationToken)
     {
-        var category = await _categoryRepository.GetByIdAsync(request.Id, cancellationToken)
-            ?? throw new CategoryNotFoundException(request.Id);
+        var category = await _categoryRepository.GetByIdAsync(request.Id, cancellationToken);
+        if (category == null)
+        {
+            return Result.Fail<CategoryDto>(DomainError.NotFound("Category.NotFound", $"No se encontró la categoría con el ID '{request.Id}'."));
+        }
 
         bool nameExists = await _categoryRepository.ExistsByNameAsync(request.Name, request.Id, cancellationToken);
         if (nameExists)
         {
-            throw new DomainException($"Ya existe otra categoría registrada con el nombre '{request.Name}'.");
+            return Result.Fail<CategoryDto>(DomainError.Conflict("Category.AlreadyExists", $"Ya existe otra categoría registrada con el nombre '{request.Name}'."));
         }
 
-        category.Update(request.Name, request.Description);
+        try
+        {
+            category.Update(request.Name, request.Description);
+        }
+        catch (DomainException ex)
+        {
+            return Result.Fail<CategoryDto>(DomainError.Validation("Category.Invalid", ex.Message));
+        }
 
         if (request.IsActive && !category.IsActive)
         {
@@ -60,6 +72,6 @@ public class UpdateCategoryCommandHandler : ICommandHandler<UpdateCategoryComman
         _categoryRepository.Update(category);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return CategoryDto.FromEntity(category);
+        return Result.Ok(CategoryDto.FromEntity(category));
     }
 }

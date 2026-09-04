@@ -8,7 +8,11 @@ using Pos.Domain.Entities;
 
 namespace Pos.Infrastructure.Authentication;
 
-public class JwtTokenGenerator : IJwtTokenGenerator
+/// <summary>
+/// Generador de tokens JWT utilizando System.IdentityModel.Tokens.Jwt.
+/// Emite los claims acordados: UserId (NameIdentifier), Email, Role, y TenantId (si aplica).
+/// </summary>
+public class JwtTokenGenerator : IJwtTokenGenerator, ITokenGenerator
 {
     private readonly IConfiguration _configuration;
 
@@ -21,9 +25,11 @@ public class JwtTokenGenerator : IJwtTokenGenerator
     {
         ArgumentNullException.ThrowIfNull(user);
 
-        string secretKey = _configuration["JwtSettings:Secret"] ?? "SuperSecretEnterpriseJwtKey_LongEnoughFor256Bits_NalunPos2026!";
-        string issuer = _configuration["JwtSettings:Issuer"] ?? "NalunPosApi";
-        string audience = _configuration["JwtSettings:Audience"] ?? "NalunPosClients";
+        string secretKey = _configuration["JwtSettings:Secret"]
+                           ?? _configuration["Jwt:Secret"]
+                           ?? "SuperSecretEnterpriseJwtKey_LongEnoughFor256Bits_NalunPos2026!";
+        string issuer = _configuration["JwtSettings:Issuer"] ?? _configuration["Jwt:Issuer"] ?? "NalunPosApi";
+        string audience = _configuration["JwtSettings:Audience"] ?? _configuration["Jwt:Audience"] ?? "NalunPosClients";
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
@@ -44,7 +50,7 @@ public class JwtTokenGenerator : IJwtTokenGenerator
         var tokenDescriptor = new SecurityTokenDescriptor
         {
             Subject = new ClaimsIdentity(claims),
-            Expires = DateTime.UtcNow.AddHours(8),
+            Expires = DateTime.UtcNow.AddMinutes(60), // Expiración corta (60 min)
             Issuer = issuer,
             Audience = audience,
             SigningCredentials = credentials

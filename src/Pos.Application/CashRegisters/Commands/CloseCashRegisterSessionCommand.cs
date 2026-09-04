@@ -1,6 +1,7 @@
 using Pos.Application.Common.Interfaces;
 using FluentValidation;
 using Pos.Application.CashRegisters.DTOs;
+using Pos.Domain.Common;
 using Pos.Domain.Exceptions;
 using Pos.Domain.Interfaces;
 using Pos.Domain.ValueObjects;
@@ -13,7 +14,7 @@ public record CloseCashRegisterSessionCommand(
     decimal ExpectedFinalAmount,
     string Currency = "USD",
     string? Notes = null
-) : ICommand<CashRegisterSessionDto>;
+) : ICommand<Result<CashRegisterSessionDto>>;
 
 public class CloseCashRegisterSessionCommandValidator : AbstractValidator<CloseCashRegisterSessionCommand>
 {
@@ -30,7 +31,7 @@ public class CloseCashRegisterSessionCommandValidator : AbstractValidator<CloseC
     }
 }
 
-public class CloseCashRegisterSessionCommandHandler : ICommandHandler<CloseCashRegisterSessionCommand, CashRegisterSessionDto>
+public class CloseCashRegisterSessionCommandHandler : ICommandHandler<CloseCashRegisterSessionCommand, Result<CashRegisterSessionDto>>
 {
     private readonly ICashRegisterRepository _registerRepository;
     private readonly IUnitOfWork _unitOfWork;
@@ -41,25 +42,44 @@ public class CloseCashRegisterSessionCommandHandler : ICommandHandler<CloseCashR
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
     }
 
-    public async Task<CashRegisterSessionDto> HandleAsync(CloseCashRegisterSessionCommand request, CancellationToken cancellationToken)
+    public async Task<Result<CashRegisterSessionDto>> HandleAsync(CloseCashRegisterSessionCommand request, CancellationToken cancellationToken)
     {
-        var session = await _registerRepository.GetSessionByIdAsync(request.SessionId, cancellationToken)
-            ?? throw new CashRegisterSessionNotFoundException(request.SessionId);
+        ArgumentNullException.ThrowIfNull(request);
 
-        var register = await _registerRepository.GetByIdAsync(session.CashRegisterId, cancellationToken)
-            ?? throw new CashRegisterNotFoundException(session.CashRegisterId);
+        var session = await _registerRepository.GetSessionByIdAsync(request.SessionId, cancellationToken);
+        if (session == null)
+        {
+            return Result.Fail<CashRegisterSessionDto>(DomainError.NotFound(
+                "CashRegisterSession.NotFound",
+                $"No se encontró la sesión de caja con ID '{request.SessionId}'."));
+        }
 
-        var actualMoney = Money.Create(request.ActualFinalAmount, request.Currency);
-        var expectedMoney = Money.Create(request.ExpectedFinalAmount, request.Currency);
+        var register = await _registerRepository.GetByIdAsync(session.CashRegisterId, cancellationToken);
+        if (register == null)
+        {
+            return Result.Fail<CashRegisterSessionDto>(DomainError.NotFound(
+                "CashRegister.NotFound",
+                $"No se encontró la caja registradora asociada con ID '{session.CashRegisterId}'."));
+        }
 
-        session.Close(actualMoney, expectedMoney, request.Notes);
-        register.ClearCurrentSession();
+        try
+        {
+            var actualMoney = Money.Create(request.ActualFinalAmount, request.Currency);
+            var expectedMoney = Money.Create(request.ExpectedFinalAmount, request.Currency);
+
+            session.Close(actualMoney, expectedMoney, request.Notes);
+            register.ClearCurrentSession();
+        }
+        catch (DomainException ex)
+        {
+            return Result.Fail<CashRegisterSessionDto>(DomainError.Validation("CashRegisterSession.Invalid", ex.Message));
+        }
 
         _registerRepository.UpdateSession(session);
         _registerRepository.Update(register);
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return CashRegisterSessionDto.FromEntity(session);
+        return Result.Ok(CashRegisterSessionDto.FromEntity(session));
     }
 }

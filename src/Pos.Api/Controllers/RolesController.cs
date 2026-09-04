@@ -1,3 +1,4 @@
+using Pos.Api.Extensions;
 using Pos.Application.Common.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Pos.Application.Roles.Commands;
@@ -29,11 +30,11 @@ public class RolesController : ControllerBase
     [HttpPost]
     [ProducesResponseType(typeof(RoleDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<RoleDto>> CreateRole(
+    public async Task<IActionResult> CreateRole(
         [FromBody] CreateRoleCommand command,
         CancellationToken cancellationToken)
     {
         var result = await _dispatcher.SendAsync(command, cancellationToken);
-        return CreatedAtAction(nameof(GetRoles), null, result);
+        return this.ToActionResult(result);
     }
 }

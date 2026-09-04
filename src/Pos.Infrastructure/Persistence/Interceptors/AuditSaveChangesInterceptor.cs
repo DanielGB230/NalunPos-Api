@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Pos.Application.Common.Interfaces;
+using Pos.Domain.Common;
 using Pos.Domain.Entities;
 using Pos.Domain.Enums;
 
@@ -14,10 +15,14 @@ namespace Pos.Infrastructure.Persistence.Interceptors;
 public class AuditSaveChangesInterceptor : SaveChangesInterceptor
 {
     private readonly ICurrentUserService _currentUserService;
+    private readonly ICurrentTenantContext _tenantContext;
 
-    public AuditSaveChangesInterceptor(ICurrentUserService currentUserService)
+    public AuditSaveChangesInterceptor(
+        ICurrentUserService currentUserService,
+        ICurrentTenantContext tenantContext)
     {
         _currentUserService = currentUserService ?? throw new ArgumentNullException(nameof(currentUserService));
+        _tenantContext = tenantContext ?? throw new ArgumentNullException(nameof(tenantContext));
     }
 
     public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
@@ -96,7 +101,12 @@ public class AuditSaveChangesInterceptor : SaveChangesInterceptor
             string? oldValuesJson = oldDictionary.Count > 0 ? JsonSerializer.Serialize(oldDictionary) : null;
             string? newValuesJson = newDictionary.Count > 0 ? JsonSerializer.Serialize(newDictionary) : null;
 
+            Guid tenantId = entry.Entity is ITenantOwnedEntity tenantOwned
+                ? tenantOwned.TenantId
+                : (_tenantContext.TenantId ?? Guid.Empty);
+
             var auditLog = AuditLog.Create(
+                tenantId,
                 tableName,
                 recordId,
                 action,

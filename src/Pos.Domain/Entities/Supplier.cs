@@ -9,8 +9,9 @@ namespace Pos.Domain.Entities;
 /// Agregado para Proveedor de productos / mercadería.
 /// Encapsulamiento estricto: setters privados, mutación únicamente mediante métodos explícitos.
 /// </summary>
-public class Supplier : AggregateRoot<Guid>
+public class Supplier : AggregateRoot<Guid>, ITenantOwnedEntity
 {
+    public Guid TenantId { get; private set; }
     public string Name { get; private set; } = string.Empty;
     public string ContactName { get; private set; } = string.Empty;
     public string Email { get; private set; } = string.Empty;

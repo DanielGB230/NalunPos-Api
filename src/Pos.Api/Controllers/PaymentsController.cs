@@ -1,5 +1,6 @@
 using Pos.Application.Common.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using Pos.Api.Extensions;
 using Pos.Application.Payments.Commands;
 using Pos.Application.Payments.DTOs;
 using Pos.Application.Payments.Queries;
@@ -18,14 +19,15 @@ public class PaymentsController : ControllerBase
     }
 
     [HttpPost]
-    [ProducesResponseType(typeof(PaymentDto), StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<PaymentDto>> ProcessPayment(
+    [ProducesResponseType(typeof(PaymentDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ProcessPayment(
         [FromBody] ProcessPaymentCommand command,
         CancellationToken cancellationToken)
     {
         var result = await _dispatcher.SendAsync(command, cancellationToken);
-        return CreatedAtAction(nameof(GetPaymentsBySaleId), new { saleId = result.SaleId }, result);
+        return this.ToActionResult(result);
     }
 
     [HttpGet("sale/{saleId:guid}")]

@@ -1,6 +1,7 @@
 using Pos.Application.Common.Interfaces;
 using FluentValidation;
 using Pos.Application.Products.DTOs;
+using Pos.Domain.Common;
 using Pos.Domain.Exceptions;
 using Pos.Domain.Interfaces;
 using Pos.Domain.ValueObjects;
@@ -14,7 +15,7 @@ public record UpdateProductCommand(
     string? Barcode,
     Guid CategoryId,
     bool IsActive
-) : ICommand<ProductDto>;
+) : ICommand<Result<ProductDto>>;
 
 public class UpdateProductCommandValidator : AbstractValidator<UpdateProductCommand>
 {
@@ -32,7 +33,7 @@ public class UpdateProductCommandValidator : AbstractValidator<UpdateProductComm
     }
 }
 
-public class UpdateProductCommandHandler : ICommandHandler<UpdateProductCommand, ProductDto>
+public class UpdateProductCommandHandler : ICommandHandler<UpdateProductCommand, Result<ProductDto>>
 {
     private readonly IProductRepository _productRepository;
     private readonly ICategoryRepository _categoryRepository;
@@ -48,34 +49,53 @@ public class UpdateProductCommandHandler : ICommandHandler<UpdateProductCommand,
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
     }
 
-    public async Task<ProductDto> HandleAsync(UpdateProductCommand request, CancellationToken cancellationToken)
+    public async Task<Result<ProductDto>> HandleAsync(UpdateProductCommand request, CancellationToken cancellationToken)
     {
-        var product = await _productRepository.GetByIdAsync(request.Id, cancellationToken)
-            ?? throw new ProductNotFoundException(request.Id);
+        ArgumentNullException.ThrowIfNull(request);
+
+        var product = await _productRepository.GetByIdAsync(request.Id, cancellationToken);
+        if (product == null)
+        {
+            return Result.Fail<ProductDto>(DomainError.NotFound(
+                "Product.NotFound",
+                $"No se encontró el producto con ID '{request.Id}'."));
+        }
 
         if (product.CategoryId != request.CategoryId)
         {
-            var category = await _categoryRepository.GetByIdAsync(request.CategoryId, cancellationToken)
-                ?? throw new CategoryNotFoundException(request.CategoryId);
+            var category = await _categoryRepository.GetByIdAsync(request.CategoryId, cancellationToken);
+            if (category == null)
+            {
+                return Result.Fail<ProductDto>(DomainError.NotFound(
+                    "Category.NotFound",
+                    $"No se encontró la categoría con ID '{request.CategoryId}'."));
+            }
 
             product.ChangeCategory(category.Id);
         }
 
-        var barcodeVo = !string.IsNullOrWhiteSpace(request.Barcode) ? Barcode.Create(request.Barcode) : null;
-        product.UpdateDetails(request.Name, request.Description, barcodeVo);
+        try
+        {
+            var barcodeVo = !string.IsNullOrWhiteSpace(request.Barcode) ? Barcode.Create(request.Barcode) : null;
+            product.UpdateDetails(request.Name, request.Description, barcodeVo);
 
-        if (request.IsActive && !product.IsActive)
-        {
-            product.Activate();
+            if (request.IsActive && !product.IsActive)
+            {
+                product.Activate();
+            }
+            else if (!request.IsActive && product.IsActive)
+            {
+                product.Deactivate();
+            }
         }
-        else if (!request.IsActive && product.IsActive)
+        catch (DomainException ex)
         {
-            product.Deactivate();
+            return Result.Fail<ProductDto>(DomainError.Validation("Product.Invalid", ex.Message));
         }
 
         _productRepository.Update(product);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return ProductDto.FromEntity(product);
+        return Result.Ok(ProductDto.FromEntity(product));
     }
 }

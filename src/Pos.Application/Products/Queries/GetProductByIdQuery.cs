@@ -1,13 +1,13 @@
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Products.DTOs;
-using Pos.Domain.Exceptions;
+using Pos.Domain.Common;
 using Pos.Domain.Interfaces;
 
 namespace Pos.Application.Products.Queries;
 
-public record GetProductByIdQuery(Guid Id) : IQuery<ProductDto>;
+public record GetProductByIdQuery(Guid Id) : IQuery<Result<ProductDto>>;
 
-public class GetProductByIdQueryHandler : IQueryHandler<GetProductByIdQuery, ProductDto>
+public class GetProductByIdQueryHandler : IQueryHandler<GetProductByIdQuery, Result<ProductDto>>
 {
     private readonly IProductRepository _productRepository;
 
@@ -16,11 +16,18 @@ public class GetProductByIdQueryHandler : IQueryHandler<GetProductByIdQuery, Pro
         _productRepository = productRepository ?? throw new ArgumentNullException(nameof(productRepository));
     }
 
-    public async Task<ProductDto> HandleAsync(GetProductByIdQuery request, CancellationToken cancellationToken)
+    public async Task<Result<ProductDto>> HandleAsync(GetProductByIdQuery request, CancellationToken cancellationToken)
     {
-        var product = await _productRepository.GetByIdAsync(request.Id, cancellationToken)
-            ?? throw new ProductNotFoundException(request.Id);
+        ArgumentNullException.ThrowIfNull(request);
 
-        return ProductDto.FromEntity(product);
+        var product = await _productRepository.GetByIdAsync(request.Id, cancellationToken);
+        if (product == null)
+        {
+            return Result.Fail<ProductDto>(DomainError.NotFound(
+                "Product.NotFound",
+                $"No se encontró el producto con ID '{request.Id}'."));
+        }
+
+        return Result.Ok(ProductDto.FromEntity(product));
     }
 }

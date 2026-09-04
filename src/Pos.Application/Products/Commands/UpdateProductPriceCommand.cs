@@ -1,6 +1,7 @@
 using Pos.Application.Common.Interfaces;
 using FluentValidation;
 using Pos.Application.Products.DTOs;
+using Pos.Domain.Common;
 using Pos.Domain.Exceptions;
 using Pos.Domain.Interfaces;
 using Pos.Domain.ValueObjects;
@@ -12,7 +13,7 @@ public record UpdateProductPriceCommand(
     decimal PriceAmount,
     string Currency,
     decimal? CostAmount = null
-) : ICommand<ProductDto>;
+) : ICommand<Result<ProductDto>>;
 
 public class UpdateProductPriceCommandValidator : AbstractValidator<UpdateProductPriceCommand>
 {
@@ -30,7 +31,7 @@ public class UpdateProductPriceCommandValidator : AbstractValidator<UpdateProduc
     }
 }
 
-public class UpdateProductPriceCommandHandler : ICommandHandler<UpdateProductPriceCommand, ProductDto>
+public class UpdateProductPriceCommandHandler : ICommandHandler<UpdateProductPriceCommand, Result<ProductDto>>
 {
     private readonly IProductRepository _productRepository;
     private readonly IUnitOfWork _unitOfWork;
@@ -41,19 +42,33 @@ public class UpdateProductPriceCommandHandler : ICommandHandler<UpdateProductPri
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
     }
 
-    public async Task<ProductDto> HandleAsync(UpdateProductPriceCommand request, CancellationToken cancellationToken)
+    public async Task<Result<ProductDto>> HandleAsync(UpdateProductPriceCommand request, CancellationToken cancellationToken)
     {
-        var product = await _productRepository.GetByIdAsync(request.ProductId, cancellationToken)
-            ?? throw new ProductNotFoundException(request.ProductId);
+        ArgumentNullException.ThrowIfNull(request);
 
-        var newPrice = Money.Create(request.PriceAmount, request.Currency);
-        var newCost = request.CostAmount.HasValue ? Money.Create(request.CostAmount.Value, request.Currency) : null;
+        var product = await _productRepository.GetByIdAsync(request.ProductId, cancellationToken);
+        if (product == null)
+        {
+            return Result.Fail<ProductDto>(DomainError.NotFound(
+                "Product.NotFound",
+                $"No se encontró el producto con ID '{request.ProductId}'."));
+        }
 
-        product.UpdatePrice(newPrice, newCost);
+        try
+        {
+            var newPrice = Money.Create(request.PriceAmount, request.Currency);
+            var newCost = request.CostAmount.HasValue ? Money.Create(request.CostAmount.Value, request.Currency) : null;
+
+            product.UpdatePrice(newPrice, newCost);
+        }
+        catch (DomainException ex)
+        {
+            return Result.Fail<ProductDto>(DomainError.Validation("Product.InvalidPrice", ex.Message));
+        }
 
         _productRepository.Update(product);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return ProductDto.FromEntity(product);
+        return Result.Ok(ProductDto.FromEntity(product));
     }
 }

@@ -8,8 +8,9 @@ namespace Pos.Domain.Entities;
 /// <summary>
 /// Agregado Raíz para Sucursal física del negocio.
 /// </summary>
-public class Branch : AggregateRoot<Guid>
+public class Branch : AggregateRoot<Guid>, ITenantOwnedEntity
 {
+    public Guid TenantId { get; private set; }
     public string Name { get; private set; } = string.Empty;
     public Address Address { get; private set; } = null!;
     public string PhoneNumber { get; private set; } = string.Empty;
@@ -23,10 +24,12 @@ public class Branch : AggregateRoot<Guid>
 
     private Branch(
         Guid id,
+        Guid tenantId,
         string name,
         Address address,
         string phoneNumber) : base(id)
     {
+        TenantId = tenantId;
         SetName(name);
         Address = address ?? throw new ArgumentNullException(nameof(address));
         PhoneNumber = phoneNumber?.Trim() ?? string.Empty;
@@ -36,9 +39,14 @@ public class Branch : AggregateRoot<Guid>
         RaiseDomainEvent(new BranchCreatedDomainEvent(Id, Name, CreatedAtUtc));
     }
 
+    public static Branch Create(Guid tenantId, string name, Address address, string phoneNumber = "")
+    {
+        return new Branch(Guid.NewGuid(), tenantId, name, address, phoneNumber);
+    }
+
     public static Branch Create(string name, Address address, string phoneNumber = "")
     {
-        return new Branch(Guid.NewGuid(), name, address, phoneNumber);
+        return new Branch(Guid.NewGuid(), Guid.NewGuid(), name, address, phoneNumber);
     }
 
     public void UpdateDetails(string name, Address address, string phoneNumber)

@@ -1,3 +1,4 @@
+using Pos.Api.Extensions;
 using Pos.Application.Common.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Pos.Application.Common.Models;
@@ -35,29 +36,29 @@ public class CustomersController : ControllerBase
     [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(CustomerDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<CustomerDto>> GetCustomerById(Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetCustomerById(Guid id, CancellationToken cancellationToken)
     {
         var query = new GetCustomerByIdQuery(id);
         var result = await _dispatcher.SendAsync(query, cancellationToken);
-        return Ok(result);
+        return this.ToActionResult(result);
     }
 
     [HttpPost]
     [ProducesResponseType(typeof(CustomerDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<CustomerDto>> CreateCustomer(
+    public async Task<IActionResult> CreateCustomer(
         [FromBody] CreateCustomerCommand command,
         CancellationToken cancellationToken)
     {
         var result = await _dispatcher.SendAsync(command, cancellationToken);
-        return CreatedAtAction(nameof(GetCustomerById), new { id = result.Id }, result);
+        return this.ToActionResult(result);
     }
 
     [HttpPut("{id:guid}")]
     [ProducesResponseType(typeof(CustomerDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<CustomerDto>> UpdateCustomer(
+    public async Task<IActionResult> UpdateCustomer(
         Guid id,
         [FromBody] UpdateCustomerCommand command,
         CancellationToken cancellationToken)
@@ -68,6 +69,6 @@ public class CustomersController : ControllerBase
         }
 
         var result = await _dispatcher.SendAsync(command, cancellationToken);
-        return Ok(result);
+        return this.ToActionResult(result);
     }
 }

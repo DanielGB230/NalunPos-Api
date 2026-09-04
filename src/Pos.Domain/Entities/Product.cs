@@ -9,8 +9,9 @@ namespace Pos.Domain.Entities;
 /// Agregado para Producto en el Catálogo Comercial.
 /// Encapsulamiento estricto: setters privados, mutación mediante métodos de negocio.
 /// </summary>
-public class Product : AggregateRoot<Guid>
+public class Product : AggregateRoot<Guid>, ITenantOwnedEntity
 {
+    public Guid TenantId { get; private set; }
     public string Name { get; private set; } = string.Empty;
     public string? Description { get; private set; }
     public Sku Sku { get; private set; } = null!;

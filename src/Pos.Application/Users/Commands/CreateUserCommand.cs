@@ -7,6 +7,8 @@ using Pos.Domain.Exceptions;
 using Pos.Domain.Interfaces;
 using Pos.Domain.ValueObjects;
 
+using Pos.Domain.Common;
+
 namespace Pos.Application.Users.Commands;
 
 public record CreateUserCommand(
@@ -16,7 +18,7 @@ public record CreateUserCommand(
     string Password,
     UserRole Role,
     Guid? TenantId
-) : ICommand<UserDto>;
+) : ICommand<Result<UserDto>>;
 
 public class CreateUserCommandValidator : AbstractValidator<CreateUserCommand>
 {
@@ -38,7 +40,7 @@ public class CreateUserCommandValidator : AbstractValidator<CreateUserCommand>
     }
 }
 
-public class CreateUserCommandHandler : ICommandHandler<CreateUserCommand, UserDto>
+public class CreateUserCommandHandler : ICommandHandler<CreateUserCommand, Result<UserDto>>
 {
     private readonly IUserRepository _userRepository;
     private readonly IPasswordHasher _passwordHasher;
@@ -54,27 +56,35 @@ public class CreateUserCommandHandler : ICommandHandler<CreateUserCommand, UserD
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
     }
 
-    public async Task<UserDto> HandleAsync(CreateUserCommand request, CancellationToken cancellationToken)
+    public async Task<Result<UserDto>> HandleAsync(CreateUserCommand request, CancellationToken cancellationToken)
     {
         bool emailExists = await _userRepository.ExistsByEmailAsync(request.Email, null, cancellationToken);
         if (emailExists)
         {
-            throw new DomainException($"Ya existe un usuario registrado con el correo '{request.Email}'.");
+            return Result.Fail<UserDto>(DomainError.Conflict("User.AlreadyExists", $"Ya existe un usuario registrado con el correo '{request.Email}'."));
         }
 
         string passwordHash = _passwordHasher.HashPassword(request.Password);
 
-        var user = User.Create(
-            new Email(request.Email),
-            new PasswordHash(passwordHash),
-            request.Role,
-            request.TenantId,
-            request.FirstName,
-            request.LastName);
+        User user;
+        try
+        {
+            user = User.Create(
+                new Email(request.Email),
+                new PasswordHash(passwordHash),
+                request.Role,
+                request.TenantId,
+                request.FirstName,
+                request.LastName);
+        }
+        catch (DomainException ex)
+        {
+            return Result.Fail<UserDto>(DomainError.Validation("User.Invalid", ex.Message));
+        }
 
         await _userRepository.AddAsync(user, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return UserDto.FromEntity(user);
+        return Result.Ok(UserDto.FromEntity(user));
     }
 }

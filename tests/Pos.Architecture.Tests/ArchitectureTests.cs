@@ -144,4 +144,79 @@ public class ArchitectureTests
 
         rule.Check(Architecture);
     }
+
+    [Fact]
+    public void All_Entity_Identifiers_And_ForeignKeys_Must_Use_Guid()
+    {
+        var domainAssembly = typeof(Entity<>).Assembly;
+        var entityTypes = domainAssembly.GetTypes()
+            .Where(t => t.IsClass && !t.IsAbstract && (
+                IsSubclassOfRawGeneric(typeof(Entity<>), t) || 
+                IsSubclassOfRawGeneric(typeof(AggregateRoot<>), t)))
+            .ToList();
+
+        Assert.NotEmpty(entityTypes);
+
+        foreach (var entityType in entityTypes)
+        {
+            // Primary Key (Id) must strictly be Guid
+            var pkProperty = entityType.GetProperty("Id");
+            Assert.NotNull(pkProperty);
+            Assert.True(
+                pkProperty.PropertyType == typeof(Guid),
+                $"La llave primaria 'Id' de la entidad '{entityType.Name}' debe ser de tipo Guid (UUIDv7)."
+            );
+
+            // All properties ending with 'Id' must NOT be integer/numeric types (int, long, etc.)
+            var idProperties = entityType.GetProperties()
+                .Where(p => p.Name.EndsWith("Id", StringComparison.Ordinal))
+                .ToList();
+
+            foreach (var prop in idProperties)
+            {
+                var propType = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
+                Assert.False(
+                    propType == typeof(int) || propType == typeof(long) || propType == typeof(short) || propType == typeof(byte),
+                    $"La propiedad '{prop.Name}' en la entidad '{entityType.Name}' usa el tipo numérico '{prop.PropertyType.Name}'. El uso de IDs numéricos (int/long) para PKs o FKs está estrictamente prohibido."
+                );
+            }
+        }
+    }
+
+    private static bool IsSubclassOfRawGeneric(System.Type generic, System.Type? toCheck)
+    {
+        while (toCheck != null && toCheck != typeof(object))
+        {
+            var cur = toCheck.IsGenericType ? toCheck.GetGenericTypeDefinition() : toCheck;
+            if (generic == cur)
+            {
+                return true;
+            }
+            toCheck = toCheck.BaseType;
+        }
+        return false;
+    }
+
+    [Fact]
+    public void All_Business_Entities_Must_Implement_ITenantOwnedEntity()
+    {
+        var domainAssembly = typeof(Entity<>).Assembly;
+        var businessEntityTypes = domainAssembly.GetTypes()
+            .Where(t => t.IsClass && !t.IsAbstract &&
+                t.Namespace == "Pos.Domain.Entities" &&
+                t.Name != "Tenant" && t.Name != "User" &&
+                (IsSubclassOfRawGeneric(typeof(Entity<>), t) || IsSubclassOfRawGeneric(typeof(AggregateRoot<>), t)))
+            .ToList();
+
+        Assert.NotEmpty(businessEntityTypes);
+
+        foreach (var entityType in businessEntityTypes)
+        {
+            Assert.True(
+                typeof(ITenantOwnedEntity).IsAssignableFrom(entityType),
+                $"La entidad de negocio '{entityType.Name}' debe implementar la interfaz 'ITenantOwnedEntity' para garantizar el aislamiento multi-tenant."
+            );
+        }
+    }
 }
+
