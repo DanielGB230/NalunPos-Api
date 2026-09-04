@@ -1,0 +1,39 @@
+using Pos.Application.Common.Interfaces;
+using Microsoft.AspNetCore.Mvc;
+using Pos.Application.Roles.Commands;
+using Pos.Application.Roles.DTOs;
+using Pos.Application.Roles.Queries;
+
+namespace Pos.Api.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public class RolesController : ControllerBase
+{
+    private readonly IDispatcher _dispatcher;
+
+    public RolesController(IDispatcher dispatcher)
+    {
+        _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
+    }
+
+    [HttpGet]
+    [ProducesResponseType(typeof(IReadOnlyList<RoleDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IReadOnlyList<RoleDto>>> GetRoles(CancellationToken cancellationToken)
+    {
+        var query = new GetRolesQuery();
+        var result = await _dispatcher.SendAsync(query, cancellationToken);
+        return Ok(result);
+    }
+
+    [HttpPost]
+    [ProducesResponseType(typeof(RoleDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<RoleDto>> CreateRole(
+        [FromBody] CreateRoleCommand command,
+        CancellationToken cancellationToken)
+    {
+        var result = await _dispatcher.SendAsync(command, cancellationToken);
+        return CreatedAtAction(nameof(GetRoles), null, result);
+    }
+}

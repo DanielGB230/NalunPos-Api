@@ -1,0 +1,78 @@
+using Pos.Application.Common.Interfaces;
+using FluentValidation;
+using Pos.Application.Branches.DTOs;
+using Pos.Domain.Exceptions;
+using Pos.Domain.Interfaces;
+using Pos.Domain.ValueObjects;
+
+namespace Pos.Application.Branches.Commands;
+
+public record UpdateBranchCommand(
+    Guid Id,
+    string Name,
+    string Street,
+    string City,
+    string ZipCode,
+    string Country,
+    string PhoneNumber,
+    bool IsActive
+) : ICommand<BranchDto>;
+
+public class UpdateBranchCommandValidator : AbstractValidator<UpdateBranchCommand>
+{
+    public UpdateBranchCommandValidator()
+    {
+        RuleFor(x => x.Id)
+            .NotEmpty().WithMessage("El ID de la sucursal es requerido.");
+
+        RuleFor(x => x.Name)
+            .NotEmpty().WithMessage("El nombre es requerido.");
+
+        RuleFor(x => x.Street)
+            .NotEmpty().WithMessage("La calle es requerida.");
+
+        RuleFor(x => x.City)
+            .NotEmpty().WithMessage("La ciudad es requerida.");
+    }
+}
+
+public class UpdateBranchCommandHandler : ICommandHandler<UpdateBranchCommand, BranchDto>
+{
+    private readonly IBranchRepository _branchRepository;
+    private readonly IUnitOfWork _unitOfWork;
+
+    public UpdateBranchCommandHandler(IBranchRepository branchRepository, IUnitOfWork unitOfWork)
+    {
+        _branchRepository = branchRepository ?? throw new ArgumentNullException(nameof(branchRepository));
+        _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+    }
+
+    public async Task<BranchDto> HandleAsync(UpdateBranchCommand request, CancellationToken cancellationToken)
+    {
+        var branch = await _branchRepository.GetByIdAsync(request.Id, cancellationToken)
+            ?? throw new BranchNotFoundException(request.Id);
+
+        bool exists = await _branchRepository.ExistsByNameAsync(request.Name, request.Id, cancellationToken);
+        if (exists)
+        {
+            throw new DomainException($"Ya existe otra sucursal registrada con el nombre '{request.Name}'.");
+        }
+
+        var address = Address.Create(request.Street, request.City, request.ZipCode, request.Country);
+        branch.UpdateDetails(request.Name, address, request.PhoneNumber);
+
+        if (request.IsActive && !branch.IsActive)
+        {
+            branch.Activate();
+        }
+        else if (!request.IsActive && branch.IsActive)
+        {
+            branch.Deactivate();
+        }
+
+        _branchRepository.Update(branch);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return BranchDto.FromEntity(branch);
+    }
+}

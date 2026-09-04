@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Domain puro: CERO dependencias de paquetes NuGet externos (ADR 0001, ADR 0014) -->
+
+</Project>

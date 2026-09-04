@@ -1,0 +1,36 @@
+<Project>
+
+  <PropertyGroup>
+    <!-- Target framework para todos los proyectos -->
+    <TargetFramework>net10.0</TargetFramework>
+
+    <!-- Nullable reference types activado globalmente — obliga a diseñar sin nulls implícitos -->
+    <Nullable>enable</Nullable>
+
+    <!-- Implicit usings — reduce boilerplate de using statements -->
+    <ImplicitUsings>enable</ImplicitUsings>
+
+    <!-- Tratar warnings como errores — arquitectura que se degrada silenciosamente no es arquitectura -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+
+    <!-- Ignorar vulnerabilidades conocidas, guiones bajos en tests (CA1707) y llamadas directas a ILogger (CA1848) -->
+    <NoWarn>$(NoWarn);NU1903;NU1902;CA1707;CA1848</NoWarn>
+
+    <!-- Configuración de análisis de código -->
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <AnalysisMode>Recommended</AnalysisMode>
+
+    <!-- Metadatos del proyecto -->
+    <Company>NalunPos</Company>
+    <Product>Pos</Product>
+    <Copyright>Copyright © NalunPos $([System.DateTime]::UtcNow.Year)</Copyright>
+
+    <!-- Evitar que los proyectos de test generen paquetes NuGet -->
+    <IsPackable>false</IsPackable>
+
+    <!-- Consistencia de versión de lenguaje -->
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+
+</Project>
