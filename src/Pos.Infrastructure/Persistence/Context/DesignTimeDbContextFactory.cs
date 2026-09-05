@@ -32,7 +32,13 @@ public sealed class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<Pos
             .SetBasePath(apiDirectory)
             .AddJsonFile("appsettings.json", optional: true)
             .AddJsonFile("appsettings.Development.json", optional: true)
-            .AddUserSecrets(typeof(DesignTimeDbContextFactory).Assembly, optional: true)
+            // ⚠️ Este ID debe coincidir EXACTAMENTE con <UserSecretsId> en src/Pos.Api/Pos.Api.csproj.
+            // No es un secreto (es solo el nombre de la carpeta de user-secrets en el perfil del usuario),
+            // pero si cambia en un lado y no en el otro, este factory dejará de encontrar la connection
+            // string sin ningún error explícito más allá del mensaje de "no se encontró connection string".
+            // No se puede usar AddUserSecrets<T>() con un tipo de Pos.Api aquí: causaría una referencia
+            // circular de proyecto (Infrastructure -> Api -> Infrastructure).
+            .AddUserSecrets("f8cd60cc-c652-42cf-8ad9-07514cac47b3")
             .AddEnvironmentVariables()
             .Build();
 
