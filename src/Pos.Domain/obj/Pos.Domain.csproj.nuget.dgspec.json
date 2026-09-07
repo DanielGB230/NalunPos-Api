@@ -74,6 +74,7 @@
             "Microsoft.Extensions.Logging.Abstractions": "10.0.0",
             "Microsoft.Extensions.Options": "10.0.11",
             "Microsoft.NET.Test.Sdk": "17.13.0",
+            "Microsoft.OpenApi": "2.7.5",
             "Scalar.AspNetCore": "2.17.2",
             "System.IdentityModel.Tokens.Jwt": "8.5.0",
             "TngTech.ArchUnitNET.xUnit": "0.11.3",

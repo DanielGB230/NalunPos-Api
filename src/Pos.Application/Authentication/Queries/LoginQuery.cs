@@ -2,12 +2,12 @@ using FluentValidation;
 using Pos.Application.Authentication.DTOs;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Users.DTOs;
-using Pos.Domain.Exceptions;
+using Pos.Domain.Common;
 using Pos.Domain.Interfaces;
 
 namespace Pos.Application.Authentication.Queries;
 
-public record LoginQuery(string Email, string Password) : IQuery<AuthResponseDto>;
+public record LoginQuery(string Email, string Password) : IQuery<Result<AuthResponseDto>>;
 
 public class LoginQueryValidator : AbstractValidator<LoginQuery>
 {
@@ -22,7 +22,7 @@ public class LoginQueryValidator : AbstractValidator<LoginQuery>
     }
 }
 
-public class LoginQueryHandler : IQueryHandler<LoginQuery, AuthResponseDto>
+public class LoginQueryHandler : IQueryHandler<LoginQuery, Result<AuthResponseDto>>
 {
     private readonly IUserRepository _userRepository;
     private readonly IPasswordHasher _passwordHasher;
@@ -38,26 +38,30 @@ public class LoginQueryHandler : IQueryHandler<LoginQuery, AuthResponseDto>
         _jwtTokenGenerator = jwtTokenGenerator ?? throw new ArgumentNullException(nameof(jwtTokenGenerator));
     }
 
-    public async Task<AuthResponseDto> HandleAsync(LoginQuery request, CancellationToken cancellationToken)
+    public async Task<Result<AuthResponseDto>> HandleAsync(LoginQuery request, CancellationToken cancellationToken)
     {
+        var invalidCredentialsError = DomainError.Unauthorized(
+            "Auth.InvalidCredentials",
+            "Credenciales de acceso inválidas.");
+
         var user = await _userRepository.GetByEmailAsync(request.Email, cancellationToken);
         if (user == null || !user.IsActive)
         {
-            throw new UnauthorizedDomainException("Credenciales de acceso inválidas o usuario inactivo.");
+            return Result.Fail<AuthResponseDto>(invalidCredentialsError);
         }
 
         bool isValidPassword = _passwordHasher.VerifyPassword(request.Password, user.PasswordHash.Value);
         if (!isValidPassword)
         {
-            throw new UnauthorizedDomainException("Credenciales de acceso inválidas.");
+            return Result.Fail<AuthResponseDto>(invalidCredentialsError);
         }
 
         string token = _jwtTokenGenerator.GenerateToken(user, null!);
 
-        return new AuthResponseDto(
+        return Result.Ok(new AuthResponseDto(
             token,
             UserDto.FromEntity(user),
             new List<string>()
-        );
+        ));
     }
 }

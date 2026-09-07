@@ -3587,6 +3587,7 @@
       "Microsoft.AspNetCore.Authentication.JwtBearer >= 10.0.11",
       "Microsoft.AspNetCore.OpenApi >= 10.0.11",
       "Microsoft.EntityFrameworkCore.Design >= 10.0.11",
+      "Microsoft.OpenApi >= 2.7.5",
       "Pos.Application >= 1.0.0",
       "Pos.Infrastructure >= 1.0.0",
       "Scalar.AspNetCore >= 2.17.2"
@@ -3672,6 +3673,11 @@
             "version": "[10.0.11, )",
             "versionCentrallyManaged": true
           },
+          "Microsoft.OpenApi": {
+            "target": "Package",
+            "version": "[2.7.5, )",
+            "versionCentrallyManaged": true
+          },
           "Scalar.AspNetCore": {
             "target": "Package",
             "version": "[2.17.2, )",
@@ -3697,6 +3703,7 @@
           "Microsoft.Extensions.Logging.Abstractions": "10.0.0",
           "Microsoft.Extensions.Options": "10.0.11",
           "Microsoft.NET.Test.Sdk": "17.13.0",
+          "Microsoft.OpenApi": "2.7.5",
           "Scalar.AspNetCore": "2.17.2",
           "System.IdentityModel.Tokens.Jwt": "8.5.0",
           "TngTech.ArchUnitNET.xUnit": "0.11.3",

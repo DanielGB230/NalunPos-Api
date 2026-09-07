@@ -14,11 +14,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "d:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Domain\\Pos.Domain.csproj",
+      "projectUniqueName": "D:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Domain\\Pos.Domain.csproj",
       "projectName": "Pos.Domain",
-      "projectPath": "d:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Domain\\Pos.Domain.csproj",
+      "projectPath": "D:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Domain\\Pos.Domain.csproj",
       "packagesPath": "C:\\Users\\Dani\\.nuget\\packages\\",
-      "outputPath": "d:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Domain\\obj\\",
+      "outputPath": "D:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Domain\\obj\\",
       "projectStyle": "PackageReference",
       "centralPackageVersionsManagementEnabled": true,
       "fallbackFolders": [
@@ -81,6 +81,7 @@
           "Microsoft.Extensions.Logging.Abstractions": "10.0.0",
           "Microsoft.Extensions.Options": "10.0.11",
           "Microsoft.NET.Test.Sdk": "17.13.0",
+          "Microsoft.OpenApi": "2.7.5",
           "Scalar.AspNetCore": "2.17.2",
           "System.IdentityModel.Tokens.Jwt": "8.5.0",
           "TngTech.ArchUnitNET.xUnit": "0.11.3",

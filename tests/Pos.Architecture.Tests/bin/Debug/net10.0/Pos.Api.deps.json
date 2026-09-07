@@ -11,6 +11,7 @@
           "Microsoft.AspNetCore.Authentication.JwtBearer": "10.0.11",
           "Microsoft.AspNetCore.OpenApi": "10.0.11",
           "Microsoft.EntityFrameworkCore.Design": "10.0.11",
+          "Microsoft.OpenApi": "2.7.5",
           "Pos.Application": "1.0.0",
           "Pos.Infrastructure": "1.0.0",
           "Scalar.AspNetCore": "2.17.2"

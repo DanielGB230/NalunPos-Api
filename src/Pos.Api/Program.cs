@@ -2,6 +2,7 @@ using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi;
 using Pos.Api.BackgroundServices;
 using Pos.Api.Middleware;
 using Pos.Application;
@@ -43,7 +44,38 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 builder.Services.AddControllers();
-builder.Services.AddOpenApi();
+
+// Configuración de OpenAPI con esquema de seguridad JWT Bearer
+// Permite autenticarse directamente desde la interfaz de Scalar/Swagger
+builder.Services.AddOpenApi(options =>
+{
+    options.AddDocumentTransformer((document, context, cancellationToken) =>
+    {
+        var scheme = new OpenApiSecurityScheme
+        {
+            Type = SecuritySchemeType.Http,
+            Scheme = "bearer",
+            BearerFormat = "JWT",
+            Description = "Ingresa tu token JWT para acceder a los endpoints protegidos."
+        };
+
+        document.Components ??= new OpenApiComponents();
+        document.Components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
+        document.Components.SecuritySchemes["Bearer"] = scheme;
+
+        var schemeRef = new OpenApiSecuritySchemeReference("Bearer", document);
+
+        var requirement = new OpenApiSecurityRequirement
+        {
+            [schemeRef] = new List<string>()
+        };
+
+        document.Security ??= new List<OpenApiSecurityRequirement>();
+        document.Security.Add(requirement);
+
+        return Task.CompletedTask;
+    });
+});
 
 var app = builder.Build();
 
