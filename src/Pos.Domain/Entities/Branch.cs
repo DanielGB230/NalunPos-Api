@@ -46,7 +46,7 @@ public class Branch : AggregateRoot<Guid>, ITenantOwnedEntity
 
     public static Branch Create(string name, Address address, string phoneNumber = "")
     {
-        return new Branch(Guid.NewGuid(), Guid.NewGuid(), name, address, phoneNumber);
+        return new Branch(Guid.NewGuid(), Guid.Empty, name, address, phoneNumber);
     }
 
     public void UpdateDetails(string name, Address address, string phoneNumber)

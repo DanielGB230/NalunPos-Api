@@ -25,3 +25,9 @@ public record SaleCancelledDomainEvent(
     string ReceiptNumber,
     DateTime OccurredOnUtc
 ) : IDomainEvent;
+
+public record SalePaidDomainEvent(
+    Guid SaleId,
+    string ReceiptNumber,
+    DateTime OccurredOnUtc
+) : IDomainEvent;

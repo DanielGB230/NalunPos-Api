@@ -15,6 +15,8 @@ public class CreateSaleCommandHandlerTests
     private readonly FakeSaleRepository _saleRepository = new();
     private readonly FakeCashRegisterRepository _registerRepository = new();
     private readonly FakeCustomerRepository _customerRepository = new();
+    private readonly FakeProductRepository _productRepository = new();
+    private readonly FakeInventoryRepository _inventoryRepository = new();
     private readonly FakeUnitOfWork _unitOfWork = new();
     private readonly FakeDispatcher _dispatcher = new();
     private readonly CreateSaleCommandHandler _handler;
@@ -25,6 +27,8 @@ public class CreateSaleCommandHandlerTests
             _saleRepository,
             _registerRepository,
             _customerRepository,
+            _productRepository,
+            _inventoryRepository,
             _unitOfWork,
             _dispatcher);
     }
@@ -40,13 +44,23 @@ public class CreateSaleCommandHandlerTests
             "Apertura inicial");
         _registerRepository.Sessions.Add(session);
 
+        var product = Product.Create(
+            "Producto A",
+            Sku.Create("PROD-A-001"),
+            Money.Create(50m, "USD"),
+            Guid.NewGuid(),
+            initialStock: 10);
+
+        _productRepository.Products.Add(product);
+        _inventoryRepository.Stocks[product.Id] = 10;
+
         var command = new CreateSaleCommand(
             "V-001-0001",
             session.Id,
             CustomerId: null,
             LineItems: new List<CreateSaleItemDto>
             {
-                new(Guid.NewGuid(), "Producto A", 2, 50m)
+                new(product.Id, product.Name, 2, 50m)
             },
             TaxRatePercentage: 18m,
             Currency: "USD");
@@ -149,6 +163,26 @@ public class CreateSaleCommandHandlerTests
         public void Update(Customer customer) { }
         public void Delete(Customer customer) { }
         public Task<(IReadOnlyList<Customer> Items, int TotalCount)> GetPagedAsync(int pageNumber, int pageSize, string? searchTerm, bool? isActiveOnly, CancellationToken cancellationToken = default) => Task.FromResult< (IReadOnlyList<Customer>, int) >(([], 0));
+    }
+
+    private sealed class FakeProductRepository : IProductRepository
+    {
+        public List<Product> Products { get; } = [];
+        public Task<Product?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult(Products.FirstOrDefault(p => p.Id == id));
+        public Task<Product?> GetBySkuAsync(Sku sku, CancellationToken cancellationToken = default) => Task.FromResult(Products.FirstOrDefault(p => p.Sku.Value == sku.Value));
+        public Task<(IReadOnlyList<Product> Items, int TotalCount)> GetPagedAsync(int pageNumber, int pageSize, string? searchTerm, Guid? categoryId, bool? isActiveOnly, CancellationToken cancellationToken = default) => Task.FromResult< (IReadOnlyList<Product>, int) >((Products, Products.Count));
+        public Task<bool> ExistsBySkuAsync(Sku sku, Guid? excludeId = null, CancellationToken cancellationToken = default) => Task.FromResult(false);
+        public Task AddAsync(Product product, CancellationToken cancellationToken = default) { Products.Add(product); return Task.CompletedTask; }
+        public void Update(Product product) { }
+        public void Delete(Product product) { }
+    }
+
+    private sealed class FakeInventoryRepository : IInventoryRepository
+    {
+        public Dictionary<Guid, decimal> Stocks { get; } = new();
+        public Task<decimal> GetCurrentStockAsync(Guid productId, CancellationToken cancellationToken = default) => Task.FromResult(Stocks.TryGetValue(productId, out var stock) ? stock : 0m);
+        public Task AddMovementAsync(InventoryMovement movement, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task<(IReadOnlyList<InventoryMovement> Items, int TotalCount)> GetMovementsHistoryPagedAsync(Guid productId, int pageNumber, int pageSize, CancellationToken cancellationToken = default) => Task.FromResult< (IReadOnlyList<InventoryMovement>, int) >(([], 0));
     }
 
     private sealed class FakeUnitOfWork : IUnitOfWork

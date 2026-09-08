@@ -9,5 +9,6 @@ public enum SessionStatus
 public enum SaleStatus
 {
     Completed = 1,
-    Cancelled = 2
+    Cancelled = 2,
+    Paid = 3
 }

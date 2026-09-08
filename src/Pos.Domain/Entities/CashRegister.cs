@@ -36,12 +36,12 @@ public class CashRegister : AggregateRoot<Guid>, ITenantOwnedEntity
 
     public static CashRegister Create(string name, Guid branchId, string serialNumber = "")
     {
-        return new CashRegister(Guid.NewGuid(), Guid.NewGuid(), name, serialNumber);
+        return new CashRegister(Guid.NewGuid(), Guid.Empty, name, serialNumber);
     }
 
     public static CashRegister Create(string name, string serialNumber = "")
     {
-        return new CashRegister(Guid.NewGuid(), Guid.NewGuid(), name, serialNumber);
+        return new CashRegister(Guid.NewGuid(), Guid.Empty, name, serialNumber);
     }
 
     public void UpdateDetails(string name, string serialNumber)

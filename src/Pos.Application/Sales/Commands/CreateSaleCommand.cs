@@ -54,6 +54,8 @@ public class CreateSaleCommandHandler : ICommandHandler<CreateSaleCommand, Resul
     private readonly ISaleRepository _saleRepository;
     private readonly ICashRegisterRepository _registerRepository;
     private readonly ICustomerRepository _customerRepository;
+    private readonly IProductRepository _productRepository;
+    private readonly IInventoryRepository _inventoryRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IDispatcher _dispatcher;
 
@@ -61,12 +63,16 @@ public class CreateSaleCommandHandler : ICommandHandler<CreateSaleCommand, Resul
         ISaleRepository saleRepository,
         ICashRegisterRepository registerRepository,
         ICustomerRepository customerRepository,
+        IProductRepository productRepository,
+        IInventoryRepository inventoryRepository,
         IUnitOfWork unitOfWork,
         IDispatcher dispatcher)
     {
         _saleRepository = saleRepository ?? throw new ArgumentNullException(nameof(saleRepository));
         _registerRepository = registerRepository ?? throw new ArgumentNullException(nameof(registerRepository));
         _customerRepository = customerRepository ?? throw new ArgumentNullException(nameof(customerRepository));
+        _productRepository = productRepository ?? throw new ArgumentNullException(nameof(productRepository));
+        _inventoryRepository = inventoryRepository ?? throw new ArgumentNullException(nameof(inventoryRepository));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
     }
@@ -75,6 +81,7 @@ public class CreateSaleCommandHandler : ICommandHandler<CreateSaleCommand, Resul
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        // 1. Validar sesión de caja abierta
         var session = await _registerRepository.GetSessionByIdAsync(request.SessionId, cancellationToken);
         if (session == null)
         {
@@ -90,6 +97,7 @@ public class CreateSaleCommandHandler : ICommandHandler<CreateSaleCommand, Resul
                 "La sesión de caja especificada no se encuentra abierta."));
         }
 
+        // 2. Validar cliente si fue especificado
         if (request.CustomerId.HasValue && request.CustomerId.Value != Guid.Empty)
         {
             var customer = await _customerRepository.GetByIdAsync(request.CustomerId.Value, cancellationToken);
@@ -101,6 +109,55 @@ public class CreateSaleCommandHandler : ICommandHandler<CreateSaleCommand, Resul
             }
         }
 
+        // 3. Validar existencia de productos, stock en Kardex y descontar stock de forma síncrona
+        foreach (var item in request.LineItems)
+        {
+            var product = await _productRepository.GetByIdAsync(item.ProductId, cancellationToken);
+            if (product == null)
+            {
+                return Result.Fail<SaleDto>(DomainError.NotFound(
+                    "Product.NotFound",
+                    $"No se encontró el producto con ID '{item.ProductId}'."));
+            }
+
+            if (!product.IsActive)
+            {
+                return Result.Fail<SaleDto>(DomainError.Conflict(
+                    "Product.Inactive",
+                    $"El producto '{product.Name}' está inactivo y no puede ser vendido."));
+            }
+
+            decimal currentStock = await _inventoryRepository.GetCurrentStockAsync(product.Id, cancellationToken);
+            if (currentStock < item.Quantity)
+            {
+                return Result.Fail<SaleDto>(DomainError.Validation(
+                    "Inventory.InsufficientStock",
+                    $"Stock insuficiente para el producto '{product.Name}'. Stock disponible en Kardex: {currentStock}, cantidad solicitada: {item.Quantity}."));
+            }
+
+            // Descontar stock del Agregado Product
+            try
+            {
+                product.AdjustStock(-(int)item.Quantity);
+            }
+            catch (DomainException ex)
+            {
+                return Result.Fail<SaleDto>(DomainError.Validation("Inventory.Invalid", ex.Message));
+            }
+
+            // Registrar movimiento de Kardex síncronamente
+            var movement = InventoryMovement.Record(
+                product.Id,
+                -item.Quantity,
+                InventoryMovementType.Sale,
+                notes: $"Salida por Venta N° {request.ReceiptNumber}"
+            );
+
+            await _inventoryRepository.AddMovementAsync(movement, cancellationToken);
+            _productRepository.Update(product);
+        }
+
+        // 4. Crear la entidad Venta
         Sale sale;
         try
         {
@@ -125,9 +182,11 @@ public class CreateSaleCommandHandler : ICommandHandler<CreateSaleCommand, Resul
         }
 
         await _saleRepository.AddAsync(sale, cancellationToken);
+
+        // 5. UNICO COMMIT ATÓMICO: Persistir Venta, Movimientos de Inventario y Actualización de Stock en una sola transacción
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        // Despachar eventos de dominio acumulados (SaleCompletedDomainEvent)
+        // Despachar eventos de dominio acumulados (para efectos secundarios no bloqueantes)
         foreach (var domainEvent in sale.DomainEvents)
         {
             await _dispatcher.PublishAsync(domainEvent, cancellationToken);

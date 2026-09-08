@@ -136,6 +136,6 @@ public class PosDbContext : DbContext, IUnitOfWork
         where TEntity : class, ITenantOwnedEntity
     {
         modelBuilder.Entity<TEntity>()
-            .HasQueryFilter(e => _currentTenantId == null || e.TenantId == _currentTenantId.Value);
+            .HasQueryFilter(e => _currentTenantId == null || e.TenantId == _currentTenantId);
     }
 }

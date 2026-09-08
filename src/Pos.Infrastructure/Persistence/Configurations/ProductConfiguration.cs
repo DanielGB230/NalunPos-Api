@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Pos.Domain.Entities;
 using Pos.Domain.ValueObjects;
 
@@ -46,11 +47,13 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
                 .IsRequired();
         });
 
-        // Value Object opcional Barcode mapeado con Value Converter o propiedad
+        // Value Object opcional Barcode mapeado con Value Converter fuertemente tipado para nulos
+        var barcodeConverter = new ValueConverter<Barcode?, string?>(
+            b => b != null ? b.Value : null,
+            s => !string.IsNullOrEmpty(s) ? Barcode.Create(s) : null);
+
         builder.Property(p => p.Barcode)
-            .HasConversion(
-                barcode => barcode != null ? barcode.Value : null,
-                value => !string.IsNullOrEmpty(value) ? Barcode.Create(value) : null)
+            .HasConversion(barcodeConverter)
             .HasColumnName("Barcode")
             .HasMaxLength(50);
 

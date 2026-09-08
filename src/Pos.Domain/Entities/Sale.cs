@@ -110,6 +110,17 @@ public class Sale : AggregateRoot<Guid>, ITenantOwnedEntity
         RaiseDomainEvent(new SaleCancelledDomainEvent(Id, ReceiptNumber, DateTime.UtcNow));
     }
 
+    public void MarkAsPaid()
+    {
+        if (Status == SaleStatus.Cancelled)
+        {
+            throw new DomainException("No se puede marcar como pagada una venta cancelada.");
+        }
+
+        Status = SaleStatus.Paid;
+        RaiseDomainEvent(new SalePaidDomainEvent(Id, ReceiptNumber, DateTime.UtcNow));
+    }
+
     private void CalculateTotals(decimal taxRatePercentage, string currency)
     {
         decimal subTotalAmount = _lineItems.Sum(i => i.SubTotal.Amount);
