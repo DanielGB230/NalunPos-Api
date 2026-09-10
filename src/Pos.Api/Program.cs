@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -43,10 +44,14 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-builder.Services.AddControllers();
+// Configuración de Controladores con serialización de Enums como cadenas (JsonStringEnumConverter)
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    });
 
 // Configuración de OpenAPI con esquema de seguridad JWT Bearer
-// Permite autenticarse directamente desde la interfaz de Scalar/Swagger
 builder.Services.AddOpenApi(options =>
 {
     options.AddDocumentTransformer((document, context, cancellationToken) =>
@@ -122,5 +127,4 @@ app.MapControllers();
 
 app.Run();
 
-// Clase accesible para WebApplicationFactory en tests de integración
 public partial class Program;

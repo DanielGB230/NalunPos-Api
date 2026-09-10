@@ -4,24 +4,13 @@ using Microsoft.Extensions.Logging;
 using Pos.Application.Common.Interfaces;
 using Pos.Domain.Entities;
 using Pos.Domain.Enums;
+using Pos.Domain.ValueObjects;
 using Pos.Infrastructure.Persistence.Context;
 
 namespace Pos.Infrastructure.Persistence.Seed;
 
 /// <summary>
-/// Proceso de infraestructura para la siembra idempotente del primer SuperAdmin del sistema.
-///
-/// Principios de seguridad:
-///   - Las credenciales se leen EXCLUSIVAMENTE desde IConfiguration / dotnet user-secrets.
-///   - NUNCA hay fallback con valores hardcodeados ni contraseñas por defecto.
-///   - Si Email o Password no están configurados, el sistema falla de forma
-///     explícita y detectable (fail-fast) en lugar de sembrar con valores inseguros.
-///
-/// Configuración requerida (user-secrets en dev, variables de entorno en producción):
-///   SuperAdminSettings:Email     → email del superadmin
-///   SuperAdminSettings:Password  → contraseña (mínimo 12 caracteres recomendado)
-///   SuperAdminSettings:FirstName → nombre   (opcional, default: "Super")
-///   SuperAdminSettings:LastName  → apellido (opcional, default: "Admin")
+/// Proceso de infraestructura para la siembra e hiper-idempotencia del primer SuperAdmin del sistema.
 /// </summary>
 public sealed partial class SuperAdminSeeder
 {
@@ -44,40 +33,41 @@ public sealed partial class SuperAdminSeeder
 
     public async Task SeedAsync(CancellationToken cancellationToken = default)
     {
-        // Idempotencia estricta: verificar si ya existe un SuperAdmin
-        bool superAdminExists = await _context.Users
-            .AnyAsync(u => u.Role == UserRole.SuperAdmin, cancellationToken);
-
-        if (superAdminExists)
-        {
-            LogSuperAdminAlreadyExists(_logger);
-            return;
-        }
-
-        // Leer credenciales desde IConfiguration (user-secrets / env vars / appsettings)
         string? email = _configuration["SuperAdminSettings:Email"];
         string? rawPassword = _configuration["SuperAdminSettings:Password"];
 
-        // Fail-fast: credenciales obligatorias no configuradas
+        var existingSuperAdmin = await _context.Users
+            .FirstOrDefaultAsync(u => u.Role == UserRole.SuperAdmin, cancellationToken);
+
+        if (existingSuperAdmin != null)
+        {
+            if (!string.IsNullOrWhiteSpace(rawPassword))
+            {
+                string newHash = _passwordHasher.HashPassword(rawPassword);
+                existingSuperAdmin.UpdatePassword(new PasswordHash(newHash));
+                await _context.SaveChangesAsync(cancellationToken);
+                LogSuperAdminPasswordUpdated(_logger, existingSuperAdmin.Email.Value);
+            }
+            else
+            {
+                LogSuperAdminAlreadyExists(_logger);
+            }
+            return;
+        }
+
         if (string.IsNullOrWhiteSpace(email))
             throw new InvalidOperationException(
-                "[SuperAdminSeeder] La clave 'SuperAdminSettings:Email' no esta configurada. " +
-                "Configurala en user-secrets o variables de entorno.");
+                "[SuperAdminSeeder] La clave 'SuperAdminSettings:Email' no esta configurada.");
 
         if (string.IsNullOrWhiteSpace(rawPassword))
             throw new InvalidOperationException(
-                "[SuperAdminSeeder] La clave 'SuperAdminSettings:Password' no esta configurada. " +
-                "Configurala en user-secrets o variables de entorno.");
+                "[SuperAdminSeeder] La clave 'SuperAdminSettings:Password' no esta configurada.");
 
-        // Campos opcionales con defaults seguros y no sensibles
         string firstName = _configuration["SuperAdminSettings:FirstName"] ?? "Super";
         string lastName  = _configuration["SuperAdminSettings:LastName"]  ?? "Admin";
 
-        // Generar hash seguro (Argon2id PHC format)
         string passwordHash = _passwordHasher.HashPassword(rawPassword);
 
-        // Crear usuario respetando invariantes de dominio
-        // SuperAdmin: TenantId = null (no pertenece a ningún tenant)
         var superAdmin = User.Create(
             email:        email,
             passwordHash: passwordHash,
@@ -92,11 +82,13 @@ public sealed partial class SuperAdminSeeder
         LogSuperAdminSeeded(_logger, email);
     }
 
-    // ── LoggerMessage Source Generators (zero-allocation, CA1873-compliant) ──
-
     [LoggerMessage(Level = LogLevel.Information,
         Message = "SuperAdminSeeder: SuperAdmin ya existe. Siembra omitida.")]
     private static partial void LogSuperAdminAlreadyExists(ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Information,
+        Message = "SuperAdminSeeder: Contraseña del SuperAdmin actualizada desde configuración. Email={Email}")]
+    private static partial void LogSuperAdminPasswordUpdated(ILogger logger, string email);
 
     [LoggerMessage(Level = LogLevel.Information,
         Message = "SuperAdminSeeder: SuperAdmin sembrado exitosamente. Email={Email}")]
