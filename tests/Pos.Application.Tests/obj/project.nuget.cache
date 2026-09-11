@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "P2N5J84z62s=",
+  "dgSpecHash": "3/F7GtnN1qM=",
   "success": true,
-  "projectFilePath": "D:\\NalunPosApp\\NalunPos-Api\\tests\\Pos.Application.Tests\\Pos.Application.Tests.csproj",
+  "projectFilePath": "d:\\NalunPosApp\\NalunPos-Api\\tests\\Pos.Application.Tests\\Pos.Application.Tests.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\Dani\\.nuget\\packages\\coverlet.collector\\6.0.4\\coverlet.collector.6.0.4.nupkg.sha512",
     "C:\\Users\\Dani\\.nuget\\packages\\fluentassertions\\6.12.2\\fluentassertions.6.12.2.nupkg.sha512",

@@ -145,6 +145,19 @@ public class CreateTenantCommandHandlerTests
         public void Update(Tenant tenant)
         {
         }
+
+        public Task<(IReadOnlyList<Pos.Application.Platform.Tenants.DTOs.TenantDto> Items, int TotalCount)> GetPagedAsync(
+            int pageNumber,
+            int pageSize,
+            string? searchTerm,
+            CancellationToken cancellationToken = default)
+        {
+            var dtos = Tenants
+                .Select(t => new Pos.Application.Platform.Tenants.DTOs.TenantDto(t.Id, t.Name, t.TaxId.Value, t.Status.ToString(), t.CreatedAtUtc))
+                .ToList();
+
+            return Task.FromResult<(IReadOnlyList<Pos.Application.Platform.Tenants.DTOs.TenantDto>, int)>((dtos, dtos.Count));
+        }
     }
 
     private sealed class FakeUserRepository : IUserRepository

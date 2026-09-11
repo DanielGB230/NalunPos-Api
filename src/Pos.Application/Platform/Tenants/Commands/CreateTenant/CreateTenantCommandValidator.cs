@@ -25,6 +25,14 @@ public class CreateTenantCommandValidator : AbstractValidator<CreateTenantComman
 
         RuleFor(x => x.AdminPassword)
             .NotEmpty()
-            .WithMessage("La contraseña del administrador es requerida.");
+            .WithMessage("La contraseña del administrador es requerida.")
+            .MinimumLength(8)
+            .WithMessage("La contraseña del administrador debe tener al menos 8 caracteres.")
+            .Matches(@"[A-Z]")
+            .WithMessage("La contraseña del administrador debe contener al menos una letra mayúscula.")
+            .Matches(@"[0-9]")
+            .WithMessage("La contraseña del administrador debe contener al menos un número.")
+            .Matches(@"[^a-zA-Z0-9]")
+            .WithMessage("La contraseña del administrador debe contener al menos un carácter especial.");
     }
 }

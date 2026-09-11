@@ -45,6 +45,7 @@ public class JwtTokenGenerator : IJwtTokenGenerator, ITokenGenerator
         if (user.TenantId.HasValue)
         {
             claims.Add(new Claim("tenant_id", user.TenantId.Value.ToString()));
+            claims.Add(new Claim("tenantId", user.TenantId.Value.ToString()));
         }
 
         var tokenDescriptor = new SecurityTokenDescriptor

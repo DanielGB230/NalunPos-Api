@@ -43,10 +43,20 @@ public sealed partial class SuperAdminSeeder
         {
             if (!string.IsNullOrWhiteSpace(rawPassword))
             {
-                string newHash = _passwordHasher.HashPassword(rawPassword);
-                existingSuperAdmin.UpdatePassword(new PasswordHash(newHash));
-                await _context.SaveChangesAsync(cancellationToken);
-                LogSuperAdminPasswordUpdated(_logger, existingSuperAdmin.Email.Value);
+                // Opción B (Sincronización): Verifica si el secreto rotó.
+                // Solo actualiza la BD si la contraseña en user-secrets ya no coincide con el hash existente.
+                bool matchesCurrentSecret = _passwordHasher.Verify(rawPassword, existingSuperAdmin.PasswordHash);
+                if (!matchesCurrentSecret)
+                {
+                    string newHash = _passwordHasher.HashPassword(rawPassword);
+                    existingSuperAdmin.UpdatePassword(new PasswordHash(newHash));
+                    await _context.SaveChangesAsync(cancellationToken);
+                    LogSuperAdminPasswordUpdated(_logger, existingSuperAdmin.Email.Value);
+                }
+                else
+                {
+                    LogSuperAdminAlreadyExists(_logger);
+                }
             }
             else
             {
