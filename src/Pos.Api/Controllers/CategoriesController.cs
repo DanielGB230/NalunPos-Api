@@ -6,10 +6,13 @@ using Pos.Application.Categories.DTOs;
 using Pos.Application.Categories.Queries;
 using Pos.Application.Common.Models;
 
+using Microsoft.AspNetCore.Authorization;
+
 namespace Pos.Api.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/v1/categories")]
+[Authorize]
 public class CategoriesController : ControllerBase
 {
     private readonly IDispatcher _dispatcher;

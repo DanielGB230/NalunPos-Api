@@ -30,7 +30,7 @@ public class CategoryConfiguration : IEntityTypeConfiguration<Category>
 
         builder.Property(c => c.UpdatedAtUtc);
 
-        builder.HasIndex(c => c.Name)
+        builder.HasIndex(c => new { c.TenantId, c.Name })
             .IsUnique();
     }
 }

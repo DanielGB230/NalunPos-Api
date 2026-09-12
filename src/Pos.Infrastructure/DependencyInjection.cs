@@ -46,6 +46,7 @@ public static class DependencyInjection
         {
             var auditInterceptor = provider.GetRequiredService<AuditSaveChangesInterceptor>();
             var outboxInterceptor = provider.GetRequiredService<InsertOutboxMessagesInterceptor>();
+            var tenantInterceptor = provider.GetRequiredService<TenantSaveChangesInterceptor>();
 
             if (!string.IsNullOrWhiteSpace(connectionString))
             {
@@ -61,7 +62,7 @@ public static class DependencyInjection
                 options.UseInMemoryDatabase("NalunPosDb_Test");
             }
 
-            options.AddInterceptors(auditInterceptor, outboxInterceptor);
+            options.AddInterceptors(auditInterceptor, outboxInterceptor, tenantInterceptor);
         });
 
         // Factory override para inyectar el currentTenantId en cada instancia de PosDbContext.
@@ -72,12 +73,13 @@ public static class DependencyInjection
             var options = provider.GetRequiredService<DbContextOptions<PosDbContext>>();
             var auditInterceptor = provider.GetRequiredService<AuditSaveChangesInterceptor>();
             var outboxInterceptor = provider.GetRequiredService<InsertOutboxMessagesInterceptor>();
+            var tenantInterceptor = provider.GetRequiredService<TenantSaveChangesInterceptor>();
             var tenantContext = provider.GetService<ICurrentTenantContext>();
 
             // Extracción del TenantId: desacopla PosDbContext de la infraestructura HTTP
             Guid? currentTenantId = tenantContext?.TenantId;
 
-            return new PosDbContext(options, auditInterceptor, outboxInterceptor, currentTenantId);
+            return new PosDbContext(options, auditInterceptor, outboxInterceptor, tenantInterceptor, currentTenantId);
         });
 
         // ── Repositorios y UnitOfWork ─────────────────────────────────────────

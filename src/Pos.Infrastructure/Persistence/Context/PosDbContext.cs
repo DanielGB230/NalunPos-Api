@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Pos.Domain.Common;
 using Pos.Domain.Entities;
 using Pos.Domain.Interfaces;
+using Pos.Infrastructure.Multitenancy;
 using Pos.Infrastructure.Persistence.Interceptors;
 using Pos.Infrastructure.Persistence.Outbox;
 
@@ -25,6 +26,7 @@ public class PosDbContext : DbContext, IUnitOfWork
     // ── Interceptores (Scoped, resueltos por request) ─────────────────────────
     private readonly AuditSaveChangesInterceptor? _auditInterceptor;
     private readonly InsertOutboxMessagesInterceptor? _outboxInterceptor;
+    private readonly TenantSaveChangesInterceptor? _tenantInterceptor;
 
     // ── Estado multi-tenant capturado en construcción ─────────────────────────
     /// <summary>
@@ -39,10 +41,12 @@ public class PosDbContext : DbContext, IUnitOfWork
         DbContextOptions<PosDbContext> options,
         AuditSaveChangesInterceptor? auditInterceptor = null,
         InsertOutboxMessagesInterceptor? outboxInterceptor = null,
+        TenantSaveChangesInterceptor? tenantInterceptor = null,
         Guid? currentTenantId = null) : base(options)
     {
         _auditInterceptor = auditInterceptor;
         _outboxInterceptor = outboxInterceptor;
+        _tenantInterceptor = tenantInterceptor;
         _currentTenantId = currentTenantId;
     }
 
@@ -79,6 +83,9 @@ public class PosDbContext : DbContext, IUnitOfWork
 
         if (_outboxInterceptor is not null)
             optionsBuilder.AddInterceptors(_outboxInterceptor);
+
+        if (_tenantInterceptor is not null)
+            optionsBuilder.AddInterceptors(_tenantInterceptor);
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

@@ -1295,11 +1295,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "d:\\NalunPosApp\\NalunPos-Api\\tests\\Pos.Application.Tests\\Pos.Application.Tests.csproj",
+      "projectUniqueName": "D:\\NalunPosApp\\NalunPos-Api\\tests\\Pos.Application.Tests\\Pos.Application.Tests.csproj",
       "projectName": "Pos.Application.Tests",
-      "projectPath": "d:\\NalunPosApp\\NalunPos-Api\\tests\\Pos.Application.Tests\\Pos.Application.Tests.csproj",
+      "projectPath": "D:\\NalunPosApp\\NalunPos-Api\\tests\\Pos.Application.Tests\\Pos.Application.Tests.csproj",
       "packagesPath": "C:\\Users\\Dani\\.nuget\\packages\\",
-      "outputPath": "d:\\NalunPosApp\\NalunPos-Api\\tests\\Pos.Application.Tests\\obj\\",
+      "outputPath": "D:\\NalunPosApp\\NalunPos-Api\\tests\\Pos.Application.Tests\\obj\\",
       "projectStyle": "PackageReference",
       "centralPackageVersionsManagementEnabled": true,
       "fallbackFolders": [
@@ -1321,8 +1321,8 @@
         "net10.0": {
           "targetAlias": "net10.0",
           "projectReferences": {
-            "d:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Application\\Pos.Application.csproj": {
-              "projectPath": "d:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Application\\Pos.Application.csproj"
+            "D:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Application\\Pos.Application.csproj": {
+              "projectPath": "D:\\NalunPosApp\\NalunPos-Api\\src\\Pos.Application\\Pos.Application.csproj"
             }
           }
         }

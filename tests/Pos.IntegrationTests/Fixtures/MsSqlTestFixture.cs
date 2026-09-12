@@ -80,7 +80,14 @@ public class MsSqlTestFixture : IAsyncLifetime, IDisposable
         using var dbContext = CreateDbContext();
         
         // Recreación atómica y limpia de la base de datos dedicada NalunPosDb_IntegrationTests
-        await dbContext.Database.EnsureDeletedAsync();
+        try
+        {
+            await dbContext.Database.EnsureDeletedAsync();
+        }
+        catch
+        {
+            // Ignorar si la base de datos de pruebas no existía previamente
+        }
         await dbContext.Database.EnsureCreatedAsync();
 
         Console.ForegroundColor = ConsoleColor.Green;
@@ -134,6 +141,10 @@ public class MsSqlTestFixture : IAsyncLifetime, IDisposable
         });
 
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<PosDbContext>());
+
+        services.AddScoped<ITenantRepository, TenantRepository>();
+        services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IPasswordHasher, Pos.Infrastructure.Authentication.PasswordHasher>();
 
         services.AddScoped<IProductRepository, ProductRepository>();
         services.AddScoped<ICategoryRepository, CategoryRepository>();

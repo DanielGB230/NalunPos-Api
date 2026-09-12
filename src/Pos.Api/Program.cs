@@ -44,6 +44,24 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
+// Configuración de CORS para Frontend Apps (NalunPos-Web & NalunPos-Admin-Web)
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        policy.WithOrigins(
+                  "http://localhost:4200",
+                  "http://localhost:4201",
+                  "https://localhost:4200",
+                  "https://localhost:4201"
+              )
+              .SetIsOriginAllowed(_ => true) // Permite desarrollos locales en cualquier puerto
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
+});
+
 // Configuración de Controladores con serialización de Enums como cadenas (JsonStringEnumConverter)
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
@@ -121,7 +139,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseCors("AllowFrontend");
 app.UseAuthentication();
+app.UseMiddleware<TenantResolutionMiddleware>();
 app.UseAuthorization();
 app.MapControllers();
 

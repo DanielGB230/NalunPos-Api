@@ -20,10 +20,22 @@ public class CurrentTenantContext : ICurrentTenantContext
         get
         {
             var httpContext = _httpContextAccessor.HttpContext;
-            if (httpContext?.Items.TryGetValue("TenantId", out var tenantIdObj) == true &&
+            if (httpContext == null) return null;
+
+            if (httpContext.Items.TryGetValue("TenantId", out var tenantIdObj) == true &&
                 tenantIdObj is Guid tenantId)
             {
                 return tenantId;
+            }
+
+            var tenantClaim = httpContext.User.FindFirst(c =>
+                c.Type.Equals("tenantId", StringComparison.OrdinalIgnoreCase) ||
+                c.Type.Equals("tenant_id", StringComparison.OrdinalIgnoreCase) ||
+                c.Type.Equals("tid", StringComparison.OrdinalIgnoreCase))?.Value;
+
+            if (!string.IsNullOrWhiteSpace(tenantClaim) && Guid.TryParse(tenantClaim, out var claimTenantId))
+            {
+                return claimTenantId;
             }
 
             return null;

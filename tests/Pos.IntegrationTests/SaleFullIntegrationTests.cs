@@ -16,7 +16,8 @@ using Xunit;
 
 namespace Pos.IntegrationTests;
 
-public class SaleFullIntegrationTests : IClassFixture<MsSqlTestFixture>
+[Collection("IntegrationTests")]
+public class SaleFullIntegrationTests
 {
     private readonly MsSqlTestFixture _fixture;
 

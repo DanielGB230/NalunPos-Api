@@ -20,8 +20,10 @@ public class TenantResolutionMiddleware
     {
         if (context.User.Identity?.IsAuthenticated == true)
         {
-            var tenantIdClaim = context.User.FindFirst("tid")?.Value
-                                ?? context.User.FindFirst("TenantId")?.Value;
+            var tenantIdClaim = context.User.FindFirst(c =>
+                c.Type.Equals("tenantId", StringComparison.OrdinalIgnoreCase) ||
+                c.Type.Equals("tenant_id", StringComparison.OrdinalIgnoreCase) ||
+                c.Type.Equals("tid", StringComparison.OrdinalIgnoreCase))?.Value;
 
             if (Guid.TryParse(tenantIdClaim, out var tenantId))
             {
