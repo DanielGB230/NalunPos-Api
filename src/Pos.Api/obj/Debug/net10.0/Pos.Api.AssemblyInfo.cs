@@ -15,7 +15,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyCopyrightAttribute("Copyright © NalunPos 2026")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+cb2c7d3a2958acf8ad3168726ee10bee66275e45")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+d4a0316e26ca6a1b33240376b0e8867ca873b927")]
 [assembly: System.Reflection.AssemblyProductAttribute("Pos")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Pos.Api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
