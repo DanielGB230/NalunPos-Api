@@ -18,6 +18,11 @@ public class InventoryMovementConfiguration : IEntityTypeConfiguration<Inventory
         builder.Property(m => m.ProductId)
             .IsRequired();
 
+        builder.Property(m => m.WarehouseId)
+            .IsRequired();
+
+        builder.Property(m => m.ContainerId);
+
         builder.Property(m => m.Quantity)
             .HasColumnType("decimal(18,4)")
             .IsRequired();
@@ -31,16 +36,29 @@ public class InventoryMovementConfiguration : IEntityTypeConfiguration<Inventory
         builder.Property(m => m.Notes)
             .HasMaxLength(500);
 
+        builder.Property(m => m.BatchNumber)
+            .HasMaxLength(100);
+
+        builder.Property(m => m.ExpirationDate);
+
+        builder.Property(m => m.OccurredAtUtc)
+            .IsRequired();
+
         builder.Property(m => m.CreatedAtUtc)
             .IsRequired();
 
-        builder.HasIndex(m => m.ProductId);
-        builder.HasIndex(m => m.CreatedAtUtc);
+        builder.HasIndex(m => new { m.ProductId, m.WarehouseId });
+        builder.HasIndex(m => m.MovementType);
+        builder.HasIndex(m => m.OccurredAtUtc);
 
-        // Relación implícita con Product para integridad referencial en BD
         builder.HasOne<Product>()
             .WithMany()
             .HasForeignKey(m => m.ProductId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne<Warehouse>()
+            .WithMany()
+            .HasForeignKey(m => m.WarehouseId)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }

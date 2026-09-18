@@ -14,17 +14,23 @@ public class CreateTenantCommandHandler : ICommandHandler<CreateTenantCommand, R
 {
     private readonly ITenantRepository _tenantRepository;
     private readonly IUserRepository _userRepository;
+    private readonly IBranchRepository _branchRepository;
+    private readonly IWarehouseRepository _warehouseRepository;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IUnitOfWork _unitOfWork;
 
     public CreateTenantCommandHandler(
         ITenantRepository tenantRepository,
         IUserRepository userRepository,
+        IBranchRepository branchRepository,
+        IWarehouseRepository warehouseRepository,
         IPasswordHasher passwordHasher,
         IUnitOfWork unitOfWork)
     {
         _tenantRepository = tenantRepository ?? throw new ArgumentNullException(nameof(tenantRepository));
         _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
+        _branchRepository = branchRepository ?? throw new ArgumentNullException(nameof(branchRepository));
+        _warehouseRepository = warehouseRepository ?? throw new ArgumentNullException(nameof(warehouseRepository));
         _passwordHasher = passwordHasher ?? throw new ArgumentNullException(nameof(passwordHasher));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
     }
@@ -51,6 +57,9 @@ public class CreateTenantCommandHandler : ICommandHandler<CreateTenantCommand, R
 
         Tenant tenant;
         User adminUser;
+        Branch defaultBranch;
+        Warehouse defaultWarehouse;
+
         try
         {
             tenant = Tenant.Create(command.Name, command.DocumentNumber);
@@ -63,6 +72,16 @@ public class CreateTenantCommandHandler : ICommandHandler<CreateTenantCommand, R
                 tenant.Id,
                 firstName: command.Name,
                 lastName: "Admin");
+
+            // Auto-generar Sucursal y Almacén por defecto para el tenant
+            var address = Pos.Domain.ValueObjects.Address.Create("Principal", "Central", "Central", "00000");
+            defaultBranch = Branch.Create(tenant.Id, $"{command.Name} - Principal", address);
+            defaultWarehouse = Warehouse.Create(
+                tenant.Id,
+                defaultBranch.Id,
+                "Almacén Principal",
+                "Almacén principal predeterminado del negocio",
+                isDefault: true);
         }
         catch (DomainException ex)
         {
@@ -71,6 +90,9 @@ public class CreateTenantCommandHandler : ICommandHandler<CreateTenantCommand, R
 
         await _tenantRepository.AddAsync(tenant, cancellationToken);
         await _userRepository.AddAsync(adminUser, cancellationToken);
+        await _branchRepository.AddAsync(defaultBranch, cancellationToken);
+        await _warehouseRepository.AddAsync(defaultWarehouse, cancellationToken);
+
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result.Ok(tenant.Id);

@@ -29,7 +29,7 @@ public record ProductDto(
             product.Price.Amount,
             product.Price.Currency,
             product.Cost?.Amount,
-            product.StockQuantity,
+            0,
             product.CategoryId,
             product.IsActive,
             product.CreatedAtUtc,

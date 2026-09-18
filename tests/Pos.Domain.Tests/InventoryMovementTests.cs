@@ -12,14 +12,22 @@ public class InventoryMovementTests
     {
         // Arrange
         Guid productId = Guid.NewGuid();
+        Guid warehouseId = Guid.NewGuid();
         decimal quantity = 50m;
 
         // Act
-        var movement = InventoryMovement.Record(productId, quantity, InventoryMovementType.Purchase, null, "Compra lote inicial");
+        var movement = InventoryMovement.Record(
+            productId,
+            warehouseId,
+            quantity,
+            InventoryMovementType.Purchase,
+            referenceId: null,
+            notes: "Compra lote inicial");
 
         // Assert
         Assert.NotEqual(Guid.Empty, movement.Id);
         Assert.Equal(productId, movement.ProductId);
+        Assert.Equal(warehouseId, movement.WarehouseId);
         Assert.Equal(quantity, movement.Quantity);
         Assert.Equal(InventoryMovementType.Purchase, movement.MovementType);
         Assert.Equal("Compra lote inicial", movement.Notes);
@@ -31,6 +39,10 @@ public class InventoryMovementTests
     {
         // Arrange & Act & Assert
         Assert.Throws<DomainException>(() =>
-            InventoryMovement.Record(Guid.NewGuid(), 0m, InventoryMovementType.Adjustment));
+            InventoryMovement.Record(
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                0m,
+                InventoryMovementType.Adjustment));
     }
 }

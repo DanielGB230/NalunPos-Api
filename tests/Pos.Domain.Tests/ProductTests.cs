@@ -51,14 +51,4 @@ public class ProductTests
         Assert.Throws<DomainException>(() =>
             Product.Create("", Sku.Create("SKU-123"), Money.Create(10m, "USD"), Guid.NewGuid()));
     }
-
-    [Fact]
-    public void AdjustStock_WithNegativeStockResult_ShouldThrowDomainException()
-    {
-        // Arrange
-        var product = Product.Create("Monitor", Sku.Create("MON-01"), Money.Create(200m, "USD"), Guid.NewGuid(), initialStock: 5);
-
-        // Act & Assert
-        Assert.Throws<DomainException>(() => product.AdjustStock(-10));
-    }
 }

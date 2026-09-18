@@ -48,11 +48,12 @@ public class InventoryController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetInventoryHistory(
         Guid productId,
+        [FromQuery] Guid? warehouseId = null,
         [FromQuery] int pageNumber = 1,
         [FromQuery] int pageSize = 10,
         CancellationToken cancellationToken = default)
     {
-        var query = new GetInventoryHistoryQuery(productId, pageNumber, pageSize);
+        var query = new GetInventoryHistoryQuery(productId, warehouseId, pageNumber, pageSize);
         var result = await _dispatcher.SendAsync(query, cancellationToken);
         return this.ToActionResult(result);
     }

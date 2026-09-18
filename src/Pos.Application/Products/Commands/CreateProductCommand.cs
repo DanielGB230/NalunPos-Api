@@ -105,8 +105,7 @@ public class CreateProductCommandHandler : ICommandHandler<CreateProductCommand,
                 request.CategoryId,
                 request.Description,
                 barcodeVo,
-                costVo,
-                request.InitialStock);
+                costVo);
         }
         catch (DomainException ex)
         {

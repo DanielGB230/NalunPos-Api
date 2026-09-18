@@ -1,11 +1,8 @@
 namespace Pos.Domain.Enums;
 
-public enum PurchaseStatus
-{
-    Draft = 1,
-    Completed = 2,
-    Cancelled = 3
-}
+// NOTA: PurchaseStatus fue eliminado junto con la entidad Purchase (legacy).
+// El ciclo de vida de órdenes de compra está ahora en PurchaseOrderStatus (InventoryEnums.cs).
+// Ver ADR-Inventory-001.
 
 public enum PaymentMethod
 {

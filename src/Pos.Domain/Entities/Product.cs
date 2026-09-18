@@ -1,5 +1,6 @@
 using Pos.Domain.Common;
 using Pos.Domain.DomainEvents;
+using Pos.Domain.Enums;
 using Pos.Domain.Exceptions;
 using Pos.Domain.ValueObjects;
 
@@ -18,7 +19,7 @@ public class Product : AggregateRoot<Guid>, ITenantOwnedEntity
     public Barcode? Barcode { get; private set; }
     public Money Price { get; private set; } = null!;
     public Money? Cost { get; private set; }
-    public int StockQuantity { get; private set; }
+    public UnitOfMeasure UnitOfMeasure { get; private set; } = UnitOfMeasure.Unit;
     public Guid CategoryId { get; private set; }
     public bool IsActive { get; private set; } = true;
     public DateTime CreatedAtUtc { get; private set; }
@@ -38,7 +39,7 @@ public class Product : AggregateRoot<Guid>, ITenantOwnedEntity
         string? description = null,
         Barcode? barcode = null,
         Money? cost = null,
-        int stockQuantity = 0) : base(id)
+        UnitOfMeasure unitOfMeasure = UnitOfMeasure.Unit) : base(id)
     {
         SetName(name);
         Sku = sku ?? throw new ArgumentNullException(nameof(sku));
@@ -47,7 +48,7 @@ public class Product : AggregateRoot<Guid>, ITenantOwnedEntity
         Description = description?.Trim();
         Barcode = barcode;
         Cost = cost;
-        SetInitialStock(stockQuantity);
+        UnitOfMeasure = unitOfMeasure;
         IsActive = true;
         CreatedAtUtc = DateTime.UtcNow;
 
@@ -69,9 +70,9 @@ public class Product : AggregateRoot<Guid>, ITenantOwnedEntity
         string? description = null,
         Barcode? barcode = null,
         Money? cost = null,
-        int initialStock = 0)
+        UnitOfMeasure unitOfMeasure = UnitOfMeasure.Unit)
     {
-        return new Product(Guid.NewGuid(), name, sku, price, categoryId, description, barcode, cost, initialStock);
+        return new Product(Guid.NewGuid(), name, sku, price, categoryId, description, barcode, cost, unitOfMeasure);
     }
 
     public static Product Create(
@@ -83,9 +84,9 @@ public class Product : AggregateRoot<Guid>, ITenantOwnedEntity
         string? description = null,
         Barcode? barcode = null,
         Money? cost = null,
-        int initialStock = 0)
+        UnitOfMeasure unitOfMeasure = UnitOfMeasure.Unit)
     {
-        return new Product(id, name, sku, price, categoryId, description, barcode, cost, initialStock);
+        return new Product(id, name, sku, price, categoryId, description, barcode, cost, unitOfMeasure);
     }
 
     public void UpdateDetails(string name, string? description, Barcode? barcode)
@@ -136,19 +137,11 @@ public class Product : AggregateRoot<Guid>, ITenantOwnedEntity
         UpdatedAtUtc = DateTime.UtcNow;
     }
 
-    public void AdjustStock(int quantityAdjustment)
+    public void ChangeUnitOfMeasure(UnitOfMeasure unitOfMeasure)
     {
-        int newStock = StockQuantity + quantityAdjustment;
-        if (newStock < 0)
-        {
-            throw new DomainException($"Stock insuficiente. Stock actual: {StockQuantity}, ajuste solicitado: {quantityAdjustment}.");
-        }
-
-        int previousStock = StockQuantity;
-        StockQuantity = newStock;
+        if (UnitOfMeasure == unitOfMeasure) return;
+        UnitOfMeasure = unitOfMeasure;
         UpdatedAtUtc = DateTime.UtcNow;
-
-        RaiseDomainEvent(new ProductStockAdjustedDomainEvent(Id, previousStock, StockQuantity, UpdatedAtUtc.Value));
     }
 
     public void Activate()
@@ -179,14 +172,5 @@ public class Product : AggregateRoot<Guid>, ITenantOwnedEntity
         }
 
         Name = trimmedName;
-    }
-
-    private void SetInitialStock(int stock)
-    {
-        if (stock < 0)
-        {
-            throw new DomainException("El stock inicial no puede ser negativo.");
-        }
-        StockQuantity = stock;
     }
 }

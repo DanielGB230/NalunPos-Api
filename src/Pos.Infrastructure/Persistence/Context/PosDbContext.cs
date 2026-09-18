@@ -61,7 +61,12 @@ public class PosDbContext : DbContext, IUnitOfWork
     public DbSet<CashRegister> CashRegisters => Set<CashRegister>();
     public DbSet<CashRegisterSession> CashRegisterSessions => Set<CashRegisterSession>();
     public DbSet<Sale> Sales => Set<Sale>();
-    public DbSet<Purchase> Purchases => Set<Purchase>();
+    public DbSet<PurchaseOrder> PurchaseOrders => Set<PurchaseOrder>();
+    public DbSet<Warehouse> Warehouses => Set<Warehouse>();
+    public DbSet<Container> Containers => Set<Container>();
+    public DbSet<StockLevel> StockLevels => Set<StockLevel>();
+    public DbSet<StockAdjustment> StockAdjustments => Set<StockAdjustment>();
+    public DbSet<StockTransfer> StockTransfers => Set<StockTransfer>();
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<Invoice> Invoices => Set<Invoice>();
     public DbSet<Role> Roles => Set<Role>();

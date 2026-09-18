@@ -27,9 +27,4 @@ public record ProductUpdatedDomainEvent(
     DateTime OccurredOnUtc
 ) : IDomainEvent;
 
-public record ProductStockAdjustedDomainEvent(
-    Guid ProductId,
-    int PreviousStock,
-    int NewStock,
-    DateTime OccurredOnUtc
-) : IDomainEvent;
+

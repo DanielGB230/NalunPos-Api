@@ -13,13 +13,21 @@ public class CreateTenantCommandHandlerTests
 {
     private readonly FakeTenantRepository _tenantRepository = new();
     private readonly FakeUserRepository _userRepository = new();
+    private readonly FakeBranchRepository _branchRepository = new();
+    private readonly FakeWarehouseRepository _warehouseRepository = new();
     private readonly FakePasswordHasher _passwordHasher = new();
     private readonly FakeUnitOfWork _unitOfWork = new();
     private readonly CreateTenantCommandHandler _handler;
 
     public CreateTenantCommandHandlerTests()
     {
-        _handler = new CreateTenantCommandHandler(_tenantRepository, _userRepository, _passwordHasher, _unitOfWork);
+        _handler = new CreateTenantCommandHandler(
+            _tenantRepository,
+            _userRepository,
+            _branchRepository,
+            _warehouseRepository,
+            _passwordHasher,
+            _unitOfWork);
     }
 
     [Fact]
@@ -206,14 +214,30 @@ public class CreateTenantCommandHandlerTests
         public bool Verify(string password, PasswordHash passwordHash) => passwordHash.Value == $"HASHED_{password}";
     }
 
+    private sealed class FakeBranchRepository : IBranchRepository
+    {
+        public List<Branch> Branches { get; } = [];
+        public Task<Branch?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult(Branches.FirstOrDefault(b => b.Id == id));
+        public Task<IReadOnlyList<Branch>> GetAllAsync(bool? isActiveOnly = null, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<Branch>>(Branches);
+        public Task<bool> ExistsByNameAsync(string name, Guid? excludeId = null, CancellationToken cancellationToken = default) => Task.FromResult(false);
+        public Task AddAsync(Branch branch, CancellationToken cancellationToken = default) { Branches.Add(branch); return Task.CompletedTask; }
+        public void Update(Branch branch) { }
+    }
+
+    private sealed class FakeWarehouseRepository : IWarehouseRepository
+    {
+        public List<Warehouse> Warehouses { get; } = [];
+        public Task AddAsync(Warehouse warehouse, CancellationToken cancellationToken = default) { Warehouses.Add(warehouse); return Task.CompletedTask; }
+        public Task<Warehouse?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult(Warehouses.FirstOrDefault(w => w.Id == id));
+        public Task<Warehouse?> GetDefaultAsync(CancellationToken cancellationToken = default) => Task.FromResult(Warehouses.FirstOrDefault(w => w.IsDefault));
+        public Task<IReadOnlyList<Warehouse>> GetAllAsync(CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<Warehouse>>(Warehouses);
+        public Task<int> CountByTenantAsync(CancellationToken cancellationToken = default) => Task.FromResult(Warehouses.Count);
+        public void Update(Warehouse warehouse) { }
+    }
+
     private sealed class FakeUnitOfWork : IUnitOfWork
     {
         public int SaveChangesCount { get; private set; }
-
-        public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
-        {
-            SaveChangesCount++;
-            return Task.FromResult(1);
-        }
+        public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) { SaveChangesCount++; return Task.FromResult(1); }
     }
 }

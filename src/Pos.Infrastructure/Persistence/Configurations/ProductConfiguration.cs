@@ -69,10 +69,6 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
                 .HasMaxLength(3);
         });
 
-        builder.Property(p => p.StockQuantity)
-            .HasColumnType("decimal(18,4)")
-            .IsRequired();
-
         builder.Property(p => p.CategoryId)
             .IsRequired();
 

@@ -56,6 +56,9 @@ public class CreateSaleCommandHandler : ICommandHandler<CreateSaleCommand, Resul
     private readonly ICustomerRepository _customerRepository;
     private readonly IProductRepository _productRepository;
     private readonly IInventoryRepository _inventoryRepository;
+    private readonly IWarehouseRepository _warehouseRepository;
+    private readonly IStockLevelRepository _stockLevelRepository;
+    private readonly ICurrentTenantContext _tenantContext;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IDispatcher _dispatcher;
 
@@ -65,6 +68,9 @@ public class CreateSaleCommandHandler : ICommandHandler<CreateSaleCommand, Resul
         ICustomerRepository customerRepository,
         IProductRepository productRepository,
         IInventoryRepository inventoryRepository,
+        IWarehouseRepository warehouseRepository,
+        IStockLevelRepository stockLevelRepository,
+        ICurrentTenantContext tenantContext,
         IUnitOfWork unitOfWork,
         IDispatcher dispatcher)
     {
@@ -73,6 +79,9 @@ public class CreateSaleCommandHandler : ICommandHandler<CreateSaleCommand, Resul
         _customerRepository = customerRepository ?? throw new ArgumentNullException(nameof(customerRepository));
         _productRepository = productRepository ?? throw new ArgumentNullException(nameof(productRepository));
         _inventoryRepository = inventoryRepository ?? throw new ArgumentNullException(nameof(inventoryRepository));
+        _warehouseRepository = warehouseRepository ?? throw new ArgumentNullException(nameof(warehouseRepository));
+        _stockLevelRepository = stockLevelRepository ?? throw new ArgumentNullException(nameof(stockLevelRepository));
+        _tenantContext = tenantContext ?? throw new ArgumentNullException(nameof(tenantContext));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
     }
@@ -97,7 +106,22 @@ public class CreateSaleCommandHandler : ICommandHandler<CreateSaleCommand, Resul
                 "La sesión de caja especificada no se encuentra abierta."));
         }
 
-        // 2. Validar cliente si fue especificado
+        // 2. Resolver Almacén para la venta (Almacén por defecto del Tenant)
+        var warehouse = await _warehouseRepository.GetDefaultAsync(cancellationToken);
+        if (warehouse is null)
+        {
+            var warehouses = await _warehouseRepository.GetAllAsync(cancellationToken);
+            warehouse = warehouses.Count > 0 ? warehouses[0] : null;
+        }
+
+        if (warehouse is null)
+        {
+            return Result.Fail<SaleDto>(DomainError.NotFound(
+                "Warehouse.NotFound",
+                "No se encontró un almacén activo o por defecto para procesar la venta."));
+        }
+
+        // 3. Validar cliente si fue especificado
         if (request.CustomerId.HasValue && request.CustomerId.Value != Guid.Empty)
         {
             var customer = await _customerRepository.GetByIdAsync(request.CustomerId.Value, cancellationToken);
@@ -109,7 +133,7 @@ public class CreateSaleCommandHandler : ICommandHandler<CreateSaleCommand, Resul
             }
         }
 
-        // 3. Validar existencia de productos, stock en Kardex y descontar stock de forma síncrona
+        // 4. Validar existencia de productos y disponibilidad en StockLevel
         foreach (var item in request.LineItems)
         {
             var product = await _productRepository.GetByIdAsync(item.ProductId, cancellationToken);
@@ -127,37 +151,18 @@ public class CreateSaleCommandHandler : ICommandHandler<CreateSaleCommand, Resul
                     $"El producto '{product.Name}' está inactivo y no puede ser vendido."));
             }
 
-            decimal currentStock = await _inventoryRepository.GetCurrentStockAsync(product.Id, cancellationToken);
-            if (currentStock < item.Quantity)
+            var stockLevel = await _stockLevelRepository.GetAsync(product.Id, warehouse.Id, null, cancellationToken);
+            decimal available = stockLevel?.QuantityAvailable ?? 0m;
+
+            if (available < item.Quantity)
             {
                 return Result.Fail<SaleDto>(DomainError.Validation(
-                    "Inventory.InsufficientStock",
-                    $"Stock insuficiente para el producto '{product.Name}'. Stock disponible en Kardex: {currentStock}, cantidad solicitada: {item.Quantity}."));
+                    "StockLevel.InsufficientStock",
+                    $"Stock insuficiente para '{product.Name}' en almacén '{warehouse.Name}'. Disponible: {available}, solicitado: {item.Quantity}."));
             }
-
-            // Descontar stock del Agregado Product
-            try
-            {
-                product.AdjustStock(-(int)item.Quantity);
-            }
-            catch (DomainException ex)
-            {
-                return Result.Fail<SaleDto>(DomainError.Validation("Inventory.Invalid", ex.Message));
-            }
-
-            // Registrar movimiento de Kardex síncronamente
-            var movement = InventoryMovement.Record(
-                product.Id,
-                -item.Quantity,
-                InventoryMovementType.Sale,
-                notes: $"Salida por Venta N° {request.ReceiptNumber}"
-            );
-
-            await _inventoryRepository.AddMovementAsync(movement, cancellationToken);
-            _productRepository.Update(product);
         }
 
-        // 4. Crear la entidad Venta
+        // 5. Crear la entidad Venta
         Sale sale;
         try
         {
@@ -183,10 +188,28 @@ public class CreateSaleCommandHandler : ICommandHandler<CreateSaleCommand, Resul
 
         await _saleRepository.AddAsync(sale, cancellationToken);
 
-        // 5. UNICO COMMIT ATÓMICO: Persistir Venta, Movimientos de Inventario y Actualización de Stock en una sola transacción
+        // 6. Descontar StockLevel y registrar Kardex (ADR-Inventory-001) por cada producto
+        foreach (var item in request.LineItems)
+        {
+            var stockLevel = await _stockLevelRepository.GetAsync(item.ProductId, warehouse.Id, null, cancellationToken);
+            stockLevel!.Decrement(item.Quantity);
+            _stockLevelRepository.Update(stockLevel);
+
+            var movement = InventoryMovement.Record(
+                productId: item.ProductId,
+                warehouseId: warehouse.Id,
+                quantity: -item.Quantity,
+                movementType: InventoryMovementType.Sale,
+                referenceId: sale.Id,
+                notes: $"Venta N° {request.ReceiptNumber}");
+
+            await _inventoryRepository.AddMovementAsync(movement, cancellationToken);
+        }
+
+        // 7. UNICO COMMIT ATÓMICO: Persistir Venta, StockLevels e InventoryMovements en una sola transacción
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        // Despachar eventos de dominio acumulados (para efectos secundarios no bloqueantes)
+        // Despachar eventos de dominio acumulados
         foreach (var domainEvent in sale.DomainEvents)
         {
             await _dispatcher.PublishAsync(domainEvent, cancellationToken);

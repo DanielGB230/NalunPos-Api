@@ -23,7 +23,7 @@ public class OpenCashRegisterSessionCommandHandlerTests
     public async Task HandleAsync_WithClosedRegister_ShouldOpenSessionAndReturnSuccess()
     {
         // Arrange
-        var register = CashRegister.Create("Caja Principal 01", Guid.NewGuid(), "POS-001");
+        var register = CashRegister.Create(Guid.NewGuid(), Guid.NewGuid(), "Caja Principal 01", "POS-001");
         _registerRepository.Registers.Add(register);
 
         var command = new OpenCashRegisterSessionCommand(
@@ -49,7 +49,7 @@ public class OpenCashRegisterSessionCommandHandlerTests
     public async Task HandleAsync_WithAlreadyOpenSessionInRegister_ShouldReturnConflictResult()
     {
         // Arrange
-        var register = CashRegister.Create("Caja Secundaria 02", Guid.NewGuid(), "POS-002");
+        var register = CashRegister.Create(Guid.NewGuid(), Guid.NewGuid(), "Caja Secundaria 02", "POS-002");
         _registerRepository.Registers.Add(register);
 
         var activeSession = CashRegisterSession.Open(register.Id, Guid.NewGuid(), Money.Create(100m, "USD"), "Apertura previa");

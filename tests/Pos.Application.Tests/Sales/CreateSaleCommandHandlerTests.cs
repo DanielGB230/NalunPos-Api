@@ -17,6 +17,9 @@ public class CreateSaleCommandHandlerTests
     private readonly FakeCustomerRepository _customerRepository = new();
     private readonly FakeProductRepository _productRepository = new();
     private readonly FakeInventoryRepository _inventoryRepository = new();
+    private readonly FakeWarehouseRepository _warehouseRepository = new();
+    private readonly FakeStockLevelRepository _stockLevelRepository = new();
+    private readonly FakeTenantContext _tenantContext = new();
     private readonly FakeUnitOfWork _unitOfWork = new();
     private readonly FakeDispatcher _dispatcher = new();
     private readonly CreateSaleCommandHandler _handler;
@@ -29,6 +32,9 @@ public class CreateSaleCommandHandlerTests
             _customerRepository,
             _productRepository,
             _inventoryRepository,
+            _warehouseRepository,
+            _stockLevelRepository,
+            _tenantContext,
             _unitOfWork,
             _dispatcher);
     }
@@ -37,6 +43,12 @@ public class CreateSaleCommandHandlerTests
     public async Task HandleAsync_WithOpenSessionAndValidLineItems_ShouldCreateSaleAndReturnSuccessResult()
     {
         // Arrange
+        Guid tenantId = Guid.NewGuid();
+        _tenantContext.TenantId = tenantId;
+
+        var warehouse = Warehouse.Create(tenantId, Guid.NewGuid(), "Almacén Principal", isDefault: true);
+        _warehouseRepository.Warehouses.Add(warehouse);
+
         var session = CashRegisterSession.Open(
             Guid.NewGuid(),
             Guid.NewGuid(),
@@ -48,11 +60,13 @@ public class CreateSaleCommandHandlerTests
             "Producto A",
             Sku.Create("PROD-A-001"),
             Money.Create(50m, "USD"),
-            Guid.NewGuid(),
-            initialStock: 10);
+            Guid.NewGuid());
 
         _productRepository.Products.Add(product);
-        _inventoryRepository.Stocks[product.Id] = 10;
+
+        var stockLevel = StockLevel.Create(tenantId, product.Id, warehouse.Id);
+        stockLevel.Increment(10m);
+        _stockLevelRepository.StockLevels.Add(stockLevel);
 
         var command = new CreateSaleCommand(
             "V-001-0001",
@@ -74,6 +88,7 @@ public class CreateSaleCommandHandlerTests
         Assert.Equal("V-001-0001", result.Value.ReceiptNumber);
         Assert.Equal(118m, result.Value.TotalAmount); // 100 + 18% tax
         Assert.Single(_saleRepository.Sales);
+        Assert.Equal(8m, stockLevel.QuantityAvailable);
         Assert.Equal(1, _unitOfWork.SaveChangesCount);
     }
 
@@ -113,37 +128,16 @@ public class CreateSaleCommandHandlerTests
     private sealed class FakeSaleRepository : ISaleRepository
     {
         public List<Sale> Sales { get; } = [];
-
-        public Task<Sale?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(Sales.FirstOrDefault(s => s.Id == id));
-        }
-
-        public Task<Sale?> GetByReceiptNumberAsync(string receiptNumber, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(Sales.FirstOrDefault(s => s.ReceiptNumber.Equals(receiptNumber, StringComparison.OrdinalIgnoreCase)));
-        }
-
-        public Task AddAsync(Sale sale, CancellationToken cancellationToken = default)
-        {
-            Sales.Add(sale);
-            return Task.CompletedTask;
-        }
-
-        public void Update(Sale sale)
-        {
-        }
-
-        public Task<(IReadOnlyList<Sale> Items, int TotalCount)> GetPagedAsync(int pageNumber, int pageSize, Guid? sessionId, Guid? customerId, DateTime? startDate, DateTime? endDate, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult< (IReadOnlyList<Sale>, int) >((Sales.AsReadOnly(), Sales.Count));
-        }
+        public Task<Sale?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult(Sales.FirstOrDefault(s => s.Id == id));
+        public Task<Sale?> GetByReceiptNumberAsync(string receiptNumber, CancellationToken cancellationToken = default) => Task.FromResult(Sales.FirstOrDefault(s => s.ReceiptNumber.Equals(receiptNumber, StringComparison.OrdinalIgnoreCase)));
+        public Task AddAsync(Sale sale, CancellationToken cancellationToken = default) { Sales.Add(sale); return Task.CompletedTask; }
+        public void Update(Sale sale) { }
+        public Task<(IReadOnlyList<Sale> Items, int TotalCount)> GetPagedAsync(int pageNumber, int pageSize, Guid? sessionId, Guid? customerId, DateTime? startDate, DateTime? endDate, CancellationToken cancellationToken = default) => Task.FromResult< (IReadOnlyList<Sale>, int) >((Sales.AsReadOnly(), Sales.Count));
     }
 
     private sealed class FakeCashRegisterRepository : ICashRegisterRepository
     {
         public List<CashRegisterSession> Sessions { get; } = [];
-
         public Task<CashRegister?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult<CashRegister?>(null);
         public Task<IReadOnlyList<CashRegister>> GetAllAsync(CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<CashRegister>>([]);
         public Task AddAsync(CashRegister register, CancellationToken cancellationToken = default) => Task.CompletedTask;
@@ -180,9 +174,38 @@ public class CreateSaleCommandHandlerTests
     private sealed class FakeInventoryRepository : IInventoryRepository
     {
         public Dictionary<Guid, decimal> Stocks { get; } = new();
-        public Task<decimal> GetCurrentStockAsync(Guid productId, CancellationToken cancellationToken = default) => Task.FromResult(Stocks.TryGetValue(productId, out var stock) ? stock : 0m);
         public Task AddMovementAsync(InventoryMovement movement, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task<(IReadOnlyList<InventoryMovement> Items, int TotalCount)> GetMovementsHistoryPagedAsync(Guid productId, int pageNumber, int pageSize, CancellationToken cancellationToken = default) => Task.FromResult< (IReadOnlyList<InventoryMovement>, int) >(([], 0));
+        public Task<(IReadOnlyList<InventoryMovement> Items, int TotalCount)> GetMovementsPagedAsync(
+            Guid? productId, Guid? warehouseId, InventoryMovementType? movementType, DateTime? dateFrom, DateTime? dateTo, int pageNumber, int pageSize, CancellationToken cancellationToken = default) => Task.FromResult<(IReadOnlyList<InventoryMovement>, int)>(([], 0));
+        public Task<decimal> ReconcileStockFromLedgerAsync(Guid productId, Guid warehouseId, CancellationToken cancellationToken = default) => Task.FromResult(0m);
+    }
+
+    private sealed class FakeWarehouseRepository : IWarehouseRepository
+    {
+        public List<Warehouse> Warehouses { get; } = [];
+        public Task AddAsync(Warehouse warehouse, CancellationToken cancellationToken = default) { Warehouses.Add(warehouse); return Task.CompletedTask; }
+        public Task<Warehouse?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult(Warehouses.FirstOrDefault(w => w.Id == id));
+        public Task<Warehouse?> GetDefaultAsync(CancellationToken cancellationToken = default) => Task.FromResult(Warehouses.FirstOrDefault(w => w.IsDefault));
+        public Task<IReadOnlyList<Warehouse>> GetAllAsync(CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<Warehouse>>(Warehouses);
+        public Task<int> CountByTenantAsync(CancellationToken cancellationToken = default) => Task.FromResult(Warehouses.Count);
+        public void Update(Warehouse warehouse) { }
+    }
+
+    private sealed class FakeStockLevelRepository : IStockLevelRepository
+    {
+        public List<StockLevel> StockLevels { get; } = [];
+        public Task AddAsync(StockLevel stockLevel, CancellationToken cancellationToken = default) { StockLevels.Add(stockLevel); return Task.CompletedTask; }
+        public Task<StockLevel?> GetAsync(Guid productId, Guid warehouseId, Guid? containerId, CancellationToken cancellationToken = default) => Task.FromResult(StockLevels.FirstOrDefault(s => s.ProductId == productId && s.WarehouseId == warehouseId && s.ContainerId == containerId));
+        public Task<IReadOnlyList<StockLevel>> GetByWarehouseAsync(Guid warehouseId, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<StockLevel>>(StockLevels.Where(s => s.WarehouseId == warehouseId).ToList());
+        public Task<IReadOnlyList<StockLevel>> GetBelowThresholdAsync(Guid? warehouseId, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<StockLevel>>(StockLevels.Where(s => s.QuantityAvailable <= s.MinStockThreshold).ToList());
+        public void Update(StockLevel stockLevel) { }
+    }
+
+    private sealed class FakeTenantContext : ICurrentTenantContext
+    {
+        public Guid? TenantId { get; set; }
+        public bool IsSuperAdmin => false;
+        public bool HasTenant => TenantId.HasValue;
     }
 
     private sealed class FakeUnitOfWork : IUnitOfWork

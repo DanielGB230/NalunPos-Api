@@ -8,6 +8,7 @@ namespace Pos.Application.Inventory.Queries;
 
 public record GetInventoryHistoryQuery(
     Guid ProductId,
+    Guid? WarehouseId = null,
     int PageNumber = 1,
     int PageSize = 10
 ) : IQuery<Result<PagedResult<InventoryMovementDto>>>;
@@ -33,8 +34,12 @@ public class GetInventoryHistoryQueryHandler : IQueryHandler<GetInventoryHistory
             return Result.Fail<PagedResult<InventoryMovementDto>>(DomainError.NotFound("Product.NotFound", $"No se encontró el producto con el ID '{request.ProductId}'."));
         }
 
-        var (items, totalCount) = await _inventoryRepository.GetMovementsHistoryPagedAsync(
+        var (items, totalCount) = await _inventoryRepository.GetMovementsPagedAsync(
             request.ProductId,
+            request.WarehouseId,
+            null,
+            null,
+            null,
             request.PageNumber,
             request.PageSize,
             cancellationToken);

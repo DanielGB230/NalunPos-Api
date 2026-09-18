@@ -1,5 +1,5 @@
-using Pos.Application.Common.Interfaces;
 using FluentValidation;
+using Pos.Application.Common.Interfaces;
 using Pos.Application.Inventory.DTOs;
 using Pos.Domain.Common;
 using Pos.Domain.Entities;
@@ -11,6 +11,7 @@ namespace Pos.Application.Inventory.Commands;
 
 public record RecordInventoryMovementCommand(
     Guid ProductId,
+    Guid? WarehouseId,
     decimal Quantity,
     InventoryMovementType MovementType,
     Guid? ReferenceId = null,
@@ -38,16 +39,25 @@ public class RecordInventoryMovementCommandValidator : AbstractValidator<RecordI
 public class RecordInventoryMovementCommandHandler : ICommandHandler<RecordInventoryMovementCommand, Result<InventoryMovementDto>>
 {
     private readonly IInventoryRepository _inventoryRepository;
+    private readonly IStockLevelRepository _stockLevelRepository;
+    private readonly IWarehouseRepository _warehouseRepository;
     private readonly IProductRepository _productRepository;
+    private readonly ICurrentTenantContext _tenantContext;
     private readonly IUnitOfWork _unitOfWork;
 
     public RecordInventoryMovementCommandHandler(
         IInventoryRepository inventoryRepository,
+        IStockLevelRepository stockLevelRepository,
+        IWarehouseRepository warehouseRepository,
         IProductRepository productRepository,
+        ICurrentTenantContext tenantContext,
         IUnitOfWork unitOfWork)
     {
         _inventoryRepository = inventoryRepository ?? throw new ArgumentNullException(nameof(inventoryRepository));
+        _stockLevelRepository = stockLevelRepository ?? throw new ArgumentNullException(nameof(stockLevelRepository));
+        _warehouseRepository = warehouseRepository ?? throw new ArgumentNullException(nameof(warehouseRepository));
         _productRepository = productRepository ?? throw new ArgumentNullException(nameof(productRepository));
+        _tenantContext = tenantContext ?? throw new ArgumentNullException(nameof(tenantContext));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
     }
 
@@ -63,30 +73,70 @@ public class RecordInventoryMovementCommandHandler : ICommandHandler<RecordInven
                 $"No se encontró el producto con ID '{request.ProductId}'."));
         }
 
-        // Si es una salida, verificar stock suficiente en Kardex
+        Guid warehouseId = request.WarehouseId ?? Guid.Empty;
+        if (warehouseId == Guid.Empty)
+        {
+            var defaultWarehouse = await _warehouseRepository.GetDefaultAsync(cancellationToken);
+            warehouseId = defaultWarehouse?.Id ?? Guid.Empty;
+        }
+
+        if (warehouseId == Guid.Empty)
+        {
+            return Result.Fail<InventoryMovementDto>(DomainError.NotFound(
+                "Warehouse.NotFound",
+                "No se encontró un almacén activo o por defecto para registrar el movimiento."));
+        }
+
+        var warehouse = await _warehouseRepository.GetByIdAsync(warehouseId, cancellationToken);
+
+        Guid tenantId = (_tenantContext.TenantId.HasValue && _tenantContext.TenantId.Value != Guid.Empty)
+            ? _tenantContext.TenantId.Value
+            : (warehouse?.TenantId ?? product.TenantId);
+
+        if (tenantId == Guid.Empty)
+            tenantId = Guid.NewGuid();
+
+        var stockLevel = await _stockLevelRepository.GetAsync(product.Id, warehouseId, null, cancellationToken);
+
+        // Si es una salida, verificar stock suficiente en StockLevel
         if (request.Quantity < 0)
         {
-            decimal currentStock = await _inventoryRepository.GetCurrentStockAsync(request.ProductId, cancellationToken);
-            if (currentStock + request.Quantity < 0)
+            decimal available = stockLevel?.QuantityAvailable ?? 0m;
+            if (available < Math.Abs(request.Quantity))
             {
                 return Result.Fail<InventoryMovementDto>(DomainError.Validation(
-                    "Inventory.InsufficientStock",
-                    $"Stock Kardex insuficiente para el producto '{product.Name}'. Stock actual: {currentStock}, ajuste solicitado: {request.Quantity}."));
+                    "StockLevel.InsufficientStock",
+                    $"Stock insuficiente para '{product.Name}'. Disponible: {available}, solicitado: {request.Quantity}."));
             }
+        }
+
+        bool isNew = stockLevel is null;
+        if (isNew)
+        {
+            stockLevel = StockLevel.Create(tenantId, product.Id, warehouseId);
+            await _stockLevelRepository.AddAsync(stockLevel, cancellationToken);
         }
 
         InventoryMovement movement;
         try
         {
-            movement = InventoryMovement.Record(
-                request.ProductId,
-                request.Quantity,
-                request.MovementType,
-                request.ReferenceId,
-                request.Notes);
+            if (request.Quantity > 0)
+                stockLevel!.Increment(request.Quantity);
+            else
+                stockLevel!.Decrement(Math.Abs(request.Quantity));
 
-            // Actualiza la proyección del Agregado de Producto
-            product.AdjustStock((int)request.Quantity);
+            if (!isNew)
+            {
+                _stockLevelRepository.Update(stockLevel!);
+            }
+
+            movement = InventoryMovement.Record(
+                productId: request.ProductId,
+                warehouseId: warehouseId,
+                quantity: request.Quantity,
+                movementType: request.MovementType,
+                referenceId: request.ReferenceId,
+                notes: request.Notes);
         }
         catch (DomainException ex)
         {
@@ -94,8 +144,6 @@ public class RecordInventoryMovementCommandHandler : ICommandHandler<RecordInven
         }
 
         await _inventoryRepository.AddMovementAsync(movement, cancellationToken);
-        _productRepository.Update(product);
-
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result.Ok(InventoryMovementDto.FromEntity(movement));

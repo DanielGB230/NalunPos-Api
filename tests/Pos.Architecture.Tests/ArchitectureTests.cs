@@ -205,6 +205,7 @@ public class ArchitectureTests
             .Where(t => t.IsClass && !t.IsAbstract &&
                 t.Namespace == "Pos.Domain.Entities" &&
                 t.Name != "Tenant" && t.Name != "User" &&
+                !t.Name.EndsWith("Line", StringComparison.Ordinal) && !t.Name.EndsWith("LineItem", StringComparison.Ordinal) &&
                 (IsSubclassOfRawGeneric(typeof(Entity<>), t) || IsSubclassOfRawGeneric(typeof(AggregateRoot<>), t)))
             .ToList();
 

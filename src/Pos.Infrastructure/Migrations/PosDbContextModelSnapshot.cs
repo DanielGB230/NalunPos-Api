@@ -190,6 +190,9 @@ namespace Pos.Infrastructure.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("datetime2");
 
@@ -305,6 +308,42 @@ namespace Pos.Infrastructure.Migrations
                     b.ToTable("Categories", (string)null);
                 });
 
+            modelBuilder.Entity("Pos.Domain.Entities.Container", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<Guid?>("ParentContainerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("WarehouseId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ParentContainerId");
+
+                    b.HasIndex("WarehouseId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("Containers", (string)null);
+                });
+
             modelBuilder.Entity("Pos.Domain.Entities.Customer", b =>
                 {
                     b.Property<Guid>("Id")
@@ -364,7 +403,17 @@ namespace Pos.Infrastructure.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("BatchNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<Guid?>("ContainerId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ExpirationDate")
                         .HasColumnType("datetime2");
 
                     b.Property<int>("MovementType")
@@ -373,6 +422,9 @@ namespace Pos.Infrastructure.Migrations
                     b.Property<string>("Notes")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime>("OccurredAtUtc")
+                        .HasColumnType("datetime2");
 
                     b.Property<Guid>("ProductId")
                         .HasColumnType("uniqueidentifier");
@@ -386,11 +438,18 @@ namespace Pos.Infrastructure.Migrations
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid>("WarehouseId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("CreatedAtUtc");
+                    b.HasIndex("MovementType");
 
-                    b.HasIndex("ProductId");
+                    b.HasIndex("OccurredAtUtc");
+
+                    b.HasIndex("WarehouseId");
+
+                    b.HasIndex("ProductId", "WarehouseId");
 
                     b.ToTable("InventoryMovements", (string)null);
                 });
@@ -579,11 +638,11 @@ namespace Pos.Infrastructure.Migrations
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
 
-                    b.Property<decimal>("StockQuantity")
-                        .HasColumnType("decimal(18,4)");
-
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("UnitOfMeasure")
+                        .HasColumnType("int");
 
                     b.Property<DateTime?>("UpdatedAtUtc")
                         .HasColumnType("datetime2");
@@ -621,13 +680,18 @@ namespace Pos.Infrastructure.Migrations
                     b.ToTable("Products", (string)null);
                 });
 
-            modelBuilder.Entity("Pos.Domain.Entities.Purchase", b =>
+            modelBuilder.Entity("Pos.Domain.Entities.PurchaseOrder", b =>
                 {
                     b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
 
                     b.Property<string>("OrderNumber")
                         .IsRequired()
@@ -643,29 +707,22 @@ namespace Pos.Infrastructure.Migrations
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.ComplexProperty(typeof(Dictionary<string, object>), "TotalAmount", "Pos.Domain.Entities.Purchase.TotalAmount#Money", b1 =>
-                        {
-                            b1.IsRequired();
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
 
-                            b1.Property<decimal>("Amount")
-                                .HasColumnType("decimal(18,4)")
-                                .HasColumnName("TotalAmount");
-
-                            b1.Property<string>("Currency")
-                                .IsRequired()
-                                .HasMaxLength(3)
-                                .HasColumnType("nvarchar(3)")
-                                .HasColumnName("TotalCurrency");
-                        });
+                    b.Property<Guid>("WarehouseId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("OrderNumber")
-                        .IsUnique();
-
                     b.HasIndex("SupplierId");
 
-                    b.ToTable("Purchases", (string)null);
+                    b.HasIndex("WarehouseId");
+
+                    b.HasIndex("TenantId", "OrderNumber")
+                        .IsUnique();
+
+                    b.ToTable("PurchaseOrders", (string)null);
                 });
 
             modelBuilder.Entity("Pos.Domain.Entities.Role", b =>
@@ -778,6 +835,116 @@ namespace Pos.Infrastructure.Migrations
                     b.HasIndex("SessionId");
 
                     b.ToTable("Sales", (string)null);
+                });
+
+            modelBuilder.Entity("Pos.Domain.Entities.StockAdjustment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int>("Reason")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("WarehouseId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WarehouseId");
+
+                    b.ToTable("StockAdjustments", (string)null);
+                });
+
+            modelBuilder.Entity("Pos.Domain.Entities.StockLevel", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("ContainerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("MinStockThreshold")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("QuantityAvailable")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal>("QuantityReserved")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion")
+                        .HasDefaultValue(new byte[] { 0 });
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("WarehouseId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ContainerId");
+
+                    b.HasIndex("WarehouseId");
+
+                    b.HasIndex("ProductId", "WarehouseId", "ContainerId")
+                        .IsUnique()
+                        .HasFilter("[ContainerId] IS NOT NULL");
+
+                    b.ToTable("StockLevels", (string)null);
+                });
+
+            modelBuilder.Entity("Pos.Domain.Entities.StockTransfer", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("DestinationWarehouseId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<Guid>("SourceWarehouseId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DestinationWarehouseId");
+
+                    b.HasIndex("SourceWarehouseId");
+
+                    b.ToTable("StockTransfers", (string)null);
                 });
 
             modelBuilder.Entity("Pos.Domain.Entities.Supplier", b =>
@@ -990,6 +1157,49 @@ namespace Pos.Infrastructure.Migrations
                     b.ToTable("Users", (string)null);
                 });
 
+            modelBuilder.Entity("Pos.Domain.Entities.Warehouse", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDefault")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BranchId");
+
+                    b.HasIndex("TenantId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("Warehouses", (string)null);
+                });
+
             modelBuilder.Entity("Pos.Infrastructure.Persistence.Outbox.OutboxMessage", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1076,6 +1286,20 @@ namespace Pos.Infrastructure.Migrations
                     b.Navigation("ExpectedFinalAmount");
                 });
 
+            modelBuilder.Entity("Pos.Domain.Entities.Container", b =>
+                {
+                    b.HasOne("Pos.Domain.Entities.Container", null)
+                        .WithMany()
+                        .HasForeignKey("ParentContainerId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Pos.Domain.Entities.Warehouse", null)
+                        .WithMany()
+                        .HasForeignKey("WarehouseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Pos.Domain.Entities.Customer", b =>
                 {
                     b.OwnsOne("Pos.Domain.ValueObjects.Address", "Address", b1 =>
@@ -1125,6 +1349,12 @@ namespace Pos.Infrastructure.Migrations
                         .HasForeignKey("ProductId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("Pos.Domain.Entities.Warehouse", null)
+                        .WithMany()
+                        .HasForeignKey("WarehouseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Pos.Domain.Entities.Product", b =>
@@ -1161,93 +1391,86 @@ namespace Pos.Infrastructure.Migrations
                     b.Navigation("Cost");
                 });
 
-            modelBuilder.Entity("Pos.Domain.Entities.Purchase", b =>
+            modelBuilder.Entity("Pos.Domain.Entities.PurchaseOrder", b =>
                 {
-                    b.OwnsMany("Pos.Domain.Entities.PurchaseLineItem", "LineItems", b1 =>
+                    b.HasOne("Pos.Domain.Entities.Supplier", null)
+                        .WithMany()
+                        .HasForeignKey("SupplierId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Pos.Domain.Entities.Warehouse", null)
+                        .WithMany()
+                        .HasForeignKey("WarehouseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.OwnsMany("Pos.Domain.Entities.PurchaseOrderLine", "Lines", b1 =>
                         {
                             b1.Property<Guid>("Id")
+                                .ValueGeneratedOnAdd()
                                 .HasColumnType("uniqueidentifier");
 
                             b1.Property<Guid>("ProductId")
                                 .HasColumnType("uniqueidentifier");
 
-                            b1.Property<string>("ProductName")
-                                .IsRequired()
-                                .HasMaxLength(150)
-                                .HasColumnType("nvarchar(150)");
-
-                            b1.Property<Guid>("PurchaseId")
+                            b1.Property<Guid>("PurchaseOrderId")
                                 .HasColumnType("uniqueidentifier");
 
-                            b1.Property<decimal>("Quantity")
+                            b1.Property<decimal>("QuantityOrdered")
+                                .HasPrecision(18, 4)
                                 .HasColumnType("decimal(18,4)");
 
-                            b1.Property<Guid>("TenantId")
-                                .HasColumnType("uniqueidentifier");
+                            b1.Property<decimal>("QuantityReceived")
+                                .HasPrecision(18, 4)
+                                .HasColumnType("decimal(18,4)");
 
                             b1.HasKey("Id");
 
-                            b1.HasIndex("PurchaseId");
+                            b1.HasIndex("ProductId");
 
-                            b1.ToTable("PurchaseLineItems", (string)null);
+                            b1.HasIndex("PurchaseOrderId");
 
-                            b1.WithOwner()
-                                .HasForeignKey("PurchaseId");
+                            b1.ToTable("PurchaseOrderLines", (string)null);
 
-                            b1.OwnsOne("Pos.Domain.ValueObjects.Money", "SubTotal", b2 =>
-                                {
-                                    b2.Property<Guid>("PurchaseLineItemId")
-                                        .HasColumnType("uniqueidentifier");
-
-                                    b2.Property<decimal>("Amount")
-                                        .HasColumnType("decimal(18,4)")
-                                        .HasColumnName("LineSubTotalAmount");
-
-                                    b2.Property<string>("Currency")
-                                        .IsRequired()
-                                        .HasMaxLength(3)
-                                        .HasColumnType("nvarchar(3)")
-                                        .HasColumnName("LineSubTotalCurrency");
-
-                                    b2.HasKey("PurchaseLineItemId");
-
-                                    b2.ToTable("PurchaseLineItems");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("PurchaseLineItemId");
-                                });
-
-                            b1.OwnsOne("Pos.Domain.ValueObjects.Money", "UnitPrice", b2 =>
-                                {
-                                    b2.Property<Guid>("PurchaseLineItemId")
-                                        .HasColumnType("uniqueidentifier");
-
-                                    b2.Property<decimal>("Amount")
-                                        .HasColumnType("decimal(18,4)")
-                                        .HasColumnName("UnitPriceAmount");
-
-                                    b2.Property<string>("Currency")
-                                        .IsRequired()
-                                        .HasMaxLength(3)
-                                        .HasColumnType("nvarchar(3)")
-                                        .HasColumnName("UnitPriceCurrency");
-
-                                    b2.HasKey("PurchaseLineItemId");
-
-                                    b2.ToTable("PurchaseLineItems");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("PurchaseLineItemId");
-                                });
-
-                            b1.Navigation("SubTotal")
+                            b1.HasOne("Pos.Domain.Entities.Product", null)
+                                .WithMany()
+                                .HasForeignKey("ProductId")
+                                .OnDelete(DeleteBehavior.Restrict)
                                 .IsRequired();
 
-                            b1.Navigation("UnitPrice")
+                            b1.WithOwner()
+                                .HasForeignKey("PurchaseOrderId");
+
+                            b1.OwnsOne("Pos.Domain.ValueObjects.Money", "UnitCost", b2 =>
+                                {
+                                    b2.Property<Guid>("PurchaseOrderLineId")
+                                        .HasColumnType("uniqueidentifier");
+
+                                    b2.Property<decimal>("Amount")
+                                        .HasPrecision(18, 4)
+                                        .HasColumnType("decimal(18,4)")
+                                        .HasColumnName("UnitCostAmount");
+
+                                    b2.Property<string>("Currency")
+                                        .IsRequired()
+                                        .HasMaxLength(3)
+                                        .HasColumnType("nvarchar(3)")
+                                        .HasColumnName("UnitCostCurrency");
+
+                                    b2.HasKey("PurchaseOrderLineId");
+
+                                    b2.ToTable("PurchaseOrderLines");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("PurchaseOrderLineId");
+                                });
+
+                            b1.Navigation("UnitCost")
                                 .IsRequired();
                         });
 
-                    b.Navigation("LineItems");
+                    b.Navigation("Lines");
                 });
 
             modelBuilder.Entity("Pos.Domain.Entities.Sale", b =>
@@ -1337,6 +1560,131 @@ namespace Pos.Infrastructure.Migrations
                         });
 
                     b.Navigation("LineItems");
+                });
+
+            modelBuilder.Entity("Pos.Domain.Entities.StockAdjustment", b =>
+                {
+                    b.HasOne("Pos.Domain.Entities.Warehouse", null)
+                        .WithMany()
+                        .HasForeignKey("WarehouseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.OwnsMany("Pos.Domain.Entities.StockAdjustmentLine", "Lines", b1 =>
+                        {
+                            b1.Property<Guid>("Id")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("uniqueidentifier");
+
+                            b1.Property<Guid>("ProductId")
+                                .HasColumnType("uniqueidentifier");
+
+                            b1.Property<decimal>("Quantity")
+                                .HasPrecision(18, 4)
+                                .HasColumnType("decimal(18,4)");
+
+                            b1.Property<Guid>("StockAdjustmentId")
+                                .HasColumnType("uniqueidentifier");
+
+                            b1.HasKey("Id");
+
+                            b1.HasIndex("ProductId");
+
+                            b1.HasIndex("StockAdjustmentId");
+
+                            b1.ToTable("StockAdjustmentLines", (string)null);
+
+                            b1.HasOne("Pos.Domain.Entities.Product", null)
+                                .WithMany()
+                                .HasForeignKey("ProductId")
+                                .OnDelete(DeleteBehavior.Restrict)
+                                .IsRequired();
+
+                            b1.WithOwner()
+                                .HasForeignKey("StockAdjustmentId");
+                        });
+
+                    b.Navigation("Lines");
+                });
+
+            modelBuilder.Entity("Pos.Domain.Entities.StockLevel", b =>
+                {
+                    b.HasOne("Pos.Domain.Entities.Container", null)
+                        .WithMany()
+                        .HasForeignKey("ContainerId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Pos.Domain.Entities.Product", null)
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Pos.Domain.Entities.Warehouse", null)
+                        .WithMany()
+                        .HasForeignKey("WarehouseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Pos.Domain.Entities.StockTransfer", b =>
+                {
+                    b.HasOne("Pos.Domain.Entities.Warehouse", null)
+                        .WithMany()
+                        .HasForeignKey("DestinationWarehouseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Pos.Domain.Entities.Warehouse", null)
+                        .WithMany()
+                        .HasForeignKey("SourceWarehouseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.OwnsMany("Pos.Domain.Entities.StockTransferLine", "Lines", b1 =>
+                        {
+                            b1.Property<Guid>("Id")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("uniqueidentifier");
+
+                            b1.Property<Guid>("ProductId")
+                                .HasColumnType("uniqueidentifier");
+
+                            b1.Property<decimal>("Quantity")
+                                .HasPrecision(18, 4)
+                                .HasColumnType("decimal(18,4)");
+
+                            b1.Property<Guid>("StockTransferId")
+                                .HasColumnType("uniqueidentifier");
+
+                            b1.HasKey("Id");
+
+                            b1.HasIndex("ProductId");
+
+                            b1.HasIndex("StockTransferId");
+
+                            b1.ToTable("StockTransferLines", (string)null);
+
+                            b1.HasOne("Pos.Domain.Entities.Product", null)
+                                .WithMany()
+                                .HasForeignKey("ProductId")
+                                .OnDelete(DeleteBehavior.Restrict)
+                                .IsRequired();
+
+                            b1.WithOwner()
+                                .HasForeignKey("StockTransferId");
+                        });
+
+                    b.Navigation("Lines");
+                });
+
+            modelBuilder.Entity("Pos.Domain.Entities.Warehouse", b =>
+                {
+                    b.HasOne("Pos.Domain.Entities.Branch", null)
+                        .WithMany()
+                        .HasForeignKey("BranchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 #pragma warning restore 612, 618
         }

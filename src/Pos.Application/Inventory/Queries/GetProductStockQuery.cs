@@ -5,18 +5,21 @@ using Pos.Domain.Interfaces;
 
 namespace Pos.Application.Inventory.Queries;
 
-public record GetProductStockQuery(Guid ProductId) : IQuery<Result<ProductStockDto>>;
+public record GetProductStockQuery(Guid ProductId, Guid? WarehouseId = null) : IQuery<Result<ProductStockDto>>;
 
 public class GetProductStockQueryHandler : IQueryHandler<GetProductStockQuery, Result<ProductStockDto>>
 {
-    private readonly IInventoryRepository _inventoryRepository;
+    private readonly IStockLevelRepository _stockLevelRepository;
+    private readonly IWarehouseRepository _warehouseRepository;
     private readonly IProductRepository _productRepository;
 
     public GetProductStockQueryHandler(
-        IInventoryRepository inventoryRepository,
+        IStockLevelRepository stockLevelRepository,
+        IWarehouseRepository warehouseRepository,
         IProductRepository productRepository)
     {
-        _inventoryRepository = inventoryRepository ?? throw new ArgumentNullException(nameof(inventoryRepository));
+        _stockLevelRepository = stockLevelRepository ?? throw new ArgumentNullException(nameof(stockLevelRepository));
+        _warehouseRepository = warehouseRepository ?? throw new ArgumentNullException(nameof(warehouseRepository));
         _productRepository = productRepository ?? throw new ArgumentNullException(nameof(productRepository));
     }
 
@@ -32,9 +35,20 @@ public class GetProductStockQueryHandler : IQueryHandler<GetProductStockQuery, R
                 $"No se encontró el producto con ID '{request.ProductId}'."));
         }
 
-        // Suma Kardex calculada en base de datos
-        decimal calculatedStock = await _inventoryRepository.GetCurrentStockAsync(request.ProductId, cancellationToken);
+        Guid warehouseId = request.WarehouseId ?? Guid.Empty;
+        if (warehouseId == Guid.Empty)
+        {
+            var defaultWarehouse = await _warehouseRepository.GetDefaultAsync(cancellationToken);
+            warehouseId = defaultWarehouse?.Id ?? Guid.Empty;
+        }
 
-        return Result.Ok(new ProductStockDto(product.Id, product.Name, product.Sku.Value, calculatedStock));
+        decimal availableStock = 0m;
+        if (warehouseId != Guid.Empty)
+        {
+            var stockLevel = await _stockLevelRepository.GetAsync(request.ProductId, warehouseId, null, cancellationToken);
+            availableStock = stockLevel?.QuantityAvailable ?? 0m;
+        }
+
+        return Result.Ok(new ProductStockDto(product.Id, product.Name, product.Sku.Value, availableStock));
     }
 }
