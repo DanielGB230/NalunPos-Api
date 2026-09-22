@@ -9,7 +9,8 @@ public record GetCategoriesQuery(
     int PageNumber = 1,
     int PageSize = 10,
     string? SearchTerm = null,
-    bool? IsActiveOnly = null
+    bool? IsActiveOnly = null,
+    bool IncludeInactive = false
 ) : IQuery<PagedResult<CategoryDto>>;
 
 public class GetCategoriesQueryHandler : IQueryHandler<GetCategoriesQuery, PagedResult<CategoryDto>>
@@ -28,6 +29,7 @@ public class GetCategoriesQueryHandler : IQueryHandler<GetCategoriesQuery, Paged
             request.PageSize,
             request.SearchTerm,
             request.IsActiveOnly,
+            request.IncludeInactive,
             cancellationToken);
 
         var dtos = items.Select(CategoryDto.FromEntity).ToList();

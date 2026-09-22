@@ -10,7 +10,8 @@ public record GetProductsQuery(
     int PageSize = 10,
     string? SearchTerm = null,
     Guid? CategoryId = null,
-    bool? IsActiveOnly = null
+    bool? IsActiveOnly = null,
+    bool IncludeInactive = false
 ) : IQuery<PagedResult<ProductDto>>;
 
 public class GetProductsQueryHandler : IQueryHandler<GetProductsQuery, PagedResult<ProductDto>>
@@ -30,6 +31,7 @@ public class GetProductsQueryHandler : IQueryHandler<GetProductsQuery, PagedResu
             request.SearchTerm,
             request.CategoryId,
             request.IsActiveOnly,
+            request.IncludeInactive,
             cancellationToken);
 
         var dtos = items.Select(ProductDto.FromEntity).ToList();

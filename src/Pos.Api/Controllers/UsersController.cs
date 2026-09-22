@@ -54,7 +54,7 @@ public class UsersController : ControllerBase
         return this.ToActionResult(result);
     }
 
-    [HttpPut("{id:guid}")]
+    [HttpPatch("{id:guid}")]
     [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

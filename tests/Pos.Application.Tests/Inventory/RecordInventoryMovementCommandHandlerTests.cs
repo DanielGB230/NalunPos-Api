@@ -156,7 +156,7 @@ public class RecordInventoryMovementCommandHandlerTests
         public Task AddAsync(Product product, CancellationToken cancellationToken = default) { Products.Add(product); return Task.CompletedTask; }
         public void Update(Product product) { }
         public void Delete(Product product) { Products.Remove(product); }
-        public Task<(IReadOnlyList<Product> Items, int TotalCount)> GetPagedAsync(int pageNumber, int pageSize, string? searchTerm, Guid? categoryId, bool? isActiveOnly, CancellationToken cancellationToken = default) => Task.FromResult< (IReadOnlyList<Product>, int) >((Products, Products.Count));
+        public Task<(IReadOnlyList<Product> Items, int TotalCount)> GetPagedAsync(int pageNumber, int pageSize, string? searchTerm, Guid? categoryId, bool? isActiveOnly, bool includeInactive = false, CancellationToken cancellationToken = default) => Task.FromResult< (IReadOnlyList<Product>, int) >((Products, Products.Count));
     }
 
     private sealed class FakeTenantContext : ICurrentTenantContext

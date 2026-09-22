@@ -5,7 +5,6 @@ using Pos.Application.Categories.Commands;
 using Pos.Application.Categories.DTOs;
 using Pos.Application.Categories.Queries;
 using Pos.Application.Common.Models;
-
 using Microsoft.AspNetCore.Authorization;
 
 namespace Pos.Api.Controllers;
@@ -29,9 +28,10 @@ public class CategoriesController : ControllerBase
         [FromQuery] int pageSize = 10,
         [FromQuery] string? searchTerm = null,
         [FromQuery] bool? isActiveOnly = null,
+        [FromQuery] bool includeInactive = false,
         CancellationToken cancellationToken = default)
     {
-        var query = new GetCategoriesQuery(pageNumber, pageSize, searchTerm, isActiveOnly);
+        var query = new GetCategoriesQuery(pageNumber, pageSize, searchTerm, isActiveOnly, includeInactive);
         var result = await _dispatcher.SendAsync(query, cancellationToken);
         return Ok(result);
     }
@@ -57,7 +57,7 @@ public class CategoriesController : ControllerBase
         return this.ToActionResult(result);
     }
 
-    [HttpPut("{id:guid}")]
+    [HttpPatch("{id:guid}")]
     [ProducesResponseType(typeof(CategoryDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -75,12 +75,13 @@ public class CategoriesController : ControllerBase
         return this.ToActionResult(result);
     }
 
-    [HttpDelete("{id:guid}")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [HttpPatch("{id:guid}/deactivate")]
+    [ProducesResponseType(typeof(bool), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> DeleteCategory(Guid id, CancellationToken cancellationToken)
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> DeactivateCategory(Guid id, CancellationToken cancellationToken)
     {
-        var command = new DeleteCategoryCommand(id);
+        var command = new DeactivateCategoryCommand(id);
         var result = await _dispatcher.SendAsync(command, cancellationToken);
         return this.ToActionResult(result);
     }

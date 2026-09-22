@@ -7,25 +7,25 @@ using Xunit;
 
 namespace Pos.Application.Tests.Categories;
 
-public class DeleteCategoryCommandHandlerTests
+public class DeactivateCategoryCommandHandlerTests
 {
     private readonly FakeCategoryRepository _categoryRepository = new();
     private readonly FakeUnitOfWork _unitOfWork = new();
-    private readonly DeleteCategoryCommandHandler _handler;
+    private readonly DeactivateCategoryCommandHandler _handler;
 
-    public DeleteCategoryCommandHandlerTests()
+    public DeactivateCategoryCommandHandlerTests()
     {
-        _handler = new DeleteCategoryCommandHandler(_categoryRepository, _unitOfWork);
+        _handler = new DeactivateCategoryCommandHandler(_categoryRepository, _unitOfWork);
     }
 
     [Fact]
-    public async Task HandleAsync_WhenCategoryExists_ShouldDeleteCategoryAndReturnSuccess()
+    public async Task HandleAsync_WhenCategoryIsActive_ShouldDeactivateCategoryAndReturnSuccess()
     {
         // Arrange
         var category = Category.Create("Bebidas", "Categoría de bebidas");
         _categoryRepository.Categories.Add(category);
 
-        var command = new DeleteCategoryCommand(category.Id);
+        var command = new DeactivateCategoryCommand(category.Id);
 
         // Act
         var result = await _handler.HandleAsync(command, CancellationToken.None);
@@ -33,15 +33,36 @@ public class DeleteCategoryCommandHandlerTests
         // Assert
         Assert.True(result.IsSuccess);
         Assert.True(result.Value);
-        Assert.Empty(_categoryRepository.Categories);
+        Assert.False(category.IsActive);
+        Assert.Single(_categoryRepository.Categories);
         Assert.Equal(1, _unitOfWork.SaveChangesCount);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenCategoryIsAlreadyInactive_ShouldReturnConflictResult()
+    {
+        // Arrange
+        var category = Category.Create("Bebidas", "Categoría de bebidas");
+        category.Deactivate();
+        _categoryRepository.Categories.Add(category);
+
+        var command = new DeactivateCategoryCommand(category.Id);
+
+        // Act
+        var result = await _handler.HandleAsync(command, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsFailure);
+        Assert.Equal(ErrorType.Conflict, result.Error.Type);
+        Assert.Equal("Category.AlreadyInactive", result.Error.Code);
+        Assert.Equal(0, _unitOfWork.SaveChangesCount);
     }
 
     [Fact]
     public async Task HandleAsync_WhenCategoryDoesNotExist_ShouldReturnNotFoundResult()
     {
         // Arrange
-        var command = new DeleteCategoryCommand(Guid.NewGuid());
+        var command = new DeactivateCategoryCommand(Guid.NewGuid());
 
         // Act
         var result = await _handler.HandleAsync(command, CancellationToken.None);
@@ -64,7 +85,7 @@ public class DeleteCategoryCommandHandlerTests
         public Task AddAsync(Category category, CancellationToken cancellationToken = default) { Categories.Add(category); return Task.CompletedTask; }
         public void Update(Category category) { }
         public void Delete(Category category) => Categories.Remove(category);
-        public Task<(IReadOnlyList<Category> Items, int TotalCount)> GetPagedAsync(int pageNumber, int pageSize, string? searchTerm, bool? isActiveOnly, CancellationToken cancellationToken = default) => Task.FromResult<(IReadOnlyList<Category>, int)>((Categories, Categories.Count));
+        public Task<(IReadOnlyList<Category> Items, int TotalCount)> GetPagedAsync(int pageNumber, int pageSize, string? searchTerm, bool? isActiveOnly, bool includeInactive = false, CancellationToken cancellationToken = default) => Task.FromResult<(IReadOnlyList<Category>, int)>((Categories, Categories.Count));
     }
 
     private sealed class FakeUnitOfWork : IUnitOfWork

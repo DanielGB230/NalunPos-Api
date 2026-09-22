@@ -35,11 +35,14 @@ public class CategoryRepository : ICategoryRepository
         int pageSize,
         string? searchTerm,
         bool? isActiveOnly,
+        bool includeInactive = false,
         CancellationToken cancellationToken = default)
     {
-        var query = _context.Categories.AsNoTracking().AsQueryable();
+        var query = includeInactive
+            ? _context.Categories.IgnoreQueryFilters().AsNoTracking().AsQueryable()
+            : _context.Categories.AsNoTracking().AsQueryable();
 
-        if (isActiveOnly.HasValue)
+        if (!includeInactive && isActiveOnly.HasValue)
         {
             query = query.Where(c => c.IsActive == isActiveOnly.Value);
         }

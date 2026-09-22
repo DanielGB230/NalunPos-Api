@@ -13,6 +13,7 @@ public interface IProductRepository
         string? searchTerm,
         Guid? categoryId,
         bool? isActiveOnly,
+        bool includeInactive = false,
         CancellationToken cancellationToken = default);
     Task<bool> ExistsBySkuAsync(Sku sku, Guid? excludeId = null, CancellationToken cancellationToken = default);
     Task AddAsync(Product product, CancellationToken cancellationToken = default);

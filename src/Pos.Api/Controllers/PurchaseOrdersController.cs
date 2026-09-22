@@ -43,7 +43,7 @@ public class PurchaseOrdersController : ControllerBase
         return this.ToActionResult(result);
     }
 
-    [HttpPut("{id:guid}/send")]
+    [HttpPatch("{id:guid}/send")]
     [ProducesResponseType(typeof(PurchaseOrderDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -54,7 +54,7 @@ public class PurchaseOrdersController : ControllerBase
         return this.ToActionResult(result);
     }
 
-    [HttpPut("{id:guid}/receive")]
+    [HttpPatch("{id:guid}/receive")]
     [ProducesResponseType(typeof(PurchaseOrderDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

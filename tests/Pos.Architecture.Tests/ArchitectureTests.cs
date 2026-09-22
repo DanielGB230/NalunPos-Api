@@ -219,5 +219,29 @@ public class ArchitectureTests
             );
         }
     }
+
+    [Fact]
+    public void Controllers_MustNot_Use_HttpPut_Or_HttpDelete_Attributes()
+    {
+        var apiAssembly = typeof(Program).Assembly;
+        var controllerTypes = apiAssembly.GetTypes()
+            .Where(t => t.IsClass && !t.IsAbstract && typeof(Microsoft.AspNetCore.Mvc.ControllerBase).IsAssignableFrom(t))
+            .ToList();
+
+        Assert.NotEmpty(controllerTypes);
+
+        foreach (var controller in controllerTypes)
+        {
+            var methods = controller.GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.DeclaredOnly);
+            foreach (var method in methods)
+            {
+                var hasHttpPut = method.GetCustomAttributes(typeof(Microsoft.AspNetCore.Mvc.HttpPutAttribute), true).Length > 0;
+                var hasHttpDelete = method.GetCustomAttributes(typeof(Microsoft.AspNetCore.Mvc.HttpDeleteAttribute), true).Length > 0;
+
+                Assert.False(hasHttpPut, $"El método '{method.Name}' en '{controller.Name}' utiliza [HttpPut]. Se debe usar [HttpPatch].");
+                Assert.False(hasHttpDelete, $"El método '{method.Name}' en '{controller.Name}' utiliza [HttpDelete]. Se debe usar [HttpPatch] para soft delete.");
+            }
+        }
+    }
 }
 

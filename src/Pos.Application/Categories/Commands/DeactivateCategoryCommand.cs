@@ -4,20 +4,20 @@ using Pos.Domain.Interfaces;
 
 namespace Pos.Application.Categories.Commands;
 
-public record DeleteCategoryCommand(Guid Id) : ICommand<Result<bool>>;
+public record DeactivateCategoryCommand(Guid Id) : ICommand<Result<bool>>;
 
-public class DeleteCategoryCommandHandler : ICommandHandler<DeleteCategoryCommand, Result<bool>>
+public class DeactivateCategoryCommandHandler : ICommandHandler<DeactivateCategoryCommand, Result<bool>>
 {
     private readonly ICategoryRepository _categoryRepository;
     private readonly IUnitOfWork _unitOfWork;
 
-    public DeleteCategoryCommandHandler(ICategoryRepository categoryRepository, IUnitOfWork unitOfWork)
+    public DeactivateCategoryCommandHandler(ICategoryRepository categoryRepository, IUnitOfWork unitOfWork)
     {
         _categoryRepository = categoryRepository ?? throw new ArgumentNullException(nameof(categoryRepository));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
     }
 
-    public async Task<Result<bool>> HandleAsync(DeleteCategoryCommand request, CancellationToken cancellationToken)
+    public async Task<Result<bool>> HandleAsync(DeactivateCategoryCommand request, CancellationToken cancellationToken)
     {
         var category = await _categoryRepository.GetByIdAsync(request.Id, cancellationToken);
         if (category == null)
@@ -25,7 +25,13 @@ public class DeleteCategoryCommandHandler : ICommandHandler<DeleteCategoryComman
             return Result.Fail<bool>(DomainError.NotFound("Category.NotFound", $"No se encontró la categoría con el ID '{request.Id}'."));
         }
 
-        _categoryRepository.Delete(category);
+        if (!category.IsActive)
+        {
+            return Result.Fail<bool>(DomainError.Conflict("Category.AlreadyInactive", $"La categoría con ID '{request.Id}' ya se encuentra inactiva."));
+        }
+
+        category.Deactivate();
+        _categoryRepository.Update(category);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result.Ok(true);

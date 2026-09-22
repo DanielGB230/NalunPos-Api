@@ -41,7 +41,7 @@ public class AiGovernanceController : ControllerBase
         return this.ToActionResult(result);
     }
 
-    [HttpPut("{id:guid}/review")]
+    [HttpPatch("{id:guid}/review")]
     [ProducesResponseType(typeof(AgentActionRecordDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

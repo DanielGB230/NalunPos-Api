@@ -32,11 +32,14 @@ public class ProductRepository : IProductRepository
         string? searchTerm,
         Guid? categoryId,
         bool? isActiveOnly,
+        bool includeInactive = false,
         CancellationToken cancellationToken = default)
     {
-        var query = _context.Products.AsNoTracking().AsQueryable();
+        var query = includeInactive
+            ? _context.Products.IgnoreQueryFilters().AsNoTracking().AsQueryable()
+            : _context.Products.AsNoTracking().AsQueryable();
 
-        if (isActiveOnly.HasValue)
+        if (!includeInactive && isActiveOnly.HasValue)
         {
             query = query.Where(p => p.IsActive == isActiveOnly.Value);
         }

@@ -147,7 +147,20 @@ public class PosDbContext : DbContext, IUnitOfWork
     private void SetTenantFilter<TEntity>(ModelBuilder modelBuilder)
         where TEntity : class, ITenantOwnedEntity
     {
-        modelBuilder.Entity<TEntity>()
-            .HasQueryFilter(e => _currentTenantId == null || e.TenantId == _currentTenantId);
+        if (typeof(TEntity) == typeof(Product))
+        {
+            modelBuilder.Entity<Product>()
+                .HasQueryFilter(e => (_currentTenantId == null || e.TenantId == _currentTenantId) && e.IsActive);
+        }
+        else if (typeof(TEntity) == typeof(Category))
+        {
+            modelBuilder.Entity<Category>()
+                .HasQueryFilter(e => (_currentTenantId == null || e.TenantId == _currentTenantId) && e.IsActive);
+        }
+        else
+        {
+            modelBuilder.Entity<TEntity>()
+                .HasQueryFilter(e => _currentTenantId == null || e.TenantId == _currentTenantId);
+        }
     }
 }

@@ -27,9 +27,10 @@ public class ProductsController : ControllerBase
         [FromQuery] string? searchTerm = null,
         [FromQuery] Guid? categoryId = null,
         [FromQuery] bool? isActiveOnly = null,
+        [FromQuery] bool includeInactive = false,
         CancellationToken cancellationToken = default)
     {
-        var query = new GetProductsQuery(pageNumber, pageSize, searchTerm, categoryId, isActiveOnly);
+        var query = new GetProductsQuery(pageNumber, pageSize, searchTerm, categoryId, isActiveOnly, includeInactive);
         var result = await _dispatcher.SendAsync(query, cancellationToken);
         return Ok(result);
     }
@@ -57,7 +58,7 @@ public class ProductsController : ControllerBase
         return this.ToActionResult(result);
     }
 
-    [HttpPut("{id:guid}")]
+    [HttpPatch("{id:guid}")]
     [ProducesResponseType(typeof(ProductDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
@@ -93,12 +94,13 @@ public class ProductsController : ControllerBase
         return this.ToActionResult(result);
     }
 
-    [HttpDelete("{id:guid}")]
+    [HttpPatch("{id:guid}/deactivate")]
     [ProducesResponseType(typeof(bool), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> DeleteProduct(Guid id, CancellationToken cancellationToken)
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> DeactivateProduct(Guid id, CancellationToken cancellationToken)
     {
-        var command = new DeleteProductCommand(id);
+        var command = new DeactivateProductCommand(id);
         var result = await _dispatcher.SendAsync(command, cancellationToken);
         return this.ToActionResult(result);
     }

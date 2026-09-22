@@ -1,0 +1,75 @@
+## Real .NET / C# / ASP.NET Core Best Practice .gitignore
+
+## Build & Binary Outputs
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+[Ll]og/
+[Ll]ogs/
+[Tt]emp/
+[Ff]ile[Ss]torage/
+*.msi
+*.cab
+*.msm
+*.msp
+
+## User-specific files & Visual Studio / Rider / VS Code workspace state
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.userprefs
+.vs/
+.idea/
+*.DotSettings.user
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+## Test Results & Code Coverage
+[Tt]est[Rr]esult*/
+[Tt]est[Rr]esults/
+*.trx
+*.coverage
+*.coveragecleardata
+*.coveragexml
+_NCrunch_*
+.*crunch*.local.xml
+nCrunchTemp_*
+CoverageReport/
+CoverageReport*/
+
+## NuGet & Packages
+*.nupkg
+*.snupkg
+**/packages/
+!**/packages/build/
+*.nuget.props
+*.nuget.targets
+project.lock.json
+project.assets.json
+
+## Local Configuration & Environment Secrets
+appsettings.Local.json
+appsettings.*.Local.json
+appsettings.Development.local.json
+*.env
+*.env.local
+secrets.json
+
+## Database files (LocalDB / SQLite dev databases)
+*.db
+*.sqlite
+*.sqlite3
+*.db-shm
+*.db-wal
+*.mdf
+*.ldf
+
+## OS Generated Files
+Thumbs.db
+[Dd]esktop.ini
+.DS_Store
