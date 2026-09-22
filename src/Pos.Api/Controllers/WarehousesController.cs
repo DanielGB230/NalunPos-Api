@@ -1,6 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 using Pos.Api.Extensions;
 using Pos.Application.Common.Interfaces;
+using Pos.Application.Common.Models;
+using Pos.Application.Inventory.DTOs;
+using Pos.Application.Inventory.Queries;
 using Pos.Application.Warehouses.Commands;
 using Pos.Application.Warehouses.DTOs;
 using Pos.Application.Warehouses.Queries;
@@ -18,6 +21,7 @@ public class WarehousesController : ControllerBase
         _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
     }
 
+    /// <summary>Lista todos los almacenes activos del tenant.</summary>
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<WarehouseDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetWarehouses(CancellationToken cancellationToken)
@@ -27,6 +31,41 @@ public class WarehousesController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>
+    /// Stock actual de todos los productos en un almacén (vista de Stock Actual del Inventario).
+    /// </summary>
+    [HttpGet("{warehouseId:guid}/stock")]
+    [ProducesResponseType(typeof(PagedResult<StockLevelDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetStockByWarehouse(
+        Guid warehouseId,
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 10,
+        CancellationToken cancellationToken = default)
+    {
+        var query = new GetStockLevelsByWarehouseQuery(warehouseId, pageNumber, pageSize);
+        var result = await _dispatcher.SendAsync(query, cancellationToken);
+        return this.ToActionResult(result);
+    }
+
+    /// <summary>
+    /// Kardex de movimientos de un almacén (historial completo de entradas/salidas/ajustes/traspasos).
+    /// </summary>
+    [HttpGet("{warehouseId:guid}/movements")]
+    [ProducesResponseType(typeof(PagedResult<InventoryMovementDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetWarehouseMovements(
+        Guid warehouseId,
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken cancellationToken = default)
+    {
+        var query = new GetWarehouseMovementsQuery(warehouseId, pageNumber, pageSize);
+        var result = await _dispatcher.SendAsync(query, cancellationToken);
+        return this.ToActionResult(result);
+    }
+
+    /// <summary>Crea un nuevo almacén para el tenant activo.</summary>
     [HttpPost]
     [ProducesResponseType(typeof(WarehouseDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
