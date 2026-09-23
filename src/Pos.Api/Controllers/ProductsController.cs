@@ -22,15 +22,16 @@ public class ProductsController : ControllerBase
     [HttpGet]
     [ProducesResponseType(typeof(PagedResult<ProductDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<PagedResult<ProductDto>>> GetProducts(
-        [FromQuery] int pageNumber = 1,
-        [FromQuery] int pageSize = 10,
-        [FromQuery] string? searchTerm = null,
-        [FromQuery] Guid? categoryId = null,
-        [FromQuery] bool? isActiveOnly = null,
-        [FromQuery] bool includeInactive = false,
+        [FromQuery] GetProductsRequest request,
         CancellationToken cancellationToken = default)
     {
-        var query = new GetProductsQuery(pageNumber, pageSize, searchTerm, categoryId, isActiveOnly, includeInactive);
+        var query = new GetProductsQuery(
+            request.PageNumber,
+            request.PageSize,
+            request.SearchTerm,
+            request.CategoryId,
+            request.IsActive);
+
         var result = await _dispatcher.SendAsync(query, cancellationToken);
         return Ok(result);
     }

@@ -22,13 +22,15 @@ public class UsersController : ControllerBase
     [HttpGet]
     [ProducesResponseType(typeof(PagedResult<UserDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<PagedResult<UserDto>>> GetUsers(
-        [FromQuery] int pageNumber = 1,
-        [FromQuery] int pageSize = 10,
-        [FromQuery] string? searchTerm = null,
-        [FromQuery] bool? isActiveOnly = null,
+        [FromQuery] GetUsersRequest request,
         CancellationToken cancellationToken = default)
     {
-        var query = new GetUsersQuery(pageNumber, pageSize, searchTerm, isActiveOnly);
+        var query = new GetUsersQuery(
+            request.PageNumber,
+            request.PageSize,
+            request.SearchTerm,
+            request.IsActive);
+
         var result = await _dispatcher.SendAsync(query, cancellationToken);
         return Ok(result);
     }

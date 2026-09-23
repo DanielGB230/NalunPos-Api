@@ -24,14 +24,15 @@ public class CategoriesController : ControllerBase
     [HttpGet]
     [ProducesResponseType(typeof(PagedResult<CategoryDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<PagedResult<CategoryDto>>> GetCategories(
-        [FromQuery] int pageNumber = 1,
-        [FromQuery] int pageSize = 10,
-        [FromQuery] string? searchTerm = null,
-        [FromQuery] bool? isActiveOnly = null,
-        [FromQuery] bool includeInactive = false,
+        [FromQuery] GetCategoriesRequest request,
         CancellationToken cancellationToken = default)
     {
-        var query = new GetCategoriesQuery(pageNumber, pageSize, searchTerm, isActiveOnly, includeInactive);
+        var query = new GetCategoriesQuery(
+            request.PageNumber,
+            request.PageSize,
+            request.SearchTerm,
+            request.IsActive);
+
         var result = await _dispatcher.SendAsync(query, cancellationToken);
         return Ok(result);
     }

@@ -5,13 +5,16 @@ using Pos.Domain.Interfaces;
 
 namespace Pos.Application.Products.Queries;
 
+/// <summary>
+/// Query interna que transporta los parámetros de filtro y paginación al Handler.
+/// El controlador construye esta query a partir del GetProductsRequest.
+/// </summary>
 public record GetProductsQuery(
     int PageNumber = 1,
     int PageSize = 10,
     string? SearchTerm = null,
     Guid? CategoryId = null,
-    bool? IsActiveOnly = null,
-    bool IncludeInactive = false
+    bool? IsActive = null
 ) : IQuery<PagedResult<ProductDto>>;
 
 public class GetProductsQueryHandler : IQueryHandler<GetProductsQuery, PagedResult<ProductDto>>
@@ -25,13 +28,17 @@ public class GetProductsQueryHandler : IQueryHandler<GetProductsQuery, PagedResu
 
     public async Task<PagedResult<ProductDto>> HandleAsync(GetProductsQuery request, CancellationToken cancellationToken)
     {
+        // IsActive=true → solo activos | IsActive=false → solo inactivos | null → todos
+        bool? isActiveOnly = request.IsActive;
+        bool includeInactive = request.IsActive is null || request.IsActive == false;
+
         var (items, totalCount) = await _productRepository.GetPagedAsync(
             request.PageNumber,
             request.PageSize,
             request.SearchTerm,
             request.CategoryId,
-            request.IsActiveOnly,
-            request.IncludeInactive,
+            isActiveOnly,
+            includeInactive,
             cancellationToken);
 
         var dtos = items.Select(ProductDto.FromEntity).ToList();

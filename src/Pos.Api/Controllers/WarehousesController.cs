@@ -28,7 +28,7 @@ public class WarehousesController : ControllerBase
     {
         var query = new GetWarehousesQuery();
         var result = await _dispatcher.SendAsync(query, cancellationToken);
-        return Ok(result);
+        return this.ToActionResult(result);
     }
 
     /// <summary>
@@ -39,11 +39,14 @@ public class WarehousesController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetStockByWarehouse(
         Guid warehouseId,
-        [FromQuery] int pageNumber = 1,
-        [FromQuery] int pageSize = 10,
+        [FromQuery] GetWarehouseStockRequest request,
         CancellationToken cancellationToken = default)
     {
-        var query = new GetStockLevelsByWarehouseQuery(warehouseId, pageNumber, pageSize);
+        var query = new GetStockLevelsByWarehouseQuery(
+            warehouseId,
+            request.PageNumber,
+            request.PageSize);
+
         var result = await _dispatcher.SendAsync(query, cancellationToken);
         return this.ToActionResult(result);
     }
@@ -56,11 +59,14 @@ public class WarehousesController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetWarehouseMovements(
         Guid warehouseId,
-        [FromQuery] int pageNumber = 1,
-        [FromQuery] int pageSize = 20,
+        [FromQuery] GetWarehouseMovementsRequest request,
         CancellationToken cancellationToken = default)
     {
-        var query = new GetWarehouseMovementsQuery(warehouseId, pageNumber, pageSize);
+        var query = new GetWarehouseMovementsQuery(
+            warehouseId,
+            request.PageNumber,
+            request.PageSize);
+
         var result = await _dispatcher.SendAsync(query, cancellationToken);
         return this.ToActionResult(result);
     }

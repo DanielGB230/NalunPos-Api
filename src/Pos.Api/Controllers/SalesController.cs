@@ -22,15 +22,17 @@ public class SalesController : ControllerBase
     [HttpGet]
     [ProducesResponseType(typeof(PagedResult<SaleDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<PagedResult<SaleDto>>> GetSales(
-        [FromQuery] int pageNumber = 1,
-        [FromQuery] int pageSize = 10,
-        [FromQuery] Guid? sessionId = null,
-        [FromQuery] Guid? customerId = null,
-        [FromQuery] DateTime? startDate = null,
-        [FromQuery] DateTime? endDate = null,
+        [FromQuery] GetSalesRequest request,
         CancellationToken cancellationToken = default)
     {
-        var query = new GetSalesQuery(pageNumber, pageSize, sessionId, customerId, startDate, endDate);
+        var query = new GetSalesQuery(
+            request.PageNumber,
+            request.PageSize,
+            request.SessionId,
+            request.CustomerId,
+            request.StartDate,
+            request.EndDate);
+
         var result = await _dispatcher.SendAsync(query, cancellationToken);
         return Ok(result);
     }

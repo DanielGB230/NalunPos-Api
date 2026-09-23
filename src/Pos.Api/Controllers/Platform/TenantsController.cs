@@ -30,22 +30,19 @@ public class TenantsController : ControllerBase
     /// <summary>
     /// Obtiene la lista paginada de Tenants registradas en la plataforma.
     /// </summary>
-    /// <param name="pageNumber">Número de página (1-based)</param>
-    /// <param name="pageSize">Tamaño de página</param>
-    /// <param name="searchTerm">Filtro opcional por nombre o RUC/NIT/RFC</param>
-    /// <param name="cancellationToken">Token de cancelación</param>
-    /// <returns>PagedResult con la lista de Tenants DTO</returns>
     [HttpGet]
     [ProducesResponseType(typeof(PagedResult<TenantDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<PagedResult<TenantDto>>> GetTenants(
-        [FromQuery] int pageNumber = 1,
-        [FromQuery] int pageSize = 10,
-        [FromQuery] string? searchTerm = null,
+        [FromQuery] GetTenantsRequest request,
         CancellationToken cancellationToken = default)
     {
-        var query = new GetTenantsQuery(pageNumber, pageSize, searchTerm);
+        var query = new GetTenantsQuery(
+            request.PageNumber,
+            request.PageSize,
+            request.SearchTerm);
+
         var result = await _dispatcher.SendAsync(query, cancellationToken);
         return Ok(result);
     }

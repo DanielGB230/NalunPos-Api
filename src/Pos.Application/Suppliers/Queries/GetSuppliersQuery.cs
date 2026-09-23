@@ -5,11 +5,15 @@ using Pos.Domain.Interfaces;
 
 namespace Pos.Application.Suppliers.Queries;
 
+/// <summary>
+/// Query interna que transporta los parámetros de filtro y paginación al Handler.
+/// El controlador construye esta query a partir del GetSuppliersRequest.
+/// </summary>
 public record GetSuppliersQuery(
     int PageNumber = 1,
     int PageSize = 10,
     string? SearchTerm = null,
-    bool? IsActiveOnly = null
+    bool? IsActive = null
 ) : IQuery<PagedResult<SupplierDto>>;
 
 public class GetSuppliersQueryHandler : IQueryHandler<GetSuppliersQuery, PagedResult<SupplierDto>>
@@ -27,7 +31,7 @@ public class GetSuppliersQueryHandler : IQueryHandler<GetSuppliersQuery, PagedRe
             request.PageNumber,
             request.PageSize,
             request.SearchTerm,
-            request.IsActiveOnly,
+            request.IsActive,
             cancellationToken);
 
         var dtos = items.Select(SupplierDto.FromEntity).ToList();

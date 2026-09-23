@@ -22,11 +22,10 @@ public class StockTransfersController : ControllerBase
     [HttpGet]
     [ProducesResponseType(typeof(PagedResult<StockTransferDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetStockTransfers(
-        [FromQuery] int pageNumber = 1,
-        [FromQuery] int pageSize = 20,
+        [FromQuery] GetStockTransfersRequest request,
         CancellationToken cancellationToken = default)
     {
-        var query = new GetStockTransfersQuery(pageNumber, pageSize);
+        var query = new GetStockTransfersQuery(request.PageNumber, request.PageSize);
         var result = await _dispatcher.SendAsync(query, cancellationToken);
         return this.ToActionResult(result);
     }

@@ -5,11 +5,15 @@ using Pos.Domain.Interfaces;
 
 namespace Pos.Application.Users.Queries;
 
+/// <summary>
+/// Query interna que transporta los parámetros de filtro y paginación al Handler.
+/// El controlador construye esta query a partir del GetUsersRequest.
+/// </summary>
 public record GetUsersQuery(
     int PageNumber = 1,
     int PageSize = 10,
     string? SearchTerm = null,
-    bool? IsActiveOnly = null
+    bool? IsActive = null
 ) : IQuery<PagedResult<UserDto>>;
 
 public class GetUsersQueryHandler : IQueryHandler<GetUsersQuery, PagedResult<UserDto>>
@@ -27,7 +31,7 @@ public class GetUsersQueryHandler : IQueryHandler<GetUsersQuery, PagedResult<Use
             request.PageNumber,
             request.PageSize,
             request.SearchTerm,
-            request.IsActiveOnly,
+            request.IsActive,
             cancellationToken);
 
         var dtos = items.Select(UserDto.FromEntity).ToList();

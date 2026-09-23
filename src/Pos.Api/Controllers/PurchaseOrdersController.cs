@@ -22,12 +22,10 @@ public class PurchaseOrdersController : ControllerBase
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<PurchaseOrderDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetPurchaseOrders(
-        [FromQuery] int pageNumber = 1,
-        [FromQuery] int pageSize = 20,
-        [FromQuery] PurchaseOrderStatus? status = null,
+        [FromQuery] GetPurchaseOrdersRequest request,
         CancellationToken cancellationToken = default)
     {
-        var query = new GetPurchaseOrdersQuery(pageNumber, pageSize);
+        var query = new GetPurchaseOrdersQuery(request.PageNumber, request.PageSize);
         var result = await _dispatcher.SendAsync(query, cancellationToken);
         return this.ToActionResult(result);
     }
