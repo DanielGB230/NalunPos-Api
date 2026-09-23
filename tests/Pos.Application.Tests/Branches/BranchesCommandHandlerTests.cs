@@ -77,8 +77,7 @@ public class BranchesCommandHandlerTests
             "Lima",
             "15001",
             "PE",
-            "+511000000",
-            true
+            "+511000000"
         );
         var handler = new UpdateBranchCommandHandler(_branchRepository, _unitOfWork);
 

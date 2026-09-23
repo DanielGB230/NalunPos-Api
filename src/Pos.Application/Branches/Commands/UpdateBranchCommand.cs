@@ -15,8 +15,7 @@ public record UpdateBranchCommand(
     string City,
     string ZipCode,
     string Country,
-    string PhoneNumber,
-    bool IsActive
+    string PhoneNumber
 ) : ICommand<Result<BranchDto>>;
 
 public class UpdateBranchCommandValidator : AbstractValidator<UpdateBranchCommand>
@@ -70,15 +69,6 @@ public class UpdateBranchCommandHandler : ICommandHandler<UpdateBranchCommand, R
         catch (DomainException ex)
         {
             return Result.Fail<BranchDto>(DomainError.Validation("Branch.Invalid", ex.Message));
-        }
-
-        if (request.IsActive && !branch.IsActive)
-        {
-            branch.Activate();
-        }
-        else if (!request.IsActive && branch.IsActive)
-        {
-            branch.Deactivate();
         }
 
         _branchRepository.Update(branch);

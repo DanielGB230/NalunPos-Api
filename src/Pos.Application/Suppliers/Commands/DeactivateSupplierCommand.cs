@@ -25,6 +25,11 @@ public class DeactivateSupplierCommandHandler : ICommandHandler<DeactivateSuppli
             return Result.Fail<bool>(DomainError.NotFound("Supplier.NotFound", $"No se encontró el proveedor con el ID '{request.Id}'."));
         }
 
+        if (!supplier.IsActive)
+        {
+            return Result.Fail<bool>(DomainError.Conflict("Supplier.AlreadyInactive", $"El proveedor con ID '{request.Id}' ya se encuentra inactivo."));
+        }
+
         supplier.Deactivate();
         _supplierRepository.Update(supplier);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

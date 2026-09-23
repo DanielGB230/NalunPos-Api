@@ -13,8 +13,7 @@ public record UpdateProductCommand(
     string Name,
     string? Description,
     string? Barcode,
-    Guid CategoryId,
-    bool IsActive
+    Guid CategoryId
 ) : ICommand<Result<ProductDto>>;
 
 public class UpdateProductCommandValidator : AbstractValidator<UpdateProductCommand>
@@ -78,15 +77,6 @@ public class UpdateProductCommandHandler : ICommandHandler<UpdateProductCommand,
         {
             var barcodeVo = !string.IsNullOrWhiteSpace(request.Barcode) ? Barcode.Create(request.Barcode) : null;
             product.UpdateDetails(request.Name, request.Description, barcodeVo);
-
-            if (request.IsActive && !product.IsActive)
-            {
-                product.Activate();
-            }
-            else if (!request.IsActive && product.IsActive)
-            {
-                product.Deactivate();
-            }
         }
         catch (DomainException ex)
         {

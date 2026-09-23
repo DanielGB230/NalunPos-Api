@@ -19,8 +19,7 @@ public record UpdateCustomerCommand(
     string? Street,
     string? City,
     string? ZipCode,
-    string? Country,
-    bool IsActive
+    string? Country
 ) : ICommand<Result<CustomerDto>>;
 
 public class UpdateCustomerCommandValidator : AbstractValidator<UpdateCustomerCommand>
@@ -87,15 +86,6 @@ public class UpdateCustomerCommandHandler : ICommandHandler<UpdateCustomerComman
         catch (DomainException ex)
         {
             return Result.Fail<CustomerDto>(DomainError.Validation("Customer.Invalid", ex.Message));
-        }
-
-        if (request.IsActive && !customer.IsActive)
-        {
-            customer.Activate();
-        }
-        else if (!request.IsActive && customer.IsActive)
-        {
-            customer.Deactivate();
         }
 
         _customerRepository.Update(customer);

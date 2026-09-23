@@ -40,8 +40,7 @@ public class UpdateUserCommandHandlerTests
             "Gomez Silva",
             "pedro.actualizado@nalunpos.com",
             UserRole.Supervisor,
-            user.TenantId,
-            true
+            user.TenantId
         );
 
         // Act
@@ -65,8 +64,7 @@ public class UpdateUserCommandHandlerTests
             "Usuario",
             "noexiste@nalunpos.com",
             UserRole.Cajero,
-            null,
-            true
+            null
         );
 
         // Act

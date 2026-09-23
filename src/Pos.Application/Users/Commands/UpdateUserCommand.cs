@@ -16,8 +16,7 @@ public record UpdateUserCommand(
     string LastName,
     string Email,
     UserRole Role,
-    Guid? TenantId,
-    bool IsActive
+    Guid? TenantId
 ) : ICommand<Result<UserDto>>;
 
 public class UpdateUserCommandValidator : AbstractValidator<UpdateUserCommand>
@@ -75,15 +74,6 @@ public class UpdateUserCommandHandler : ICommandHandler<UpdateUserCommand, Resul
         catch (DomainException ex)
         {
             return Result.Fail<UserDto>(DomainError.Validation("User.Invalid", ex.Message));
-        }
-
-        if (request.IsActive && !user.IsActive)
-        {
-            user.Activate();
-        }
-        else if (!request.IsActive && user.IsActive)
-        {
-            user.Deactivate();
         }
 
         _userRepository.Update(user);

@@ -97,8 +97,7 @@ public class SuppliersCommandHandlerTests
             "PE",
             "Contacto",
             "test@supplier.com",
-            "+51900000000",
-            true
+            "+51900000000"
         );
         var handler = new UpdateSupplierCommandHandler(_supplierRepository, _unitOfWork);
 

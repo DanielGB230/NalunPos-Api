@@ -1,5 +1,6 @@
 using Pos.Api.Extensions;
 using Pos.Application.Common.Interfaces;
+using Pos.Application.Common.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Pos.Application.Branches.Commands;
@@ -68,5 +69,28 @@ public class BranchesController : ControllerBase
 
         var result = await _dispatcher.SendAsync(command, cancellationToken);
         return this.ToActionResult(result);
+    }
+
+    [HttpPatch("{id:guid}/status")]
+    [ProducesResponseType(typeof(bool), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> ChangeBranchStatus(
+        Guid id,
+        [FromBody] ChangeStatusRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (request.IsActive)
+        {
+            var command = new ActivateBranchCommand(id);
+            var result = await _dispatcher.SendAsync(command, cancellationToken);
+            return this.ToActionResult(result);
+        }
+        else
+        {
+            var command = new DeactivateBranchCommand(id);
+            var result = await _dispatcher.SendAsync(command, cancellationToken);
+            return this.ToActionResult(result);
+        }
     }
 }

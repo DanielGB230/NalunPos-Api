@@ -20,8 +20,7 @@ public record UpdateSupplierCommand(
     string Country,
     string ContactName,
     string Email,
-    string Phone,
-    bool IsActive
+    string Phone
 ) : ICommand<Result<SupplierDto>>;
 
 public class UpdateSupplierCommandValidator : AbstractValidator<UpdateSupplierCommand>
@@ -89,15 +88,6 @@ public class UpdateSupplierCommandHandler : ICommandHandler<UpdateSupplierComman
         catch (DomainException ex)
         {
             return Result.Fail<SupplierDto>(DomainError.Validation("Supplier.Invalid", ex.Message));
-        }
-
-        if (request.IsActive && !supplier.IsActive)
-        {
-            supplier.Activate();
-        }
-        else if (!request.IsActive && supplier.IsActive)
-        {
-            supplier.Deactivate();
         }
 
         _supplierRepository.Update(supplier);

@@ -8,7 +8,7 @@ using Pos.Domain.Common;
 
 namespace Pos.Application.Categories.Commands;
 
-public record UpdateCategoryCommand(Guid Id, string Name, string? Description, bool IsActive) : ICommand<Result<CategoryDto>>;
+public record UpdateCategoryCommand(Guid Id, string Name, string? Description) : ICommand<Result<CategoryDto>>;
 
 public class UpdateCategoryCommandValidator : AbstractValidator<UpdateCategoryCommand>
 {
@@ -58,15 +58,6 @@ public class UpdateCategoryCommandHandler : ICommandHandler<UpdateCategoryComman
         catch (DomainException ex)
         {
             return Result.Fail<CategoryDto>(DomainError.Validation("Category.Invalid", ex.Message));
-        }
-
-        if (request.IsActive && !category.IsActive)
-        {
-            category.Activate();
-        }
-        else if (!request.IsActive && category.IsActive)
-        {
-            category.Deactivate();
         }
 
         _categoryRepository.Update(category);

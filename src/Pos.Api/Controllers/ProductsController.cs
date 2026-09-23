@@ -94,14 +94,26 @@ public class ProductsController : ControllerBase
         return this.ToActionResult(result);
     }
 
-    [HttpPatch("{id:guid}/deactivate")]
+    [HttpPatch("{id:guid}/status")]
     [ProducesResponseType(typeof(bool), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
-    public async Task<IActionResult> DeactivateProduct(Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> ChangeProductStatus(
+        Guid id,
+        [FromBody] ChangeStatusRequest request,
+        CancellationToken cancellationToken)
     {
-        var command = new DeactivateProductCommand(id);
-        var result = await _dispatcher.SendAsync(command, cancellationToken);
-        return this.ToActionResult(result);
+        if (request.IsActive)
+        {
+            var command = new ActivateProductCommand(id);
+            var result = await _dispatcher.SendAsync(command, cancellationToken);
+            return this.ToActionResult(result);
+        }
+        else
+        {
+            var command = new DeactivateProductCommand(id);
+            var result = await _dispatcher.SendAsync(command, cancellationToken);
+            return this.ToActionResult(result);
+        }
     }
 }
