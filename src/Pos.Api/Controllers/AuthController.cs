@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Pos.Api.Extensions;
 using Pos.Application.Authentication.Commands.Login;
@@ -26,6 +27,7 @@ public class AuthController : ControllerBase
     /// <param name="command">Command de inicio de sesión (email y contraseña)</param>
     /// <param name="cancellationToken">Token de cancelación</param>
     /// <returns>Respuesta con Token JWT y datos de perfil</returns>
+    [AllowAnonymous]
     [HttpPost("login")]
     [ProducesResponseType(typeof(LoginResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
