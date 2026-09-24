@@ -131,6 +131,13 @@ public class CreateSaleCommandHandler : ICommandHandler<CreateSaleCommand, Resul
                     "Customer.NotFound",
                     $"No se encontró el cliente especificado con ID '{request.CustomerId.Value}'."));
             }
+
+            if (!customer.IsActive)
+            {
+                return Result.Fail<SaleDto>(DomainError.Conflict(
+                    "Customer.Inactive",
+                    "No se puede procesar una venta para un cliente inactivo."));
+            }
         }
 
         // 4. Validar existencia de productos y disponibilidad en StockLevel

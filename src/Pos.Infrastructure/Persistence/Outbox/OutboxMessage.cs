@@ -7,6 +7,7 @@ namespace Pos.Infrastructure.Persistence.Outbox;
 public class OutboxMessage
 {
     public Guid Id { get; private set; }
+    public Guid? TenantId { get; private set; }
     public string Type { get; private set; } = string.Empty;
     public string Content { get; private set; } = string.Empty;
     public DateTimeOffset OccurredOnUtc { get; private set; }
@@ -19,6 +20,7 @@ public class OutboxMessage
 
     private OutboxMessage(
         Guid id,
+        Guid? tenantId,
         string type,
         string content,
         DateTimeOffset occurredOnUtc)
@@ -34,14 +36,15 @@ public class OutboxMessage
         }
 
         Id = id;
+        TenantId = tenantId;
         Type = type.Trim();
         Content = content;
         OccurredOnUtc = occurredOnUtc;
     }
 
-    public static OutboxMessage Create(Guid id, string type, string content, DateTimeOffset occurredOnUtc)
+    public static OutboxMessage Create(Guid id, Guid? tenantId, string type, string content, DateTimeOffset occurredOnUtc)
     {
-        return new OutboxMessage(id, type, content, occurredOnUtc);
+        return new OutboxMessage(id, tenantId, type, content, occurredOnUtc);
     }
 
     public void MarkAsProcessed()

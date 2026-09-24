@@ -45,20 +45,23 @@ public class CreateUserCommandHandler : ICommandHandler<CreateUserCommand, Resul
     private readonly IUserRepository _userRepository;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IAuthUserLookup _authUserLookup;
 
     public CreateUserCommandHandler(
         IUserRepository userRepository,
         IPasswordHasher passwordHasher,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IAuthUserLookup authUserLookup)
     {
         _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
         _passwordHasher = passwordHasher ?? throw new ArgumentNullException(nameof(passwordHasher));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _authUserLookup = authUserLookup ?? throw new ArgumentNullException(nameof(authUserLookup));
     }
 
     public async Task<Result<UserDto>> HandleAsync(CreateUserCommand request, CancellationToken cancellationToken)
     {
-        bool emailExists = await _userRepository.ExistsByEmailAsync(request.Email, null, cancellationToken);
+        bool emailExists = await _authUserLookup.ExistsByEmailAsync(request.Email, null, cancellationToken);
         if (emailExists)
         {
             return Result.Fail<UserDto>(DomainError.Conflict("User.AlreadyExists", $"Ya existe un usuario registrado con el correo '{request.Email}'."));

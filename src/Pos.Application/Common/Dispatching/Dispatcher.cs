@@ -60,4 +60,18 @@ public sealed class Dispatcher : IDispatcher
             }
         }
     }
+
+    public async Task PublishIntegrationEventAsync<TIntegrationEvent>(TIntegrationEvent integrationEvent, CancellationToken cancellationToken = default)
+        where TIntegrationEvent : Pos.Application.IntegrationEvents.Contracts.IIntegrationEvent
+    {
+        var handlerType = typeof(IIntegrationEventHandler<>).MakeGenericType(integrationEvent.GetType());
+        var handlers = _serviceProvider.GetServices(handlerType);
+        foreach (var handler in handlers)
+        {
+            if (handler is not null)
+            {
+                await ((dynamic)handler).HandleAsync((dynamic)integrationEvent, cancellationToken);
+            }
+        }
+    }
 }

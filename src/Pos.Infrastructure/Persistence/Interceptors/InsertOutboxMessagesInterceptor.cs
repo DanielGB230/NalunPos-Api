@@ -17,6 +17,13 @@ namespace Pos.Infrastructure.Persistence.Interceptors;
 /// </summary>
 public class InsertOutboxMessagesInterceptor : SaveChangesInterceptor
 {
+    private readonly Pos.Application.Common.Interfaces.ICurrentTenantContext _tenantContext;
+
+    public InsertOutboxMessagesInterceptor(Pos.Application.Common.Interfaces.ICurrentTenantContext tenantContext)
+    {
+        _tenantContext = tenantContext;
+    }
+
     public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
         DbContextEventData eventData,
         InterceptionResult<int> result,
@@ -24,7 +31,7 @@ public class InsertOutboxMessagesInterceptor : SaveChangesInterceptor
     {
         if (eventData.Context != null)
         {
-            ConvertDomainEventsToOutboxMessages(eventData.Context);
+            ConvertDomainEventsToOutboxMessages(eventData.Context, _tenantContext.TenantId);
         }
 
         return base.SavingChangesAsync(eventData, result, cancellationToken);
@@ -36,13 +43,13 @@ public class InsertOutboxMessagesInterceptor : SaveChangesInterceptor
     {
         if (eventData.Context != null)
         {
-            ConvertDomainEventsToOutboxMessages(eventData.Context);
+            ConvertDomainEventsToOutboxMessages(eventData.Context, _tenantContext.TenantId);
         }
 
         return base.SavingChanges(eventData, result);
     }
 
-    private static void ConvertDomainEventsToOutboxMessages(DbContext context)
+    private static void ConvertDomainEventsToOutboxMessages(DbContext context, Guid? currentTenantId)
     {
         var outboxMessages = new List<OutboxMessage>();
 
@@ -64,6 +71,7 @@ public class InsertOutboxMessagesInterceptor : SaveChangesInterceptor
                         string jsonContent = JsonSerializer.Serialize(integrationEvent, integrationEvent.GetType());
                         var message = OutboxMessage.Create(
                             integrationEvent.Id,
+                            currentTenantId,
                             integrationEvent.GetType().AssemblyQualifiedName ?? integrationEvent.GetType().Name,
                             jsonContent,
                             integrationEvent.OccurredOnUtc

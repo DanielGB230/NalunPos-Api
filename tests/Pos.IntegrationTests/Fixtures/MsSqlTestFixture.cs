@@ -1,6 +1,3 @@
-// Integration tests corren contra SQL Server Express local con base dedicada (NalunPosDb_IntegrationTests). Migrar a Testcontainers cuando se configure un pipeline de CI/CD real (disparador objetivo, no antes).
-
-using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -11,6 +8,7 @@ using Pos.Infrastructure.ExternalServices.Dummy;
 using Pos.Infrastructure.Multitenancy;
 using Pos.Infrastructure.Persistence.Context;
 using Pos.Infrastructure.Persistence.Repositories;
+using Testcontainers.MsSql;
 using Xunit;
 
 namespace Pos.IntegrationTests.Fixtures;
@@ -29,79 +27,35 @@ public class TestTenantContext : ICurrentTenantContext
 
 public class MsSqlTestFixture : IAsyncLifetime, IDisposable
 {
-    private string? _connectionString;
+    private readonly MsSqlContainer _msSqlContainer;
 
-    public string ConnectionString
+    public MsSqlTestFixture()
     {
-        get
-        {
-            if (_connectionString != null) return _connectionString;
-            _connectionString = ResolveConnectionString();
-            return _connectionString;
-        }
+        _msSqlContainer = new MsSqlBuilder()
+            .WithImage("mcr.microsoft.com/mssql/server:2022-latest")
+            .Build();
     }
 
-    private static string ResolveConnectionString()
-    {
-        string? envConn = Environment.GetEnvironmentVariable("IntegrationTestConnectionString");
-        if (!string.IsNullOrWhiteSpace(envConn))
-        {
-            return envConn;
-        }
-
-        string[] candidateConnectionStrings = new[]
-        {
-            "Server=.\\SQLEXPRESS;Database=NalunPosDb_IntegrationTests;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True;",
-            "Server=DANI\\SQLEXPRESS;Database=NalunPosDb_IntegrationTests;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True;",
-            "Server=(localdb)\\mssqllocaldb;Database=NalunPosDb_IntegrationTests;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True;",
-            "Server=localhost;Database=NalunPosDb_IntegrationTests;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True;"
-        };
-
-        foreach (var cs in candidateConnectionStrings)
-        {
-            try
-            {
-                var builder = new SqlConnectionStringBuilder(cs) { InitialCatalog = "master" };
-                using var conn = new SqlConnection(builder.ConnectionString);
-                conn.Open();
-                return cs;
-            }
-            catch
-            {
-                // Probar el siguiente servidor local candidate
-            }
-        }
-
-        return candidateConnectionStrings[0];
-    }
+    public string ConnectionString => _msSqlContainer.GetConnectionString();
 
     public async Task InitializeAsync()
     {
+        await _msSqlContainer.StartAsync();
+
         using var dbContext = CreateDbContext();
-        
-        // Recreación atómica y limpia de la base de datos dedicada NalunPosDb_IntegrationTests
-        try
-        {
-            await dbContext.Database.EnsureDeletedAsync();
-        }
-        catch
-        {
-            // Ignorar si la base de datos de pruebas no existía previamente
-        }
         await dbContext.Database.EnsureCreatedAsync();
 
         Console.ForegroundColor = ConsoleColor.Green;
         Console.WriteLine("==========================================================================");
-        Console.WriteLine("✅ SQL SERVER EXPRESS LOCAL DEDICADO CONECTADO Y BASE RECREADA:");
+        Console.WriteLine("✅ TESTCONTAINERS MS-SQL INICIADO Y BASE CREADA:");
         Console.WriteLine($"   {ConnectionString}");
         Console.WriteLine("==========================================================================");
         Console.ResetColor();
     }
 
-    public Task DisposeAsync()
+    public async Task DisposeAsync()
     {
-        Dispose();
-        return Task.CompletedTask;
+        await _msSqlContainer.DisposeAsync();
     }
 
     public void Dispose()

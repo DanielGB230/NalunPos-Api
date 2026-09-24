@@ -30,4 +30,15 @@ public class AuthUserLookup : IAuthUserLookup
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(u => u.Email == emailVo, cancellationToken);
     }
+
+    public async Task<bool> ExistsByEmailAsync(string email, Guid? excludeId = null, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(email)) return false;
+        string normalized = email.Trim().ToLowerInvariant();
+        var emailVo = new Pos.Domain.ValueObjects.Email(normalized);
+
+        return await _dbContext.Users
+            .IgnoreQueryFilters()
+            .AnyAsync(u => u.Email == emailVo && (excludeId == null || u.Id != excludeId.Value), cancellationToken);
+    }
 }

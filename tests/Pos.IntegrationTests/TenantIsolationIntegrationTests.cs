@@ -161,4 +161,117 @@ public class TenantIsolationIntegrationTests
         var fetchedSuperAdmin = await userRepo.GetByIdAsync(superAdmin.Id);
         Assert.Null(fetchedSuperAdmin);
     }
+
+    [Fact]
+    public async Task CreateUser_WithEmailAlreadyUsedInAnotherTenant_ShouldReturnConflict()
+    {
+        Guid tenantAId = Guid.NewGuid();
+        Guid tenantBId = Guid.NewGuid();
+        string sharedEmail = "shared@platform.com";
+
+        // Create user in Tenant A
+        using (var dbA = _fixture.CreateDbContext(tenantAId))
+        {
+            var userA = User.Create(sharedEmail, "hashA", Pos.Domain.Enums.UserRole.TenantAdmin, tenantAId, "User", "A");
+            dbA.Users.Add(userA);
+            await dbA.SaveChangesAsync();
+        }
+
+        // Try to create user in Tenant B via CommandHandler
+        var spB = _fixture.CreateServiceProvider(tenantBId);
+        using var scopeB = spB.CreateScope();
+        var dispatcher = scopeB.ServiceProvider.GetRequiredService<Pos.Application.Common.Interfaces.IDispatcher>();
+
+        var command = new Pos.Application.Users.Commands.CreateUserCommand(
+            "User", "B", sharedEmail, "Password123!", Pos.Domain.Enums.UserRole.Cajero, tenantBId);
+
+        var result = await dispatcher.SendAsync(command);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(Pos.Domain.Common.ErrorType.Conflict, result.Error.Type);
+    }
+
+    [Fact]
+    public async Task OutboxProcessor_TenantContext_IsResolvedForEventHandler()
+    {
+        // 1. Arrange
+        Guid tenantId = Guid.NewGuid();
+        DummyTenantIntegrationEventHandler.Reset();
+
+        using (var db = _fixture.CreateDbContext(tenantId))
+        {
+            var cat = Pos.Domain.Entities.Category.Create("Test Cat", "Desc");
+            db.Categories.Add(cat);
+
+            var dummyEvent = new DummyTenantIntegrationEvent();
+            string json = System.Text.Json.JsonSerializer.Serialize(dummyEvent);
+            var message = Pos.Infrastructure.Persistence.Outbox.OutboxMessage.Create(
+                dummyEvent.Id,
+                tenantId,
+                typeof(DummyTenantIntegrationEvent).AssemblyQualifiedName!,
+                json,
+                dummyEvent.OccurredOnUtc
+            );
+            
+            db.OutboxMessages.Add(message);
+            await db.SaveChangesAsync();
+        }
+
+        var sp = _fixture.CreateServiceProvider(null); // No HTTP context for BackgroundService
+
+        // We use Reflection to call the private method ProcessOutboxMessagesAsync
+        var outboxProcessor = new Pos.Api.BackgroundServices.OutboxProcessorBackgroundService(
+            sp.GetRequiredService<Microsoft.Extensions.DependencyInjection.IServiceScopeFactory>(),
+            sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<Pos.Api.BackgroundServices.OutboxProcessorBackgroundService>>(),
+            Microsoft.Extensions.Options.Options.Create(new Pos.Api.BackgroundServices.OutboxSettings { PollingIntervalSeconds = 1 })
+        );
+
+        var methodInfo = typeof(Pos.Api.BackgroundServices.OutboxProcessorBackgroundService)
+            .GetMethod("ProcessOutboxMessagesAsync", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        
+        // 2. Act
+        await (Task)methodInfo!.Invoke(outboxProcessor, new object[] { CancellationToken.None })!;
+
+        // 3. Assert
+        Assert.Equal(tenantId, DummyTenantIntegrationEventHandler.LastResolvedTenantId);
+        Assert.True(DummyTenantIntegrationEventHandler.HitCount > 0);
+    }
+}
+
+public class DummyTenantIntegrationEvent : Pos.Application.IntegrationEvents.Contracts.IIntegrationEvent
+{
+    public Guid Id { get; } = Guid.NewGuid();
+    public DateTimeOffset OccurredOnUtc { get; } = DateTimeOffset.UtcNow;
+}
+
+#pragma warning disable CA1711 // Identifiers should not have incorrect suffix
+public class DummyTenantIntegrationEventHandler : Pos.Application.Common.Interfaces.IIntegrationEventHandler<DummyTenantIntegrationEvent>
+{
+    public static Guid? LastResolvedTenantId { get; private set; }
+    public static int HitCount { get; private set; }
+
+    private readonly Pos.Application.Common.Interfaces.ICurrentTenantContext _tenantContext;
+    private readonly Pos.Domain.Interfaces.ICategoryRepository _categoryRepository;
+
+    public DummyTenantIntegrationEventHandler(
+        Pos.Application.Common.Interfaces.ICurrentTenantContext tenantContext,
+        Pos.Domain.Interfaces.ICategoryRepository categoryRepository)
+    {
+        _tenantContext = tenantContext;
+        _categoryRepository = categoryRepository;
+    }
+
+    public async Task HandleAsync(DummyTenantIntegrationEvent integrationEvent, CancellationToken cancellationToken = default)
+    {
+        LastResolvedTenantId = _tenantContext.TenantId;
+        // Verify we can read data for this tenant
+        var (cats, _) = await _categoryRepository.GetPagedAsync(1, 10, null, null, cancellationToken);
+        HitCount += cats.Count; // Will be > 0 if fail-closed is bypassed properly
+    }
+
+    public static void Reset()
+    {
+        LastResolvedTenantId = null;
+        HitCount = 0;
+    }
 }

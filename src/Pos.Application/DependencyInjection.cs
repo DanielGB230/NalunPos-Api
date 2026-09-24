@@ -20,6 +20,7 @@ public static class DependencyInjection
         RegisterOpenGenericHandlers(services, assembly, typeof(ICommandHandler<,>));
         RegisterOpenGenericHandlers(services, assembly, typeof(IQueryHandler<,>));
         RegisterOpenGenericHandlers(services, assembly, typeof(IDomainEventHandler<>));
+        RegisterOpenGenericHandlers(services, assembly, typeof(IIntegrationEventHandler<>));
 
         // Aplicar patrón Decorador (ValidationDecorator + LoggingDecorator) sobre todos los ICommandHandler<,>
         ApplyCommandHandlerDecorators(services);

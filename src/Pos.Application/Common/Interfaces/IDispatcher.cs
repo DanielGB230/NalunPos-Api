@@ -23,4 +23,8 @@ public interface IDispatcher
     /// <summary>Publica un evento de dominio a todos los IDomainEventHandler registrados.</summary>
     Task PublishAsync<TDomainEvent>(TDomainEvent domainEvent, CancellationToken cancellationToken = default)
         where TDomainEvent : IDomainEvent;
+
+    /// <summary>Publica un evento de integración a todos los IIntegrationEventHandler registrados.</summary>
+    Task PublishIntegrationEventAsync<TIntegrationEvent>(TIntegrationEvent integrationEvent, CancellationToken cancellationToken = default)
+        where TIntegrationEvent : Pos.Application.IntegrationEvents.Contracts.IIntegrationEvent;
 }

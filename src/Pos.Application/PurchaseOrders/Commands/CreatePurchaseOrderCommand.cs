@@ -46,6 +46,7 @@ public class CreatePurchaseOrderCommandHandler : ICommandHandler<CreatePurchaseO
     private readonly IPurchaseOrderRepository _orderRepository;
     private readonly ISupplierRepository _supplierRepository;
     private readonly IWarehouseRepository _warehouseRepository;
+    private readonly IProductRepository _productRepository;
     private readonly ICurrentTenantContext _tenantContext;
     private readonly IUnitOfWork _unitOfWork;
 
@@ -53,12 +54,14 @@ public class CreatePurchaseOrderCommandHandler : ICommandHandler<CreatePurchaseO
         IPurchaseOrderRepository orderRepository,
         ISupplierRepository supplierRepository,
         IWarehouseRepository warehouseRepository,
+        IProductRepository productRepository,
         ICurrentTenantContext tenantContext,
         IUnitOfWork unitOfWork)
     {
         _orderRepository = orderRepository ?? throw new ArgumentNullException(nameof(orderRepository));
         _supplierRepository = supplierRepository ?? throw new ArgumentNullException(nameof(supplierRepository));
         _warehouseRepository = warehouseRepository ?? throw new ArgumentNullException(nameof(warehouseRepository));
+        _productRepository = productRepository ?? throw new ArgumentNullException(nameof(productRepository));
         _tenantContext = tenantContext ?? throw new ArgumentNullException(nameof(tenantContext));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
     }
@@ -71,9 +74,22 @@ public class CreatePurchaseOrderCommandHandler : ICommandHandler<CreatePurchaseO
         if (supplier is null)
             return Result.Fail<PurchaseOrderDto>(DomainError.NotFound("Supplier.NotFound", $"No se encontró el proveedor con ID '{command.SupplierId}'."));
 
+        if (!supplier.IsActive)
+            return Result.Fail<PurchaseOrderDto>(DomainError.Conflict("Supplier.Inactive", $"El proveedor '{supplier.Name}' está inactivo y no se le pueden crear órdenes de compra."));
+
         var warehouse = await _warehouseRepository.GetByIdAsync(command.WarehouseId, cancellationToken);
         if (warehouse is null)
             return Result.Fail<PurchaseOrderDto>(DomainError.NotFound("Warehouse.NotFound", $"No se encontró el almacén con ID '{command.WarehouseId}'."));
+
+        foreach (var line in command.Lines)
+        {
+            var product = await _productRepository.GetByIdAsync(line.ProductId, cancellationToken);
+            if (product is null)
+                return Result.Fail<PurchaseOrderDto>(DomainError.NotFound("Product.NotFound", $"No se encontró el producto con ID '{line.ProductId}'."));
+
+            if (!product.IsActive)
+                return Result.Fail<PurchaseOrderDto>(DomainError.Conflict("Product.Inactive", $"El producto '{product.Name}' está inactivo y no se puede añadir a una orden de compra."));
+        }
 
         Guid tenantId = _tenantContext.TenantId ?? Guid.Empty;
 

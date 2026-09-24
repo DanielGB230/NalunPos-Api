@@ -29,6 +29,7 @@ public static class DependencyInjection
         // ── HTTP / Multitenancy ───────────────────────────────────────────────
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentTenantContext, CurrentTenantContext>();
+        services.AddScoped<ITenantSetter>(sp => (CurrentTenantContext)sp.GetRequiredService<ICurrentTenantContext>());
 
         // ── Interceptores EF Core (Scoped: un ciclo de vida por request) ─────
         services.AddScoped<AuditSaveChangesInterceptor>();

@@ -13,11 +13,13 @@ public class UpdateUserCommandHandlerTests
 {
     private readonly FakeUserRepository _userRepository = new();
     private readonly FakeUnitOfWork _unitOfWork = new();
+    private readonly FakeAuthUserLookup _authUserLookup;
     private readonly UpdateUserCommandHandler _handler;
 
     public UpdateUserCommandHandlerTests()
     {
-        _handler = new UpdateUserCommandHandler(_userRepository, _unitOfWork);
+        _authUserLookup = new FakeAuthUserLookup(_userRepository.Users);
+        _handler = new UpdateUserCommandHandler(_userRepository, _unitOfWork, _authUserLookup);
     }
 
     [Fact]
@@ -93,5 +95,25 @@ public class UpdateUserCommandHandlerTests
     {
         public int SaveChangesCount { get; private set; }
         public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) { SaveChangesCount++; return Task.FromResult(1); }
+    }
+
+    private sealed class FakeAuthUserLookup : IAuthUserLookup
+    {
+        private readonly List<User> _users;
+
+        public FakeAuthUserLookup(List<User> users)
+        {
+            _users = users;
+        }
+
+        public Task<User?> FindByEmailAsync(string email, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(_users.FirstOrDefault(u => string.Equals(u.Email.Value, email, StringComparison.OrdinalIgnoreCase)));
+        }
+
+        public Task<bool> ExistsByEmailAsync(string email, Guid? excludeId = null, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(_users.Any(u => string.Equals(u.Email.Value, email, StringComparison.OrdinalIgnoreCase) && u.Id != excludeId));
+        }
     }
 }

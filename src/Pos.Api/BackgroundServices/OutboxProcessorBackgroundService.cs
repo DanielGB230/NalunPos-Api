@@ -4,6 +4,7 @@ using Microsoft.Extensions.Options;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.IntegrationEvents.Contracts;
 using Pos.Infrastructure.Persistence.Context;
+using Pos.Infrastructure.Persistence.Outbox;
 
 namespace Pos.Api.BackgroundServices;
 
@@ -57,15 +58,18 @@ public class OutboxProcessorBackgroundService : BackgroundService
 
     private async Task ProcessOutboxMessagesAsync(CancellationToken cancellationToken)
     {
-        using var scope = _scopeFactory.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<PosDbContext>();
-        var eventBus = scope.ServiceProvider.GetRequiredService<IEventBus>();
+        List<OutboxMessage> pendingMessages;
 
-        var pendingMessages = await dbContext.OutboxMessages
-            .Where(m => m.ProcessedOnUtc == null)
-            .OrderBy(m => m.OccurredOnUtc)
-            .Take(20)
-            .ToListAsync(cancellationToken);
+        // Scope 1: Leer mensajes pendientes (sin tenant específico)
+        using (var scope = _scopeFactory.CreateScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<PosDbContext>();
+            pendingMessages = await dbContext.OutboxMessages
+                .Where(m => m.ProcessedOnUtc == null)
+                .OrderBy(m => m.OccurredOnUtc)
+                .Take(20)
+                .ToListAsync(cancellationToken);
+        }
 
         if (pendingMessages.Count == 0)
         {
@@ -76,6 +80,15 @@ public class OutboxProcessorBackgroundService : BackgroundService
         {
             try
             {
+                // Scope 2: Procesar cada mensaje de manera aislada con su TenantId
+                using var messageScope = _scopeFactory.CreateScope();
+                
+                var tenantSetter = messageScope.ServiceProvider.GetRequiredService<Pos.Infrastructure.Multitenancy.ITenantSetter>();
+                tenantSetter.SetTenantId(message.TenantId);
+
+                var eventBus = messageScope.ServiceProvider.GetRequiredService<IEventBus>();
+                var dispatcher = messageScope.ServiceProvider.GetRequiredService<IDispatcher>();
+
                 Type? eventType = Type.GetType(message.Type);
                 if (eventType != null && typeof(IIntegrationEvent).IsAssignableFrom(eventType))
                 {
@@ -83,6 +96,15 @@ public class OutboxProcessorBackgroundService : BackgroundService
                     if (integrationEvent != null)
                     {
                         await eventBus.PublishAsync(integrationEvent, cancellationToken);
+                        
+                        // Reflection call to Dispatcher since we only know the generic type at runtime
+                        var method = dispatcher.GetType().GetMethod("PublishIntegrationEventAsync");
+                        var genericMethod = method?.MakeGenericMethod(integrationEvent.GetType());
+                        if (genericMethod != null)
+                        {
+                            var task = (Task)genericMethod.Invoke(dispatcher, new object[] { integrationEvent, cancellationToken })!;
+                            await task;
+                        }
                     }
                 }
 
@@ -99,6 +121,12 @@ public class OutboxProcessorBackgroundService : BackgroundService
             }
         }
 
-        await dbContext.SaveChangesAsync(cancellationToken);
+        // Scope 3: Guardar el estado de los mensajes procesados
+        using (var updateScope = _scopeFactory.CreateScope())
+        {
+            var updateDbContext = updateScope.ServiceProvider.GetRequiredService<PosDbContext>();
+            updateDbContext.OutboxMessages.UpdateRange(pendingMessages);
+            await updateDbContext.SaveChangesAsync(cancellationToken);
+        }
     }
 }

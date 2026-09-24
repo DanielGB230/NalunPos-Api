@@ -16,7 +16,7 @@ public class OutboxPatternTests
         DateTimeOffset occurredOn = DateTimeOffset.UtcNow;
 
         // Act
-        var message = OutboxMessage.Create(id, type, content, occurredOn);
+        var message = OutboxMessage.Create(id, null, type, content, occurredOn);
 
         // Assert
         Assert.Equal(id, message.Id);
@@ -30,7 +30,7 @@ public class OutboxPatternTests
     public void MarkAsProcessedShouldSetProcessedOnUtc()
     {
         // Arrange
-        var message = OutboxMessage.Create(Guid.NewGuid(), "SampleType", "{}", DateTimeOffset.UtcNow);
+        var message = OutboxMessage.Create(Guid.NewGuid(), null, "SampleType", "{}", DateTimeOffset.UtcNow);
 
         // Act
         message.MarkAsProcessed();

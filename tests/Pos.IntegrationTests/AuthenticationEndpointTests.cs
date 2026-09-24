@@ -130,6 +130,25 @@ public class AuthenticationEndpointTests : IClassFixture<CustomWebApplicationFac
 
 
     [Fact]
+    public async Task GetUserNotifications_WhenCalledForAnotherUser_ShouldReturn403Forbidden()
+    {
+        // Arrange
+        var client = _factory.CreateClient();
+        Guid userAId = Guid.NewGuid();
+        Guid userBId = Guid.NewGuid();
+        Guid tenantId = Guid.NewGuid();
+
+        string tokenUserA = GenerateJwtToken(Pos.Domain.Enums.UserRole.Cajero, tenantId: tenantId, overrideUserId: userAId);
+        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", tokenUserA);
+
+        // Act - User A tries to read User B's notifications
+        var response = await client.GetAsync($"/api/Notifications/user/{userBId}");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
     public async Task GetUserNotifications_WhenCalledForSelf_ShouldNotReturnForbiddenOrUnauthorized()
     {
         // Arrange

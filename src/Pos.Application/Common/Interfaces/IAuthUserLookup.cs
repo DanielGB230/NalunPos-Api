@@ -9,4 +9,5 @@ namespace Pos.Application.Common.Interfaces;
 public interface IAuthUserLookup
 {
     Task<User?> FindByEmailAsync(string email, CancellationToken cancellationToken = default);
+    Task<bool> ExistsByEmailAsync(string email, Guid? excludeId = null, CancellationToken cancellationToken = default);
 }

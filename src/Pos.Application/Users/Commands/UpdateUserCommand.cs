@@ -42,13 +42,16 @@ public class UpdateUserCommandHandler : ICommandHandler<UpdateUserCommand, Resul
 {
     private readonly IUserRepository _userRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IAuthUserLookup _authUserLookup;
 
     public UpdateUserCommandHandler(
         IUserRepository userRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IAuthUserLookup authUserLookup)
     {
         _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _authUserLookup = authUserLookup ?? throw new ArgumentNullException(nameof(authUserLookup));
     }
 
     public async Task<Result<UserDto>> HandleAsync(UpdateUserCommand request, CancellationToken cancellationToken)
@@ -59,7 +62,7 @@ public class UpdateUserCommandHandler : ICommandHandler<UpdateUserCommand, Resul
             return Result.Fail<UserDto>(DomainError.NotFound("User.NotFound", $"No se encontró el usuario con el ID '{request.Id}'."));
         }
 
-        bool emailExists = await _userRepository.ExistsByEmailAsync(request.Email, request.Id, cancellationToken);
+        bool emailExists = await _authUserLookup.ExistsByEmailAsync(request.Email, request.Id, cancellationToken);
         if (emailExists)
         {
             return Result.Fail<UserDto>(DomainError.Conflict("User.AlreadyExists", $"Ya existe otro usuario registrado con el correo '{request.Email}'."));

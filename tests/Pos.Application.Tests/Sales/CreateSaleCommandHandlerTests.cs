@@ -124,6 +124,44 @@ public class CreateSaleCommandHandlerTests
         Assert.Equal(0, _unitOfWork.SaveChangesCount);
     }
 
+    [Fact]
+    public async Task HandleAsync_WithInactiveCustomer_ShouldReturnConflictResult()
+    {
+        // Arrange
+        Guid tenantId = Guid.NewGuid();
+        _tenantContext.TenantId = tenantId;
+
+        var warehouse = Warehouse.Create(tenantId, Guid.NewGuid(), "Almacén Principal", isDefault: true);
+        _warehouseRepository.Warehouses.Add(warehouse);
+
+        var session = CashRegisterSession.Open(Guid.NewGuid(), Guid.NewGuid(), Money.Create(100m, "USD"), "Apertura");
+        _registerRepository.Sessions.Add(session);
+
+        var customer = Customer.Create(
+            "Cliente Inactivo",
+            TaxId.Create("12345678-9", "PE"),
+            "inactivo@test.com");
+        customer.Deactivate(); // Set to inactive
+        _customerRepository.Customers.Add(customer);
+
+        var command = new CreateSaleCommand(
+            "V-001-0003",
+            session.Id,
+            CustomerId: customer.Id,
+            LineItems: new List<CreateSaleItemDto>
+            {
+                new(Guid.NewGuid(), "Producto B", 1, 20m)
+            });
+
+        // Act
+        var result = await _handler.HandleAsync(command, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsFailure);
+        Assert.Equal(ErrorType.Conflict, result.Error.Type);
+        Assert.Equal("Customer.Inactive", result.Error.Code);
+    }
+
     // Fakes de prueba
     private sealed class FakeSaleRepository : ISaleRepository
     {
@@ -150,13 +188,14 @@ public class CreateSaleCommandHandlerTests
 
     private sealed class FakeCustomerRepository : ICustomerRepository
     {
-        public Task<Customer?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult<Customer?>(null);
+        public List<Customer> Customers { get; } = [];
+        public Task<Customer?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult(Customers.FirstOrDefault(c => c.Id == id));
         public Task<Customer?> GetByTaxIdAsync(TaxId taxId, CancellationToken cancellationToken = default) => Task.FromResult<Customer?>(null);
         public Task<bool> ExistsByTaxIdAsync(TaxId taxId, Guid? excludeId = null, CancellationToken cancellationToken = default) => Task.FromResult(false);
-        public Task AddAsync(Customer customer, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task AddAsync(Customer customer, CancellationToken cancellationToken = default) { Customers.Add(customer); return Task.CompletedTask; }
         public void Update(Customer customer) { }
         public void Delete(Customer customer) { }
-        public Task<(IReadOnlyList<Customer> Items, int TotalCount)> GetPagedAsync(int pageNumber, int pageSize, string? searchTerm, bool? isActive = null, CancellationToken cancellationToken = default) => Task.FromResult< (IReadOnlyList<Customer>, int) >(([], 0));
+        public Task<(IReadOnlyList<Customer> Items, int TotalCount)> GetPagedAsync(int pageNumber, int pageSize, string? searchTerm, bool? isActive = null, CancellationToken cancellationToken = default) => Task.FromResult< (IReadOnlyList<Customer>, int) >((Customers, Customers.Count));
     }
 
     private sealed class FakeProductRepository : IProductRepository
@@ -221,5 +260,6 @@ public class CreateSaleCommandHandlerTests
         public Task<TResponse> SendAsync<TResponse>(IQuery<TResponse> query, CancellationToken cancellationToken = default) => throw new NotImplementedException();
         public Task<TResponse> QueryAsync<TResponse>(IQuery<TResponse> query, CancellationToken cancellationToken = default) => throw new NotImplementedException();
         public Task PublishAsync<TDomainEvent>(TDomainEvent domainEvent, CancellationToken cancellationToken = default) where TDomainEvent : IDomainEvent => Task.CompletedTask;
+        public Task PublishIntegrationEventAsync<TIntegrationEvent>(TIntegrationEvent integrationEvent, CancellationToken cancellationToken = default) where TIntegrationEvent : Pos.Application.IntegrationEvents.Contracts.IIntegrationEvent => Task.CompletedTask;
     }
 }
