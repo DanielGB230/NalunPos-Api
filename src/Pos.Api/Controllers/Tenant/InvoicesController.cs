@@ -5,7 +5,7 @@ using Pos.Application.Invoicing.Commands;
 using Pos.Application.Invoicing.DTOs;
 using Pos.Application.Invoicing.Queries;
 
-namespace Pos.Api.Controllers;
+namespace Pos.Api.Controllers.Tenant;
 
 [ApiController]
 [Route("api/[controller]")]

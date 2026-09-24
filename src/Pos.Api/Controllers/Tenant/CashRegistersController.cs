@@ -5,7 +5,7 @@ using Pos.Application.CashRegisters.Commands;
 using Pos.Application.CashRegisters.DTOs;
 using Pos.Application.CashRegisters.Queries;
 
-namespace Pos.Api.Controllers;
+namespace Pos.Api.Controllers.Tenant;
 
 [ApiController]
 [Route("api/[controller]")]

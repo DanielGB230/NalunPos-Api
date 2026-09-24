@@ -1,33 +1,31 @@
 using Pos.Api.Extensions;
 using Pos.Application.Common.Interfaces;
 using Microsoft.AspNetCore.Mvc;
-using Pos.Application.Categories.Commands;
-using Pos.Application.Categories.DTOs;
-using Pos.Application.Categories.Queries;
 using Pos.Application.Common.Models;
-using Microsoft.AspNetCore.Authorization;
+using Pos.Application.Suppliers.Commands;
+using Pos.Application.Suppliers.DTOs;
+using Pos.Application.Suppliers.Queries;
 
-namespace Pos.Api.Controllers;
+namespace Pos.Api.Controllers.Tenant;
 
 [ApiController]
-[Route("api/v1/categories")]
-[Authorize]
-public class CategoriesController : ControllerBase
+[Route("api/[controller]")]
+public class SuppliersController : ControllerBase
 {
     private readonly IDispatcher _dispatcher;
 
-    public CategoriesController(IDispatcher dispatcher)
+    public SuppliersController(IDispatcher dispatcher)
     {
         _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
     }
 
     [HttpGet]
-    [ProducesResponseType(typeof(PagedResult<CategoryDto>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<PagedResult<CategoryDto>>> GetCategories(
-        [FromQuery] GetCategoriesRequest request,
+    [ProducesResponseType(typeof(PagedResult<SupplierDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<PagedResult<SupplierDto>>> GetSuppliers(
+        [FromQuery] GetSuppliersRequest request,
         CancellationToken cancellationToken = default)
     {
-        var query = new GetCategoriesQuery(
+        var query = new GetSuppliersQuery(
             request.PageNumber,
             request.PageSize,
             request.SearchTerm,
@@ -38,20 +36,20 @@ public class CategoriesController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
-    [ProducesResponseType(typeof(CategoryDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(SupplierDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetCategoryById(Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetSupplierById(Guid id, CancellationToken cancellationToken)
     {
-        var query = new GetCategoryByIdQuery(id);
+        var query = new GetSupplierByIdQuery(id);
         var result = await _dispatcher.SendAsync(query, cancellationToken);
         return this.ToActionResult(result);
     }
 
     [HttpPost]
-    [ProducesResponseType(typeof(CategoryDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(SupplierDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> CreateCategory(
-        [FromBody] CreateCategoryCommand command,
+    public async Task<IActionResult> CreateSupplier(
+        [FromBody] CreateSupplierCommand command,
         CancellationToken cancellationToken)
     {
         var result = await _dispatcher.SendAsync(command, cancellationToken);
@@ -59,17 +57,17 @@ public class CategoriesController : ControllerBase
     }
 
     [HttpPatch("{id:guid}")]
-    [ProducesResponseType(typeof(CategoryDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(SupplierDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> UpdateCategory(
+    public async Task<IActionResult> UpdateSupplier(
         Guid id,
-        [FromBody] UpdateCategoryCommand command,
+        [FromBody] UpdateSupplierCommand command,
         CancellationToken cancellationToken)
     {
         if (id != command.Id)
         {
-            return BadRequest("El ID de la ruta no coincide con el ID del cuerpo del mensaje.");
+            return BadRequest("El ID de la ruta no coincide con el ID del cuerpo.");
         }
 
         var result = await _dispatcher.SendAsync(command, cancellationToken);
@@ -80,20 +78,20 @@ public class CategoriesController : ControllerBase
     [ProducesResponseType(typeof(bool), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
-    public async Task<IActionResult> ChangeCategoryStatus(
+    public async Task<IActionResult> ChangeSupplierStatus(
         Guid id,
         [FromBody] ChangeStatusRequest request,
         CancellationToken cancellationToken)
     {
         if (request.IsActive)
         {
-            var command = new ActivateCategoryCommand(id);
+            var command = new ActivateSupplierCommand(id);
             var result = await _dispatcher.SendAsync(command, cancellationToken);
             return this.ToActionResult(result);
         }
         else
         {
-            var command = new DeactivateCategoryCommand(id);
+            var command = new DeactivateSupplierCommand(id);
             var result = await _dispatcher.SendAsync(command, cancellationToken);
             return this.ToActionResult(result);
         }

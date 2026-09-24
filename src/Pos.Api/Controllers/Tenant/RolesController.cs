@@ -5,7 +5,7 @@ using Pos.Application.Roles.Commands;
 using Pos.Application.Roles.DTOs;
 using Pos.Application.Roles.Queries;
 
-namespace Pos.Api.Controllers;
+namespace Pos.Api.Controllers.Tenant;
 
 [ApiController]
 [Route("api/[controller]")]

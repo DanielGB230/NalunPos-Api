@@ -5,7 +5,7 @@ using Pos.Api.Extensions;
 using Pos.Application.AI.DTOs;
 using Pos.Application.AI.Queries;
 
-namespace Pos.Api.Controllers;
+namespace Pos.Api.Controllers.Tenant;
 
 [Authorize]
 [ApiController]

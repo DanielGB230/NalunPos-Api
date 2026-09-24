@@ -8,7 +8,7 @@ using Pos.Application.Warehouses.Commands;
 using Pos.Application.Warehouses.DTOs;
 using Pos.Application.Warehouses.Queries;
 
-namespace Pos.Api.Controllers;
+namespace Pos.Api.Controllers.Tenant;
 
 [ApiController]
 [Route("api/[controller]")]

@@ -6,7 +6,7 @@ using Pos.Application.Inventory.Commands;
 using Pos.Application.Inventory.DTOs;
 using Pos.Application.Inventory.Queries;
 
-namespace Pos.Api.Controllers;
+namespace Pos.Api.Controllers.Tenant;
 
 [ApiController]
 [Route("api/[controller]")]

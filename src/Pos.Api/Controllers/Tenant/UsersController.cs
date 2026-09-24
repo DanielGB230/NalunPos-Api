@@ -2,30 +2,30 @@ using Pos.Api.Extensions;
 using Pos.Application.Common.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Pos.Application.Common.Models;
-using Pos.Application.Suppliers.Commands;
-using Pos.Application.Suppliers.DTOs;
-using Pos.Application.Suppliers.Queries;
+using Pos.Application.Users.Commands;
+using Pos.Application.Users.DTOs;
+using Pos.Application.Users.Queries;
 
-namespace Pos.Api.Controllers;
+namespace Pos.Api.Controllers.Tenant;
 
 [ApiController]
 [Route("api/[controller]")]
-public class SuppliersController : ControllerBase
+public class UsersController : ControllerBase
 {
     private readonly IDispatcher _dispatcher;
 
-    public SuppliersController(IDispatcher dispatcher)
+    public UsersController(IDispatcher dispatcher)
     {
         _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
     }
 
     [HttpGet]
-    [ProducesResponseType(typeof(PagedResult<SupplierDto>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<PagedResult<SupplierDto>>> GetSuppliers(
-        [FromQuery] GetSuppliersRequest request,
+    [ProducesResponseType(typeof(PagedResult<UserDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<PagedResult<UserDto>>> GetUsers(
+        [FromQuery] GetUsersRequest request,
         CancellationToken cancellationToken = default)
     {
-        var query = new GetSuppliersQuery(
+        var query = new GetUsersQuery(
             request.PageNumber,
             request.PageSize,
             request.SearchTerm,
@@ -36,20 +36,20 @@ public class SuppliersController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
-    [ProducesResponseType(typeof(SupplierDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetSupplierById(Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetUserById(Guid id, CancellationToken cancellationToken)
     {
-        var query = new GetSupplierByIdQuery(id);
+        var query = new GetUserByIdQuery(id);
         var result = await _dispatcher.SendAsync(query, cancellationToken);
         return this.ToActionResult(result);
     }
 
     [HttpPost]
-    [ProducesResponseType(typeof(SupplierDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(UserDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> CreateSupplier(
-        [FromBody] CreateSupplierCommand command,
+    public async Task<IActionResult> CreateUser(
+        [FromBody] CreateUserCommand command,
         CancellationToken cancellationToken)
     {
         var result = await _dispatcher.SendAsync(command, cancellationToken);
@@ -57,12 +57,12 @@ public class SuppliersController : ControllerBase
     }
 
     [HttpPatch("{id:guid}")]
-    [ProducesResponseType(typeof(SupplierDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> UpdateSupplier(
+    public async Task<IActionResult> UpdateUser(
         Guid id,
-        [FromBody] UpdateSupplierCommand command,
+        [FromBody] UpdateUserCommand command,
         CancellationToken cancellationToken)
     {
         if (id != command.Id)
@@ -78,20 +78,20 @@ public class SuppliersController : ControllerBase
     [ProducesResponseType(typeof(bool), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
-    public async Task<IActionResult> ChangeSupplierStatus(
+    public async Task<IActionResult> ChangeUserStatus(
         Guid id,
         [FromBody] ChangeStatusRequest request,
         CancellationToken cancellationToken)
     {
         if (request.IsActive)
         {
-            var command = new ActivateSupplierCommand(id);
+            var command = new ActivateUserCommand(id);
             var result = await _dispatcher.SendAsync(command, cancellationToken);
             return this.ToActionResult(result);
         }
         else
         {
-            var command = new DeactivateSupplierCommand(id);
+            var command = new DeactivateUserCommand(id);
             var result = await _dispatcher.SendAsync(command, cancellationToken);
             return this.ToActionResult(result);
         }

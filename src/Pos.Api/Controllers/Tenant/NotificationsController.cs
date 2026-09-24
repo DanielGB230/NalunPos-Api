@@ -6,7 +6,7 @@ using Pos.Application.Notifications.Commands;
 using Pos.Application.Notifications.DTOs;
 using Pos.Application.Notifications.Queries;
 
-namespace Pos.Api.Controllers;
+namespace Pos.Api.Controllers.Tenant;
 
 [Authorize]
 [ApiController]

@@ -6,7 +6,7 @@ using Pos.Application.StockTransfers.Commands;
 using Pos.Application.StockTransfers.DTOs;
 using Pos.Application.StockTransfers.Queries;
 
-namespace Pos.Api.Controllers;
+namespace Pos.Api.Controllers.Tenant;
 
 [ApiController]
 [Route("api/stock-transfers")]

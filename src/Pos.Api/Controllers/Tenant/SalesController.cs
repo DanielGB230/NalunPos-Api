@@ -6,7 +6,7 @@ using Pos.Application.Sales.Commands;
 using Pos.Application.Sales.DTOs;
 using Pos.Application.Sales.Queries;
 
-namespace Pos.Api.Controllers;
+namespace Pos.Api.Controllers.Tenant;
 
 [ApiController]
 [Route("api/[controller]")]

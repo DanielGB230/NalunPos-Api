@@ -6,7 +6,7 @@ using Pos.Application.PosDevices.Commands;
 using Pos.Application.PosDevices.DTOs;
 using Pos.Application.PosDevices.Queries;
 
-namespace Pos.Api.Controllers;
+namespace Pos.Api.Controllers.Tenant;
 
 [Authorize]
 [ApiController]

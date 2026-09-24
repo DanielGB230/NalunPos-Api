@@ -4,7 +4,7 @@ using Pos.Application.Common.Interfaces;
 using Pos.Application.StockAdjustments.Commands;
 using Pos.Application.StockAdjustments.DTOs;
 
-namespace Pos.Api.Controllers;
+namespace Pos.Api.Controllers.Tenant;
 
 [ApiController]
 [Route("api/stock-adjustments")]

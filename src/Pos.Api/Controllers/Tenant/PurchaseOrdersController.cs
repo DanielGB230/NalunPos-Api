@@ -6,7 +6,7 @@ using Pos.Application.PurchaseOrders.DTOs;
 using Pos.Application.PurchaseOrders.Queries;
 using Pos.Domain.Enums;
 
-namespace Pos.Api.Controllers;
+namespace Pos.Api.Controllers.Tenant;
 
 [ApiController]
 [Route("api/purchase-orders")]

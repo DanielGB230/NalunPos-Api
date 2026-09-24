@@ -5,7 +5,7 @@ using Pos.Application.Payments.Commands;
 using Pos.Application.Payments.DTOs;
 using Pos.Application.Payments.Queries;
 
-namespace Pos.Api.Controllers;
+namespace Pos.Api.Controllers.Tenant;
 
 [ApiController]
 [Route("api/[controller]")]
