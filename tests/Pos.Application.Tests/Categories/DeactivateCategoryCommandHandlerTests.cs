@@ -85,7 +85,7 @@ public class DeactivateCategoryCommandHandlerTests
         public Task AddAsync(Category category, CancellationToken cancellationToken = default) { Categories.Add(category); return Task.CompletedTask; }
         public void Update(Category category) { }
         public void Delete(Category category) => Categories.Remove(category);
-        public Task<(IReadOnlyList<Category> Items, int TotalCount)> GetPagedAsync(int pageNumber, int pageSize, string? searchTerm, bool? isActiveOnly, bool includeInactive = false, CancellationToken cancellationToken = default) => Task.FromResult<(IReadOnlyList<Category>, int)>((Categories, Categories.Count));
+        public Task<(IReadOnlyList<Category> Items, int TotalCount)> GetPagedAsync(int pageNumber, int pageSize, string? searchTerm, bool? isActive = null, CancellationToken cancellationToken = default) => Task.FromResult<(IReadOnlyList<Category>, int)>((Categories, Categories.Count));
     }
 
     private sealed class FakeUnitOfWork : IUnitOfWork

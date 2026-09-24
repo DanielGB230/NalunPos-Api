@@ -13,6 +13,6 @@ public interface IUserRepository
         int pageNumber,
         int pageSize,
         string? searchTerm,
-        bool? isActiveOnly,
+        bool? isActive = null,
         CancellationToken cancellationToken = default);
 }

@@ -14,27 +14,19 @@ namespace Pos.Api.Controllers.Tenant;
 public class NotificationsController : ControllerBase
 {
     private readonly IDispatcher _dispatcher;
-    private readonly ICurrentUserService _currentUserService;
 
-    public NotificationsController(IDispatcher dispatcher, ICurrentUserService currentUserService)
+    public NotificationsController(IDispatcher dispatcher)
     {
         _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
-        _currentUserService = currentUserService ?? throw new ArgumentNullException(nameof(currentUserService));
     }
 
     [HttpGet("user/{userId:guid}")]
     [ProducesResponseType(typeof(IReadOnlyList<SystemNotificationDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<IReadOnlyList<SystemNotificationDto>>> GetUserNotifications(
         Guid userId,
         [FromQuery] bool unreadOnly = false,
         CancellationToken cancellationToken = default)
     {
-        if (_currentUserService.UserId.HasValue && _currentUserService.UserId.Value != userId)
-        {
-            return Forbid();
-        }
-
         var query = new GetUserNotificationsQuery(userId, unreadOnly);
         var result = await _dispatcher.SendAsync(query, cancellationToken);
         return Ok(result);

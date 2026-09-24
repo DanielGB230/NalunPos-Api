@@ -24,10 +24,10 @@ public class BranchesController : ControllerBase
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<BranchDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IReadOnlyList<BranchDto>>> GetBranches(
-        [FromQuery] bool? isActiveOnly = null,
+        [FromQuery] bool? isActive = null,
         CancellationToken cancellationToken = default)
     {
-        var query = new GetBranchesQuery(isActiveOnly);
+        var query = new GetBranchesQuery(isActive);
         var result = await _dispatcher.SendAsync(query, cancellationToken);
         return Ok(result);
     }

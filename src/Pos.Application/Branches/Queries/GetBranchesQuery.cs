@@ -4,7 +4,7 @@ using Pos.Domain.Interfaces;
 
 namespace Pos.Application.Branches.Queries;
 
-public record GetBranchesQuery(bool? IsActiveOnly = null) : IQuery<IReadOnlyList<BranchDto>>;
+public record GetBranchesQuery(bool? IsActive = null) : IQuery<IReadOnlyList<BranchDto>>;
 
 public class GetBranchesQueryHandler : IQueryHandler<GetBranchesQuery, IReadOnlyList<BranchDto>>
 {
@@ -17,7 +17,7 @@ public class GetBranchesQueryHandler : IQueryHandler<GetBranchesQuery, IReadOnly
 
     public async Task<IReadOnlyList<BranchDto>> HandleAsync(GetBranchesQuery request, CancellationToken cancellationToken)
     {
-        var items = await _branchRepository.GetAllAsync(request.IsActiveOnly, cancellationToken);
+        var items = await _branchRepository.GetAllAsync(request.IsActive, cancellationToken);
         return items.Select(BranchDto.FromEntity).ToList();
     }
 }

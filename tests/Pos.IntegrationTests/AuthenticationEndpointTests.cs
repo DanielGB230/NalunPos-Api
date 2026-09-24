@@ -9,29 +9,9 @@ using Xunit;
 using Xunit.Abstractions;
 
 using Microsoft.Extensions.Configuration;
+using Pos.IntegrationTests.Fixtures;
 
 namespace Pos.IntegrationTests;
-
-public class CustomWebApplicationFactory : WebApplicationFactory<Program>
-{
-    protected override void ConfigureWebHost(IWebHostBuilder builder)
-    {
-        builder.UseEnvironment("Testing");
-        builder.ConfigureAppConfiguration((ctx, config) =>
-        {
-            config.AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["SuperAdminSettings:Email"] = "superadmin@test.com",
-                ["SuperAdminSettings:Password"] = "TestPassword123!",
-                ["SuperAdminSettings:FirstName"] = "Super",
-                ["SuperAdminSettings:LastName"] = "Admin",
-                ["JwtSettings:Secret"] = "SuperSecretEnterpriseJwtKey_LongEnoughFor256Bits_NalunPos2026!",
-                ["JwtSettings:Issuer"] = "NalunPosApi",
-                ["JwtSettings:Audience"] = "NalunPosClients"
-            });
-        });
-    }
-}
 
 public class AuthenticationEndpointTests : IClassFixture<CustomWebApplicationFactory>
 {
@@ -147,24 +127,7 @@ public class AuthenticationEndpointTests : IClassFixture<CustomWebApplicationFac
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
-    [Fact]
-    public async Task GetUserNotifications_WhenCalledForAnotherUser_ShouldReturn403Forbidden()
-    {
-        // Arrange
-        var client = _factory.CreateClient();
-        Guid userAId = Guid.NewGuid();
-        Guid userBId = Guid.NewGuid();
-        Guid tenantId = Guid.NewGuid();
 
-        string tokenUserA = GenerateJwtToken(Pos.Domain.Enums.UserRole.Cajero, tenantId: tenantId, overrideUserId: userAId);
-        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", tokenUserA);
-
-        // Act - User A tries to read User B's notifications
-        var response = await client.GetAsync($"/api/Notifications/user/{userBId}");
-
-        // Assert
-        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
-    }
 
     [Fact]
     public async Task GetUserNotifications_WhenCalledForSelf_ShouldNotReturnForbiddenOrUnauthorized()

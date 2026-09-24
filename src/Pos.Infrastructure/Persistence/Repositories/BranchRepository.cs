@@ -19,13 +19,13 @@ public class BranchRepository : IBranchRepository
         return await _context.Branches.FirstOrDefaultAsync(b => b.Id == id, cancellationToken);
     }
 
-    public async Task<IReadOnlyList<Branch>> GetAllAsync(bool? isActiveOnly = null, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<Branch>> GetAllAsync(bool? isActive = null, CancellationToken cancellationToken = default)
     {
         var query = _context.Branches.AsNoTracking().AsQueryable();
 
-        if (isActiveOnly.HasValue)
+        if (isActive.HasValue)
         {
-            query = query.Where(b => b.IsActive == isActiveOnly.Value);
+            query = query.Where(b => b.IsActive == isActive.Value);
         }
 
         return await query.OrderBy(b => b.Name).ToListAsync(cancellationToken);

@@ -11,8 +11,7 @@ public interface ICategoryRepository
         int pageNumber,
         int pageSize,
         string? searchTerm,
-        bool? isActiveOnly,
-        bool includeInactive = false,
+        bool? isActive = null,
         CancellationToken cancellationToken = default);
     Task<bool> ExistsByNameAsync(string name, Guid? excludeId = null, CancellationToken cancellationToken = default);
     Task AddAsync(Category category, CancellationToken cancellationToken = default);

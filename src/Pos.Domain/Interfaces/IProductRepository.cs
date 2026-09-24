@@ -12,8 +12,7 @@ public interface IProductRepository
         int pageSize,
         string? searchTerm,
         Guid? categoryId,
-        bool? isActiveOnly,
-        bool includeInactive = false,
+        bool? isActive = null,
         CancellationToken cancellationToken = default);
     Task<bool> ExistsBySkuAsync(Sku sku, Guid? excludeId = null, CancellationToken cancellationToken = default);
     Task AddAsync(Product product, CancellationToken cancellationToken = default);

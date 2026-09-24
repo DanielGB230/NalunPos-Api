@@ -49,14 +49,14 @@ public class UserRepository : IUserRepository
         int pageNumber,
         int pageSize,
         string? searchTerm,
-        bool? isActiveOnly,
+        bool? isActive = null,
         CancellationToken cancellationToken = default)
     {
         var query = _context.Users.AsNoTracking().AsQueryable();
 
-        if (isActiveOnly.HasValue)
+        if (isActive.HasValue)
         {
-            query = query.Where(u => u.IsActive == isActiveOnly.Value);
+            query = query.Where(u => u.IsActive == isActive.Value);
         }
 
         if (!string.IsNullOrWhiteSpace(searchTerm))

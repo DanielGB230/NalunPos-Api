@@ -34,17 +34,14 @@ public class CategoryRepository : ICategoryRepository
         int pageNumber,
         int pageSize,
         string? searchTerm,
-        bool? isActiveOnly,
-        bool includeInactive = false,
+        bool? isActive = null,
         CancellationToken cancellationToken = default)
     {
-        var query = includeInactive
-            ? _context.Categories.IgnoreQueryFilters().AsNoTracking().AsQueryable()
-            : _context.Categories.AsNoTracking().AsQueryable();
+        var query = _context.Categories.AsNoTracking().AsQueryable();
 
-        if (!includeInactive && isActiveOnly.HasValue)
+        if (isActive.HasValue)
         {
-            query = query.Where(c => c.IsActive == isActiveOnly.Value);
+            query = query.Where(c => c.IsActive == isActive.Value);
         }
 
         if (!string.IsNullOrWhiteSpace(searchTerm))

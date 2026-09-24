@@ -30,14 +30,14 @@ public class SupplierRepository : ISupplierRepository
         int pageNumber,
         int pageSize,
         string? searchTerm,
-        bool? isActiveOnly,
+        bool? isActive = null,
         CancellationToken cancellationToken = default)
     {
         var query = _context.Suppliers.AsNoTracking().AsQueryable();
 
-        if (isActiveOnly.HasValue)
+        if (isActive.HasValue)
         {
-            query = query.Where(s => s.IsActive == isActiveOnly.Value);
+            query = query.Where(s => s.IsActive == isActive.Value);
         }
 
         if (!string.IsNullOrWhiteSpace(searchTerm))

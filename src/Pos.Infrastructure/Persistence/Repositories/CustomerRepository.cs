@@ -30,14 +30,14 @@ public class CustomerRepository : ICustomerRepository
         int pageNumber,
         int pageSize,
         string? searchTerm,
-        bool? isActiveOnly,
+        bool? isActive = null,
         CancellationToken cancellationToken = default)
     {
         var query = _context.Customers.AsNoTracking().AsQueryable();
 
-        if (isActiveOnly.HasValue)
+        if (isActive.HasValue)
         {
-            query = query.Where(c => c.IsActive == isActiveOnly.Value);
+            query = query.Where(c => c.IsActive == isActive.Value);
         }
 
         if (!string.IsNullOrWhiteSpace(searchTerm))

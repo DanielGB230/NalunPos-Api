@@ -28,17 +28,12 @@ public class GetProductsQueryHandler : IQueryHandler<GetProductsQuery, PagedResu
 
     public async Task<PagedResult<ProductDto>> HandleAsync(GetProductsQuery request, CancellationToken cancellationToken)
     {
-        // IsActive=true → solo activos | IsActive=false → solo inactivos | null → todos
-        bool? isActiveOnly = request.IsActive;
-        bool includeInactive = request.IsActive is null || request.IsActive == false;
-
         var (items, totalCount) = await _productRepository.GetPagedAsync(
             request.PageNumber,
             request.PageSize,
             request.SearchTerm,
             request.CategoryId,
-            isActiveOnly,
-            includeInactive,
+            request.IsActive,
             cancellationToken);
 
         var dtos = items.Select(ProductDto.FromEntity).ToList();

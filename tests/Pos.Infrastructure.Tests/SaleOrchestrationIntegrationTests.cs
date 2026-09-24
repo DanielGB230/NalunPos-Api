@@ -14,6 +14,8 @@ using Pos.Domain.Interfaces;
 using Pos.Domain.ValueObjects;
 using Pos.Infrastructure.ExternalServices.Dummy;
 using Pos.Infrastructure.Persistence.Context;
+using Pos.Infrastructure.Multitenancy;
+using Pos.Infrastructure.Persistence.Interceptors;
 using Pos.Infrastructure.Persistence.Repositories;
 using Xunit;
 
@@ -21,20 +23,16 @@ namespace Pos.Infrastructure.Tests;
 
 public class TestTenantContext : ICurrentTenantContext
 {
-    public Guid? TenantId { get; }
+    public Guid? TenantId { get; set; }
     public bool IsSuperAdmin => false;
     public bool HasTenant => TenantId.HasValue;
-
-    public TestTenantContext(Guid? tenantId)
-    {
-        TenantId = tenantId;
-    }
 }
 
 public class SaleOrchestrationIntegrationTests : IDisposable
 {
     private readonly SqliteConnection _connection;
     private readonly IServiceProvider _serviceProvider;
+    private readonly TestTenantContext _tenantContext = new();
 
     public SaleOrchestrationIntegrationTests()
     {
@@ -45,8 +43,19 @@ public class SaleOrchestrationIntegrationTests : IDisposable
         _connection = new SqliteConnection("DataSource=:memory:");
         _connection.Open();
 
-        services.AddDbContext<PosDbContext>(options =>
-            options.UseSqlite(_connection));
+        services.AddScoped<TenantSaveChangesInterceptor>();
+        services.AddDbContext<PosDbContext>((sp, options) =>
+        {
+            options.UseSqlite(_connection);
+            options.AddInterceptors(sp.GetRequiredService<TenantSaveChangesInterceptor>());
+        });
+        services.AddScoped<PosDbContext>(sp =>
+        {
+            var options = sp.GetRequiredService<DbContextOptions<PosDbContext>>();
+            var tenantInterceptor = sp.GetRequiredService<TenantSaveChangesInterceptor>();
+            var tenantContext = sp.GetService<ICurrentTenantContext>();
+            return new PosDbContext(options, tenantInterceptor: tenantInterceptor, currentTenantId: tenantContext?.TenantId);
+        });
 
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<PosDbContext>());
         services.AddScoped<IProductRepository, ProductRepository>();
@@ -59,7 +68,7 @@ public class SaleOrchestrationIntegrationTests : IDisposable
         services.AddScoped<IInventoryRepository, InventoryRepository>();
         services.AddScoped<IPaymentRepository, PaymentRepository>();
         services.AddScoped<ICustomerRepository, CustomerRepository>();
-        services.AddScoped<ICurrentTenantContext>(_ => new TestTenantContext(Guid.NewGuid()));
+        services.AddSingleton<ICurrentTenantContext>(_tenantContext);
         services.AddScoped<IPaymentGateway, DummyPaymentGateway>();
 
         services.AddApplicationServices();
@@ -72,13 +81,15 @@ public class SaleOrchestrationIntegrationTests : IDisposable
     {
         using var scope = _serviceProvider.CreateScope();
         var sp = scope.ServiceProvider;
+
+        Guid tenantId = Guid.NewGuid();
+        _tenantContext.TenantId = tenantId;
+
         var dispatcher = sp.GetRequiredService<IDispatcher>();
         var dbContext = sp.GetRequiredService<PosDbContext>();
         var stockLevelRepo = sp.GetRequiredService<IStockLevelRepository>();
 
         await dbContext.Database.EnsureCreatedAsync();
-
-        Guid tenantId = Guid.NewGuid();
 
         // 1. SEMILLA — Crear Sucursal y Almacén por defecto
         var address = Address.Create("Av. Central 123", "Lima", "15001", "PE");
@@ -113,7 +124,7 @@ public class SaleOrchestrationIntegrationTests : IDisposable
             MovementType: InventoryMovementType.Adjustment,
             Notes: "Stock Inicial de Prueba"
         ));
-        Assert.True(initialStockResult.IsSuccess);
+        Assert.True(initialStockResult.IsSuccess, $"Failed: {initialStockResult.Error?.Code} - {initialStockResult.Error?.Message}");
 
         // Verificar stock disponible en StockLevel
         var initialStockLevel = await stockLevelRepo.GetAsync(product.Id, warehouse.Id, null);

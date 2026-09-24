@@ -31,17 +31,14 @@ public class ProductRepository : IProductRepository
         int pageSize,
         string? searchTerm,
         Guid? categoryId,
-        bool? isActiveOnly,
-        bool includeInactive = false,
+        bool? isActive = null,
         CancellationToken cancellationToken = default)
     {
-        var query = includeInactive
-            ? _context.Products.IgnoreQueryFilters().AsNoTracking().AsQueryable()
-            : _context.Products.AsNoTracking().AsQueryable();
+        var query = _context.Products.AsNoTracking().AsQueryable();
 
-        if (!includeInactive && isActiveOnly.HasValue)
+        if (isActive.HasValue)
         {
-            query = query.Where(p => p.IsActive == isActiveOnly.Value);
+            query = query.Where(p => p.IsActive == isActive.Value);
         }
 
         if (categoryId.HasValue && categoryId.Value != Guid.Empty)

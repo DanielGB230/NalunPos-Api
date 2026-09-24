@@ -142,25 +142,13 @@ public class PosDbContext : DbContext, IUnitOfWork
 
     /// <summary>
     /// Registra el filtro de tenant fuertemente tipado para <typeparamref name="TEntity"/>.
-    /// La lambda es compilada por C# (no por Expression Trees manuales) → type-safe y refactor-safe.
+    /// Fail-closed por diseño: e.TenantId == _currentTenantId.
+    /// Si _currentTenantId es null, evalúa a false produciendo 0 resultados por defecto.
     /// </summary>
     private void SetTenantFilter<TEntity>(ModelBuilder modelBuilder)
         where TEntity : class, ITenantOwnedEntity
     {
-        if (typeof(TEntity) == typeof(Product))
-        {
-            modelBuilder.Entity<Product>()
-                .HasQueryFilter(e => (_currentTenantId == null || e.TenantId == _currentTenantId) && e.IsActive);
-        }
-        else if (typeof(TEntity) == typeof(Category))
-        {
-            modelBuilder.Entity<Category>()
-                .HasQueryFilter(e => (_currentTenantId == null || e.TenantId == _currentTenantId) && e.IsActive);
-        }
-        else
-        {
-            modelBuilder.Entity<TEntity>()
-                .HasQueryFilter(e => _currentTenantId == null || e.TenantId == _currentTenantId);
-        }
+        modelBuilder.Entity<TEntity>()
+            .HasQueryFilter(e => e.TenantId == _currentTenantId);
     }
 }
