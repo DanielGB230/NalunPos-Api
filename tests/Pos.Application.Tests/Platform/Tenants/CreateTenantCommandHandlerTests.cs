@@ -199,7 +199,7 @@ public class CreateTenantCommandHandlerTests
         {
         }
 
-        public Task<(IReadOnlyList<User> Items, int TotalCount)> GetPagedAsync(int pageNumber, int pageSize, string? searchTerm, bool? isActiveOnly, CancellationToken cancellationToken = default)
+        public Task<(IReadOnlyList<User> Items, int TotalCount)> GetPagedAsync(int pageNumber, int pageSize, string? searchTerm, bool? isActive, CancellationToken cancellationToken = default)
         {
             return Task.FromResult< (IReadOnlyList<User>, int) >((Users.AsReadOnly(), Users.Count));
         }
@@ -218,7 +218,7 @@ public class CreateTenantCommandHandlerTests
     {
         public List<Branch> Branches { get; } = [];
         public Task<Branch?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult(Branches.FirstOrDefault(b => b.Id == id));
-        public Task<IReadOnlyList<Branch>> GetAllAsync(bool? isActiveOnly = null, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<Branch>>(Branches);
+        public Task<IReadOnlyList<Branch>> GetAllAsync(bool? isActive = null, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<Branch>>(Branches);
         public Task<bool> ExistsByNameAsync(string name, Guid? excludeId = null, CancellationToken cancellationToken = default) => Task.FromResult(false);
         public Task AddAsync(Branch branch, CancellationToken cancellationToken = default) { Branches.Add(branch); return Task.CompletedTask; }
         public void Update(Branch branch) { }

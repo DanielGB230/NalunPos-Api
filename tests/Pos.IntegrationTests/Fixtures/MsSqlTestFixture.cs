@@ -145,6 +145,7 @@ public class MsSqlTestFixture : IAsyncLifetime, IDisposable
         services.AddScoped<ITenantRepository, TenantRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IPasswordHasher, Pos.Infrastructure.Authentication.PasswordHasher>();
+        services.AddScoped<IAuthUserLookup, Pos.Infrastructure.Authentication.AuthUserLookup>();
 
         services.AddScoped<IProductRepository, ProductRepository>();
         services.AddScoped<ICategoryRepository, CategoryRepository>();

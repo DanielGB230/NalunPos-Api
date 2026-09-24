@@ -10,16 +10,16 @@ namespace Pos.Application.Authentication.Commands.Login;
 /// </summary>
 public class LoginCommandHandler : ICommandHandler<LoginCommand, Result<LoginResponse>>
 {
-    private readonly IUserRepository _userRepository;
+    private readonly IAuthUserLookup _authUserLookup;
     private readonly IPasswordHasher _passwordHasher;
     private readonly ITokenGenerator _tokenGenerator;
 
     public LoginCommandHandler(
-        IUserRepository userRepository,
+        IAuthUserLookup authUserLookup,
         IPasswordHasher passwordHasher,
         ITokenGenerator tokenGenerator)
     {
-        _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
+        _authUserLookup = authUserLookup ?? throw new ArgumentNullException(nameof(authUserLookup));
         _passwordHasher = passwordHasher ?? throw new ArgumentNullException(nameof(passwordHasher));
         _tokenGenerator = tokenGenerator ?? throw new ArgumentNullException(nameof(tokenGenerator));
     }
@@ -35,7 +35,7 @@ public class LoginCommandHandler : ICommandHandler<LoginCommand, Result<LoginRes
             return invalidCredentialsError;
         }
 
-        var user = await _userRepository.GetByEmailAsync(command.Email, cancellationToken);
+        var user = await _authUserLookup.FindByEmailAsync(command.Email, cancellationToken);
         if (user is null || !user.IsActive)
         {
             // Mismo mensaje genérico por seguridad (evita la enumeración de usuarios)

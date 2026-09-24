@@ -115,4 +115,50 @@ public class TenantIsolationIntegrationTests
         Assert.Empty(categories);
         Assert.Empty(products);
     }
+
+    [Fact]
+    public async Task TenantIsolation_TenantAUser_MustNeverSeeOrModifyTenantBUsers()
+    {
+        // 1. Arrange: Create two tenants and seed users for each tenant + 1 SuperAdmin
+        Guid tenantAId = Guid.NewGuid();
+        Guid tenantBId = Guid.NewGuid();
+
+        var userA = User.Create("userA@tenantA.com", "hashA", Pos.Domain.Enums.UserRole.TenantAdmin, tenantAId, "User", "A");
+        var userB = User.Create("userB@tenantB.com", "hashB", Pos.Domain.Enums.UserRole.TenantAdmin, tenantBId, "User", "B");
+        var superAdmin = User.Create("superadmin@platform.com", "hashSuper", Pos.Domain.Enums.UserRole.SuperAdmin, null, "Super", "Admin");
+
+        using (var dbA = _fixture.CreateDbContext(tenantAId))
+        {
+            dbA.Users.Add(userA);
+            await dbA.SaveChangesAsync();
+        }
+
+        using (var dbB = _fixture.CreateDbContext(tenantBId))
+        {
+            dbB.Users.AddRange(userB, superAdmin);
+            await dbB.SaveChangesAsync();
+        }
+
+        // 2. Act & Assert: Query UserRepository as Tenant A
+        var spA = _fixture.CreateServiceProvider(tenantAId);
+        using var scopeA = spA.CreateScope();
+        var userRepo = scopeA.ServiceProvider.GetRequiredService<IUserRepository>();
+
+        // Case 1: GetPagedAsync must return ONLY userA (1 item), NEVER userB or superAdmin
+        var (pagedUsers, count) = await userRepo.GetPagedAsync(1, 100, null, isActive: null);
+        _output.WriteLine($"[User Isolation] Tenant A retrieved {pagedUsers.Count} users. Total: {count}");
+        foreach (var u in pagedUsers) _output.WriteLine($"  User: {u.Email.Value}, TenantId: {u.TenantId}");
+
+        Assert.Single(pagedUsers);
+        Assert.Equal(userA.Id, pagedUsers[0].Id);
+        Assert.Equal(tenantAId, pagedUsers[0].TenantId);
+
+        // Case 2: GetByIdAsync for Tenant B user must return NULL
+        var fetchedUserB = await userRepo.GetByIdAsync(userB.Id);
+        Assert.Null(fetchedUserB);
+
+        // Case 3: GetByIdAsync for SuperAdmin user must return NULL
+        var fetchedSuperAdmin = await userRepo.GetByIdAsync(superAdmin.Id);
+        Assert.Null(fetchedSuperAdmin);
+    }
 }

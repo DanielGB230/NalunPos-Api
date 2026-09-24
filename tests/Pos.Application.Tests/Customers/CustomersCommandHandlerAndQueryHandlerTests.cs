@@ -123,7 +123,7 @@ public class CustomersCommandHandlerAndQueryHandlerTests
         public Task AddAsync(Customer customer, CancellationToken cancellationToken = default) { Customers.Add(customer); return Task.CompletedTask; }
         public void Update(Customer customer) { }
         public void Delete(Customer customer) => Customers.Remove(customer);
-        public Task<(IReadOnlyList<Customer> Items, int TotalCount)> GetPagedAsync(int pageNumber, int pageSize, string? searchTerm, bool? isActiveOnly, CancellationToken cancellationToken = default) => Task.FromResult<(IReadOnlyList<Customer>, int)>((Customers, Customers.Count));
+        public Task<(IReadOnlyList<Customer> Items, int TotalCount)> GetPagedAsync(int pageNumber, int pageSize, string? searchTerm, bool? isActive, CancellationToken cancellationToken = default) => Task.FromResult<(IReadOnlyList<Customer>, int)>((Customers, Customers.Count));
     }
 
     private sealed class FakeUnitOfWork : IUnitOfWork

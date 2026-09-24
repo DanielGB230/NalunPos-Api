@@ -122,6 +122,12 @@ public class PosDbContext : DbContext, IUnitOfWork
     /// </summary>
     private void ApplyTenantQueryFilters(ModelBuilder modelBuilder)
     {
+        // Filtro de tenant explícito para User (TenantId nullable):
+        // - Si _currentTenantId != null (petición de tenant): filtra solo usuarios de ese tenant (e.TenantId == _currentTenantId). Oculta SuperAdmin (null) y otros tenants.
+        // - Si _currentTenantId == null (contexto de plataforma/seeder): sólo devuelve usuarios de plataforma (SuperAdmin, e.TenantId == null).
+        modelBuilder.Entity<User>()
+            .HasQueryFilter(e => (_currentTenantId == null && e.TenantId == null) || (_currentTenantId != null && e.TenantId == _currentTenantId));
+
         foreach (var entityType in modelBuilder.Model.GetEntityTypes())
         {
             if (entityType.IsOwned())

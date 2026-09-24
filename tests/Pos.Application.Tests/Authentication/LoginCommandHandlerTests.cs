@@ -11,14 +11,14 @@ namespace Pos.Application.Tests.Authentication;
 
 public class LoginCommandHandlerTests
 {
-    private readonly FakeUserRepository _userRepository = new();
+    private readonly FakeAuthUserLookup _authUserLookup = new();
     private readonly FakePasswordHasher _passwordHasher = new();
     private readonly FakeTokenGenerator _tokenGenerator = new();
     private readonly LoginCommandHandler _handler;
 
     public LoginCommandHandlerTests()
     {
-        _handler = new LoginCommandHandler(_userRepository, _passwordHasher, _tokenGenerator);
+        _handler = new LoginCommandHandler(_authUserLookup, _passwordHasher, _tokenGenerator);
     }
 
     [Fact]
@@ -26,7 +26,7 @@ public class LoginCommandHandlerTests
     {
         // Arrange
         var user = User.Create("superadmin@pos.com", "HASH_ARGON2", UserRole.SuperAdmin, tenantId: null, firstName: "Super", lastName: "Admin");
-        _userRepository.Users.Add(user);
+        _authUserLookup.Users.Add(user);
         _passwordHasher.ValidPassword = "Password123!";
 
         var command = new LoginCommand("superadmin@pos.com", "Password123!");
@@ -49,7 +49,7 @@ public class LoginCommandHandlerTests
         // Arrange
         Guid tenantId = Guid.NewGuid();
         var user = User.Create("admin@tenant.com", "HASH_ARGON2", UserRole.TenantAdmin, tenantId: tenantId, firstName: "Juan", lastName: "Pérez");
-        _userRepository.Users.Add(user);
+        _authUserLookup.Users.Add(user);
         _passwordHasher.ValidPassword = "SecretPassword!";
 
         var command = new LoginCommand("admin@tenant.com", "SecretPassword!");
@@ -83,7 +83,7 @@ public class LoginCommandHandlerTests
     {
         // Arrange
         var user = User.Create("user@tenant.com", "HASH_ARGON2", UserRole.Cajero, tenantId: Guid.NewGuid());
-        _userRepository.Users.Add(user);
+        _authUserLookup.Users.Add(user);
         _passwordHasher.ValidPassword = "RightPassword!";
 
         var command = new LoginCommand("user@tenant.com", "WrongPassword!");
@@ -103,7 +103,7 @@ public class LoginCommandHandlerTests
         // Arrange
         var user = User.Create("inactive@tenant.com", "HASH_ARGON2", UserRole.Cajero, tenantId: Guid.NewGuid());
         user.Deactivate();
-        _userRepository.Users.Add(user);
+        _authUserLookup.Users.Add(user);
         _passwordHasher.ValidPassword = "Password123!";
 
         var command = new LoginCommand("inactive@tenant.com", "Password123!");
@@ -118,40 +118,14 @@ public class LoginCommandHandlerTests
     }
 
     // Manual Fakes / Test Doubles
-    private sealed class FakeUserRepository : IUserRepository
+    private sealed class FakeAuthUserLookup : IAuthUserLookup
     {
         public List<User> Users { get; } = [];
 
-        public Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(Users.FirstOrDefault(u => u.Id == id));
-        }
-
-        public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default)
+        public Task<User?> FindByEmailAsync(string email, CancellationToken cancellationToken = default)
         {
             string normalized = email.Trim().ToLowerInvariant();
             return Task.FromResult(Users.FirstOrDefault(u => u.Email.Value == normalized));
-        }
-
-        public Task<bool> ExistsByEmailAsync(string email, Guid? excludeId = null, CancellationToken cancellationToken = default)
-        {
-            string normalized = email.Trim().ToLowerInvariant();
-            return Task.FromResult(Users.Any(u => u.Email.Value == normalized && (excludeId == null || u.Id != excludeId.Value)));
-        }
-
-        public Task AddAsync(User user, CancellationToken cancellationToken = default)
-        {
-            Users.Add(user);
-            return Task.CompletedTask;
-        }
-
-        public void Update(User user)
-        {
-        }
-
-        public Task<(IReadOnlyList<User> Items, int TotalCount)> GetPagedAsync(int pageNumber, int pageSize, string? searchTerm, bool? isActiveOnly, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult< (IReadOnlyList<User>, int) >((Users.AsReadOnly(), Users.Count));
         }
     }
 

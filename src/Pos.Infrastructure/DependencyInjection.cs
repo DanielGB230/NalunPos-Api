@@ -113,6 +113,7 @@ public static class DependencyInjection
         services.AddScoped<ITokenGenerator, JwtTokenGenerator>();
         services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
+        services.AddScoped<IAuthUserLookup, AuthUserLookup>();
 
         // ── Seeders ───────────────────────────────────────────────────────────
         services.AddScoped<SuperAdminSeeder>();

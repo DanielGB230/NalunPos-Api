@@ -88,7 +88,7 @@ public class CreateUserCommandHandlerTests
         public Task<bool> ExistsByEmailAsync(string email, Guid? excludeId = null, CancellationToken cancellationToken = default) => Task.FromResult(Users.Any(u => u.Email.Value.Equals(email, StringComparison.OrdinalIgnoreCase) && u.Id != excludeId));
         public Task AddAsync(User user, CancellationToken cancellationToken = default) { Users.Add(user); return Task.CompletedTask; }
         public void Update(User user) { }
-        public Task<(IReadOnlyList<User> Items, int TotalCount)> GetPagedAsync(int pageNumber, int pageSize, string? searchTerm, bool? isActiveOnly, CancellationToken cancellationToken = default) => Task.FromResult<(IReadOnlyList<User>, int)>((Users, Users.Count));
+        public Task<(IReadOnlyList<User> Items, int TotalCount)> GetPagedAsync(int pageNumber, int pageSize, string? searchTerm, bool? isActive, CancellationToken cancellationToken = default) => Task.FromResult<(IReadOnlyList<User>, int)>((Users, Users.Count));
     }
 
     private sealed class FakePasswordHasher : IPasswordHasher

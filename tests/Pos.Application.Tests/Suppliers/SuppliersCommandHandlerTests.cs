@@ -121,7 +121,7 @@ public class SuppliersCommandHandlerTests
         public Task AddAsync(Supplier supplier, CancellationToken cancellationToken = default) { Suppliers.Add(supplier); return Task.CompletedTask; }
         public void Update(Supplier supplier) { }
         public void Delete(Supplier supplier) => Suppliers.Remove(supplier);
-        public Task<(IReadOnlyList<Supplier> Items, int TotalCount)> GetPagedAsync(int pageNumber, int pageSize, string? searchTerm, bool? isActiveOnly, CancellationToken cancellationToken = default) => Task.FromResult<(IReadOnlyList<Supplier>, int)>((Suppliers, Suppliers.Count));
+        public Task<(IReadOnlyList<Supplier> Items, int TotalCount)> GetPagedAsync(int pageNumber, int pageSize, string? searchTerm, bool? isActive, CancellationToken cancellationToken = default) => Task.FromResult<(IReadOnlyList<Supplier>, int)>((Suppliers, Suppliers.Count));
     }
 
     private sealed class FakeUnitOfWork : IUnitOfWork

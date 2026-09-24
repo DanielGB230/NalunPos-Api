@@ -2,6 +2,7 @@ using ArchUnitNET.Domain;
 using ArchUnitNET.Fluent;
 using ArchUnitNET.Loader;
 using ArchUnitNET.xUnit;
+using Microsoft.EntityFrameworkCore;
 using Pos.Application.Common.Interfaces;
 using Pos.Domain.Common;
 using Pos.Infrastructure;
@@ -242,6 +243,52 @@ public class ArchitectureTests
                 Assert.False(hasHttpDelete, $"El método '{method.Name}' en '{controller.Name}' utiliza [HttpDelete]. Se debe usar [HttpPatch] para soft delete.");
             }
         }
+    }
+
+    [Fact]
+    public void All_Entities_With_TenantId_Property_Must_Have_Global_Query_Filter_In_EF_Model()
+    {
+        var options = new Microsoft.EntityFrameworkCore.DbContextOptionsBuilder<Pos.Infrastructure.Persistence.Context.PosDbContext>()
+            .UseInMemoryDatabase("GovernanceArchitectureTestDb")
+            .Options;
+
+        using var dbContext = new Pos.Infrastructure.Persistence.Context.PosDbContext(options, currentTenantId: Guid.NewGuid());
+        var entityTypes = dbContext.Model.GetEntityTypes();
+
+        var whitelistedEntityNames = new HashSet<string>
+        {
+            "Tenant",
+            "OutboxMessage"
+        };
+
+        var missingFilterEntities = new List<string>();
+
+        foreach (var entityType in entityTypes)
+        {
+            if (entityType.IsOwned()) continue;
+
+            var clrType = entityType.ClrType;
+            if (clrType == null) continue;
+
+            if (whitelistedEntityNames.Contains(clrType.Name)) continue;
+
+            var hasTenantIdProperty = clrType.GetProperty("TenantId") != null;
+            if (hasTenantIdProperty)
+            {
+#pragma warning disable CS0618
+                var queryFilter = entityType.GetQueryFilter();
+#pragma warning restore CS0618
+                if (queryFilter == null)
+                {
+                    missingFilterEntities.Add(clrType.Name);
+                }
+            }
+        }
+
+        Assert.True(
+            missingFilterEntities.Count == 0,
+            $"Las siguientes entidades contienen la propiedad 'TenantId' pero carecen de un Global Query Filter en PosDbContext: {string.Join(", ", missingFilterEntities)}"
+        );
     }
 }
 

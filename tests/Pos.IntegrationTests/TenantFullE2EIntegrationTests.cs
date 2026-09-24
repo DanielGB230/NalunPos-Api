@@ -62,8 +62,8 @@ public class TenantFullE2EIntegrationTests
         Assert.Equal(companyName, tenantInDb.Name);
         Assert.Equal(taxId, tenantInDb.TaxId.Value);
 
-        var userRepo = sp.GetRequiredService<IUserRepository>();
-        var userInDb = await userRepo.GetByEmailAsync(adminEmail);
+        var authLookup = sp.GetRequiredService<IAuthUserLookup>();
+        var userInDb = await authLookup.FindByEmailAsync(adminEmail);
         Assert.NotNull(userInDb);
         Assert.Equal(UserRole.TenantAdmin, userInDb.Role);
         Assert.Equal(createdTenantId, userInDb.TenantId);
