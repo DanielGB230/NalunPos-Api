@@ -61,6 +61,7 @@ public class GetInvoiceByIdQueryHandlerTests
         public Task<Invoice?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult(Invoices.FirstOrDefault(i => i.Id == id));
         public Task<Invoice?> GetBySaleIdAsync(Guid saleId, CancellationToken cancellationToken = default) => Task.FromResult<Invoice?>(null);
         public Task<Invoice?> GetByDocumentNumberAsync(string documentNumber, CancellationToken cancellationToken = default) => Task.FromResult(Invoices.FirstOrDefault(i => i.DocumentNumber.Equals(documentNumber, StringComparison.OrdinalIgnoreCase)));
+        public Task<IReadOnlyList<Invoice>> GetPendingInvoicesOlderThanAsync(DateTime thresholdUtc, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<Invoice>>(Invoices.Where(i => i.Status == InvoiceStatus.Pending && i.IssueDateUtc <= thresholdUtc).ToList());
         public Task AddAsync(Invoice invoice, CancellationToken cancellationToken = default) { Invoices.Add(invoice); return Task.CompletedTask; }
         public void Update(Invoice invoice) { }
         public Task<(IReadOnlyList<Invoice> Items, int TotalCount)> GetPagedAsync(int pageNumber, int pageSize, string? invoiceNumber, DateTime? startDate, DateTime? endDate, CancellationToken cancellationToken = default) => Task.FromResult<(IReadOnlyList<Invoice>, int)>((Invoices, Invoices.Count));

@@ -1,5 +1,6 @@
 using Pos.Application.Common.Interfaces;
 using Pos.Domain.Entities;
+using Pos.Domain.Enums;
 
 namespace Pos.Infrastructure.ExternalServices.Dummy;
 
@@ -15,7 +16,22 @@ public class DummyElectronicInvoicingService : IElectronicInvoicingService
 
         string mockHash = $"HASH-CDR-{Guid.NewGuid().ToString()[..12].ToUpperInvariant()}";
         var result = new InvoicingServiceResult(
-            IsSuccess: true,
+            Status: ElectronicInvoiceProviderStatus.Accepted,
+            DocumentNumber: invoice.DocumentNumber,
+            ResponseHash: mockHash,
+            ErrorMessage: null
+        );
+
+        return Task.FromResult(result);
+    }
+
+    public Task<InvoicingServiceResult> GetStatusAsync(Invoice invoice, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(invoice);
+
+        string mockHash = $"HASH-CDR-{Guid.NewGuid().ToString()[..12].ToUpperInvariant()}";
+        var result = new InvoicingServiceResult(
+            Status: ElectronicInvoiceProviderStatus.Accepted,
             DocumentNumber: invoice.DocumentNumber,
             ResponseHash: mockHash,
             ErrorMessage: null

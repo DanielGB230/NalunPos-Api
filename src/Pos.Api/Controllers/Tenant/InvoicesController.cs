@@ -45,4 +45,16 @@ public class InvoicesController : ControllerBase
         var result = await _dispatcher.SendAsync(query, cancellationToken);
         return this.ToActionResult(result);
     }
+
+    [HttpPost("{id:guid}/reconcile")]
+    [ProducesResponseType(typeof(InvoiceDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Reconcile(Guid id, CancellationToken cancellationToken)
+    {
+        var command = new ReconcileInvoiceCommand(id);
+        var result = await _dispatcher.SendAsync(command, cancellationToken);
+        return this.ToActionResult(result);
+    }
 }

@@ -20,11 +20,13 @@ builder.Services
     .AddApplicationServices()
     .AddInfrastructureServices(builder.Configuration);
 
-// Registro de configuración para OutboxWorker
+// Registro de configuración para OutboxWorker e InvoiceReconciliation
 builder.Services.Configure<OutboxSettings>(builder.Configuration.GetSection(OutboxSettings.SectionName));
+builder.Services.Configure<InvoiceReconciliationSettings>(builder.Configuration.GetSection("InvoiceReconciliation"));
 
-// Registro de Background Worker para el patrón Transactional Outbox
+// Registro de Background Workers
 builder.Services.AddHostedService<OutboxProcessorBackgroundService>();
+builder.Services.AddHostedService<InvoiceReconciliationBackgroundService>();
 
 string jwtSecret = builder.Configuration["JwtSettings:Secret"] ?? "SuperSecretEnterpriseJwtKey_LongEnoughFor256Bits_NalunPos2026!";
 string jwtIssuer = builder.Configuration["JwtSettings:Issuer"] ?? "NalunPosApi";

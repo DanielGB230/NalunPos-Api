@@ -19,6 +19,8 @@ public class Invoice : AggregateRoot<Guid>, ITenantOwnedEntity
     public Money TotalAmount { get; private set; } = null!;
     public DateTime IssueDateUtc { get; private set; }
     public InvoiceStatus Status { get; private set; }
+    public byte[] RowVersion { get; private set; } = Array.Empty<byte>();
+    public int ReconciliationAttempts { get; private set; }
 
     private Invoice()
     {
@@ -86,5 +88,10 @@ public class Invoice : AggregateRoot<Guid>, ITenantOwnedEntity
     {
         Status = InvoiceStatus.Rejected;
         RaiseDomainEvent(new InvoiceStatusUpdatedDomainEvent(Id, DocumentNumber, Status.ToString(), DateTime.UtcNow));
+    }
+
+    public void IncrementReconciliationAttempts()
+    {
+        ReconciliationAttempts++;
     }
 }

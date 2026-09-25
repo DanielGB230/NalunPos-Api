@@ -59,6 +59,14 @@ public class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
         builder.Property(i => i.IssueDateUtc)
             .IsRequired();
 
+        builder.Property(i => i.ReconciliationAttempts)
+            .IsRequired()
+            .HasDefaultValue(0);
+
+        builder.Property(i => i.RowVersion)
+            .IsRowVersion()
+            .HasDefaultValue(new byte[] { 0 });
+
         builder.HasIndex(i => i.DocumentNumber)
             .IsUnique();
         builder.HasIndex(i => i.SaleId);

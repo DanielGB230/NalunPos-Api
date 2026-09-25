@@ -30,6 +30,14 @@ public class InvoiceRepository : IInvoiceRepository
         return await _context.Invoices.FirstOrDefaultAsync(i => EF.Functions.Like(i.DocumentNumber, normalized), cancellationToken);
     }
 
+    public async Task<IReadOnlyList<Invoice>> GetPendingInvoicesOlderThanAsync(DateTime thresholdUtc, CancellationToken cancellationToken = default)
+    {
+        return await _context.Invoices
+            .Where(i => i.Status == Pos.Domain.Enums.InvoiceStatus.Pending && i.IssueDateUtc <= thresholdUtc)
+            .OrderBy(i => i.IssueDateUtc)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task AddAsync(Invoice invoice, CancellationToken cancellationToken = default)
     {
         await _context.Invoices.AddAsync(invoice, cancellationToken);

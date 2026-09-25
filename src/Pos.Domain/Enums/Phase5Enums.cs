@@ -32,3 +32,10 @@ public enum InvoiceStatus
     Accepted = 3,
     Rejected = 4
 }
+
+public enum ElectronicInvoiceProviderStatus
+{
+    Accepted = 1,
+    Rejected = 2,
+    NotFound = 3
+}
