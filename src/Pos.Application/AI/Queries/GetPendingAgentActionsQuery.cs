@@ -24,10 +24,9 @@ public class GetPendingAgentActionsQueryHandler : IQueryHandler<GetPendingAgentA
         int pageNumber = request.PageNumber < 1 ? 1 : request.PageNumber;
         int pageSize = Math.Min(request.PageSize < 1 ? 20 : request.PageSize, 100);
 
-        var items = await _repository.GetPendingActionsAsync(cancellationToken);
-        int totalCount = items.Count;
-        var pagedItems = items.Skip((pageNumber - 1) * pageSize).Take(pageSize).Select(AgentActionRecordDto.FromEntity).ToList();
+        var (items, totalCount) = await _repository.GetPendingActionsPagedAsync(pageNumber, pageSize, cancellationToken);
+        var dtos = items.Select(AgentActionRecordDto.FromEntity).ToList();
 
-        return new PagedResult<AgentActionRecordDto>(pagedItems, pageNumber, pageSize, totalCount);
+        return new PagedResult<AgentActionRecordDto>(dtos, pageNumber, pageSize, totalCount);
     }
 }

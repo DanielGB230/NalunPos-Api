@@ -31,7 +31,13 @@ public class GetPurchaseOrdersQueryHandler
         int pageNumber = query.PageNumber < 1 ? 1 : query.PageNumber;
         int pageSize = Math.Min(query.PageSize < 1 ? 20 : query.PageSize, 100);
 
-        var (items, total) = await _orderRepository.GetPagedAsync(pageNumber, pageSize, status: query.Status, cancellationToken);
+        var (items, total) = await _orderRepository.GetPagedAsync(
+            pageNumber,
+            pageSize,
+            status: query.Status,
+            supplierId: query.SupplierId,
+            warehouseId: query.WarehouseId,
+            cancellationToken: cancellationToken);
         var dtos = items.Select(PurchaseOrderDto.FromEntity).ToList();
         return Result.Ok<(IReadOnlyList<PurchaseOrderDto>, int)>((dtos, total));
     }

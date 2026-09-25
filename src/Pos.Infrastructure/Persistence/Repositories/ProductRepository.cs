@@ -23,7 +23,7 @@ public class ProductRepository : IProductRepository
     public async Task<Product?> GetBySkuAsync(Sku sku, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(sku);
-        return await _context.Products.FirstOrDefaultAsync(p => p.Sku.Value == sku.Value, cancellationToken);
+        return await _context.Products.AsNoTracking().FirstOrDefaultAsync(p => p.Sku.Value == sku.Value, cancellationToken);
     }
 
     public async Task<(IReadOnlyList<Product> Items, int TotalCount)> GetPagedAsync(

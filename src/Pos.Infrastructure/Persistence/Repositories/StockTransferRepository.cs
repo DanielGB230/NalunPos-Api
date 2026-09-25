@@ -30,11 +30,23 @@ public class StockTransferRepository : IStockTransferRepository
     public async Task<(IReadOnlyList<StockTransfer> Items, int TotalCount)> GetPagedAsync(
         int pageNumber,
         int pageSize,
+        Guid? sourceWarehouseId = null,
+        Guid? destinationWarehouseId = null,
         CancellationToken cancellationToken = default)
     {
         var query = _context.StockTransfers
             .Include(t => t.Lines)
             .AsNoTracking();
+
+        if (sourceWarehouseId.HasValue && sourceWarehouseId.Value != Guid.Empty)
+        {
+            query = query.Where(t => t.SourceWarehouseId == sourceWarehouseId.Value);
+        }
+
+        if (destinationWarehouseId.HasValue && destinationWarehouseId.Value != Guid.Empty)
+        {
+            query = query.Where(t => t.DestinationWarehouseId == destinationWarehouseId.Value);
+        }
 
         int totalCount = await query.CountAsync(cancellationToken);
 

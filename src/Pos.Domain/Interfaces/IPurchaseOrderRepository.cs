@@ -11,6 +11,8 @@ public interface IPurchaseOrderRepository
         int pageNumber,
         int pageSize,
         PurchaseOrderStatus? status = null,
+        Guid? supplierId = null,
+        Guid? warehouseId = null,
         CancellationToken cancellationToken = default);
     void Update(PurchaseOrder order);
 }

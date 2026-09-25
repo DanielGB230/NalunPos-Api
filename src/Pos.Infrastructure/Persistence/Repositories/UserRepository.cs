@@ -24,7 +24,7 @@ public class UserRepository : IUserRepository
         if (string.IsNullOrWhiteSpace(email)) return null;
         string normalized = email.Trim().ToLowerInvariant();
         var emailVo = new Pos.Domain.ValueObjects.Email(normalized);
-        return await _context.Users.FirstOrDefaultAsync(u => u.Email == emailVo, cancellationToken);
+        return await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Email == emailVo, cancellationToken);
     }
 
     public async Task<bool> ExistsByEmailAsync(string email, Guid? excludeId = null, CancellationToken cancellationToken = default)

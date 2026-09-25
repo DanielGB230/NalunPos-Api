@@ -29,6 +29,23 @@ public class AgentActionRecordRepository : IAgentActionRecordRepository
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<(IReadOnlyList<AgentActionRecord> Items, int TotalCount)> GetPendingActionsPagedAsync(int pageNumber = 1, int pageSize = 20, CancellationToken cancellationToken = default)
+    {
+        var query = _context.AgentActionRecords
+            .AsNoTracking()
+            .Where(a => a.Status == AgentActionStatus.PendingApproval);
+
+        int totalCount = await query.CountAsync(cancellationToken);
+
+        var items = await query
+            .OrderByDescending(a => a.CreatedAtUtc)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return (items, totalCount);
+    }
+
     public async Task<bool> ExistsPendingActionAsync(string agentId, string proposedActionType, string payloadJson, CancellationToken cancellationToken = default)
     {
         string normAgent = agentId.Trim();

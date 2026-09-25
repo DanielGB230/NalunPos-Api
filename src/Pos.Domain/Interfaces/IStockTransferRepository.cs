@@ -9,5 +9,7 @@ public interface IStockTransferRepository
     Task<(IReadOnlyList<StockTransfer> Items, int TotalCount)> GetPagedAsync(
         int pageNumber,
         int pageSize,
+        Guid? sourceWarehouseId = null,
+        Guid? destinationWarehouseId = null,
         CancellationToken cancellationToken = default);
 }

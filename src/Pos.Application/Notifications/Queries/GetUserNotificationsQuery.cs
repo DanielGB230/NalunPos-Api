@@ -33,10 +33,9 @@ public class GetUserNotificationsQueryHandler : IQueryHandler<GetUserNotificatio
         int pageNumber = request.PageNumber < 1 ? 1 : request.PageNumber;
         int pageSize = Math.Min(request.PageSize < 1 ? 20 : request.PageSize, 100);
 
-        var items = await _notificationRepository.GetByUserIdAsync(request.UserId, request.UnreadOnly, cancellationToken);
-        int totalCount = items.Count;
-        var pagedItems = items.Skip((pageNumber - 1) * pageSize).Take(pageSize).Select(SystemNotificationDto.FromEntity).ToList();
+        var (items, totalCount) = await _notificationRepository.GetPagedByUserIdAsync(request.UserId, request.UnreadOnly, pageNumber, pageSize, cancellationToken);
+        var dtos = items.Select(SystemNotificationDto.FromEntity).ToList();
 
-        return new PagedResult<SystemNotificationDto>(pagedItems, pageNumber, pageSize, totalCount);
+        return new PagedResult<SystemNotificationDto>(dtos, pageNumber, pageSize, totalCount);
     }
 }

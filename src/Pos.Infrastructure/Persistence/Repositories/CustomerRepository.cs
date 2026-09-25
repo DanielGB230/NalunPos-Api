@@ -23,7 +23,7 @@ public class CustomerRepository : ICustomerRepository
     public async Task<Customer?> GetByTaxIdAsync(TaxId taxId, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(taxId);
-        return await _context.Customers.FirstOrDefaultAsync(c => c.TaxId.Value == taxId.Value, cancellationToken);
+        return await _context.Customers.AsNoTracking().FirstOrDefaultAsync(c => c.TaxId.Value == taxId.Value, cancellationToken);
     }
 
     public async Task<(IReadOnlyList<Customer> Items, int TotalCount)> GetPagedAsync(

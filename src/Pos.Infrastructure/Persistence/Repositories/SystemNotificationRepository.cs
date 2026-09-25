@@ -31,6 +31,31 @@ public class SystemNotificationRepository : ISystemNotificationRepository
         return await query.OrderByDescending(n => n.CreatedAtUtc).ToListAsync(cancellationToken);
     }
 
+    public async Task<(IReadOnlyList<SystemNotification> Items, int TotalCount)> GetPagedByUserIdAsync(
+        Guid userId,
+        bool unreadOnly = false,
+        int pageNumber = 1,
+        int pageSize = 20,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _context.SystemNotifications.AsNoTracking().Where(n => n.UserId == userId);
+
+        if (unreadOnly)
+        {
+            query = query.Where(n => !n.IsRead);
+        }
+
+        int totalCount = await query.CountAsync(cancellationToken);
+
+        var items = await query
+            .OrderByDescending(n => n.CreatedAtUtc)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return (items, totalCount);
+    }
+
     public async Task AddAsync(SystemNotification notification, CancellationToken cancellationToken = default)
     {
         await _context.SystemNotifications.AddAsync(notification, cancellationToken);

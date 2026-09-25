@@ -32,6 +32,8 @@ public class PurchaseOrderRepository : IPurchaseOrderRepository
         int pageNumber,
         int pageSize,
         PurchaseOrderStatus? status = null,
+        Guid? supplierId = null,
+        Guid? warehouseId = null,
         CancellationToken cancellationToken = default)
     {
         var query = _context.PurchaseOrders
@@ -41,6 +43,16 @@ public class PurchaseOrderRepository : IPurchaseOrderRepository
         if (status.HasValue)
         {
             query = query.Where(p => p.Status == status.Value);
+        }
+
+        if (supplierId.HasValue && supplierId.Value != Guid.Empty)
+        {
+            query = query.Where(p => p.SupplierId == supplierId.Value);
+        }
+
+        if (warehouseId.HasValue && warehouseId.Value != Guid.Empty)
+        {
+            query = query.Where(p => p.WarehouseId == warehouseId.Value);
         }
 
         int totalCount = await query.CountAsync(cancellationToken);
