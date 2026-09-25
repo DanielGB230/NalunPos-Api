@@ -9,6 +9,6 @@ public record LoginResponse(
     string Token,
     DateTime ExpiresAtUtc,
     Guid UserId,
-    UserRole Role,
+    Guid RoleId,
     Guid? TenantId
 );

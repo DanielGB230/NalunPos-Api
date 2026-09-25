@@ -1,4 +1,6 @@
 using FluentValidation;
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Warehouses.DTOs;
 using Pos.Domain.Common;
@@ -8,6 +10,7 @@ using Pos.Domain.Interfaces;
 
 namespace Pos.Application.Warehouses.Commands;
 
+[HasPermission(Permissions.Warehouses.Create)]
 public record CreateWarehouseCommand(
     Guid BranchId,
     string Name,

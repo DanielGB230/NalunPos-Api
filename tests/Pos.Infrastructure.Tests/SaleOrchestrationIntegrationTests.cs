@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using Pos.Application;
 using Pos.Application.CashRegisters.Commands;
 using Pos.Application.Common.Interfaces;
+using Pos.Application.Common.Authorization;
 using Pos.Application.Inventory.Commands;
 using Pos.Application.Payments.Commands;
 using Pos.Application.Sales.Commands;
@@ -28,11 +29,18 @@ public class TestTenantContext : ICurrentTenantContext
     public bool HasTenant => TenantId.HasValue;
 }
 
+public class MockCurrentUserService : ICurrentUserService
+{
+    public Guid? UserId { get; set; }
+    public string? UserEmail { get; set; }
+}
+
 public class SaleOrchestrationIntegrationTests : IDisposable
 {
     private readonly SqliteConnection _connection;
     private readonly IServiceProvider _serviceProvider;
     private readonly TestTenantContext _tenantContext = new();
+    private readonly MockCurrentUserService _mockUserService = new();
 
     public SaleOrchestrationIntegrationTests()
     {
@@ -68,8 +76,18 @@ public class SaleOrchestrationIntegrationTests : IDisposable
         services.AddScoped<IInventoryRepository, InventoryRepository>();
         services.AddScoped<IPaymentRepository, PaymentRepository>();
         services.AddScoped<ICustomerRepository, CustomerRepository>();
+        services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IRoleRepository, RoleRepository>();
+        services.AddScoped<ICurrentUserPermissions, Pos.Infrastructure.Authentication.CurrentUserPermissions>();
+
         services.AddSingleton<ICurrentTenantContext>(_tenantContext);
+        services.AddSingleton<ICurrentUserService>(_mockUserService);
         services.AddScoped<IPaymentGateway, DummyPaymentGateway>();
+
+        services.AddMemoryCache();
+#pragma warning disable EXTEXP0018
+        services.AddHybridCache();
+#pragma warning restore EXTEXP0018
 
         services.AddApplicationServices();
 
@@ -90,6 +108,19 @@ public class SaleOrchestrationIntegrationTests : IDisposable
         var stockLevelRepo = sp.GetRequiredService<IStockLevelRepository>();
 
         await dbContext.Database.EnsureCreatedAsync();
+
+        // 0. Sembrar Rol y Usuario para la autorización
+        var logger = sp.GetRequiredService<ILogger<Pos.Infrastructure.Persistence.Seed.DefaultRoleSeeder>>();
+        var seeder = new Pos.Infrastructure.Persistence.Seed.DefaultRoleSeeder(dbContext, logger);
+        await seeder.SeedRolesForTenantAsync(tenantId);
+        var adminRole = dbContext.Roles.First(r => r.TenantId == tenantId && r.Name == "TenantAdmin");
+
+        var activeUser = User.Create(new Email("activeadmin@test.com"), new PasswordHash("passhash"), adminRole.Id, tenantId, "Active", "Admin");
+        dbContext.Users.Add(activeUser);
+        await dbContext.SaveChangesAsync();
+
+        _mockUserService.UserId = activeUser.Id;
+        _mockUserService.UserEmail = activeUser.Email.Value;
 
         // 1. SEMILLA — Crear Sucursal y Almacén por defecto
         var address = Address.Create("Av. Central 123", "Lima", "15001", "PE");
@@ -132,7 +163,7 @@ public class SaleOrchestrationIntegrationTests : IDisposable
         Assert.Equal(10m, initialStockLevel.QuantityAvailable);
 
         // 2. CAJA — Abrir Sesión de Caja
-        var userId = Guid.NewGuid();
+        var userId = activeUser.Id;
         var openSessionResult = await dispatcher.SendAsync(new OpenCashRegisterSessionCommand(
             register.Id,
             userId,

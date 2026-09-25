@@ -1,3 +1,5 @@
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using FluentValidation;
 using Pos.Application.CashRegisters.DTOs;
@@ -9,6 +11,7 @@ using Pos.Domain.ValueObjects;
 
 namespace Pos.Application.CashRegisters.Commands;
 
+[HasPermission(Permissions.CashRegisters.OpenSession)]
 public record OpenCashRegisterSessionCommand(
     Guid CashRegisterId,
     Guid UserId,
@@ -17,6 +20,7 @@ public record OpenCashRegisterSessionCommand(
     string? Notes = null
 ) : ICommand<Result<CashRegisterSessionDto>>;
 
+[HasPermission(Permissions.CashRegisters.OpenSession)]
 public class OpenCashRegisterSessionCommandValidator : AbstractValidator<OpenCashRegisterSessionCommand>
 {
     public OpenCashRegisterSessionCommandValidator()
@@ -36,6 +40,7 @@ public class OpenCashRegisterSessionCommandValidator : AbstractValidator<OpenCas
     }
 }
 
+[HasPermission(Permissions.CashRegisters.OpenSession)]
 public class OpenCashRegisterSessionCommandHandler : ICommandHandler<OpenCashRegisterSessionCommand, Result<CashRegisterSessionDto>>
 {
     private readonly ICashRegisterRepository _registerRepository;

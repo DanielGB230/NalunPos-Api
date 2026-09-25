@@ -1,3 +1,5 @@
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Common.Models;
 using Pos.Application.Sales.DTOs;
@@ -5,6 +7,7 @@ using Pos.Domain.Interfaces;
 
 namespace Pos.Application.Sales.Queries;
 
+[HasPermission(Permissions.Sales.View)]
 public record GetSalesQuery(
     int PageNumber = 1,
     int PageSize = 10,
@@ -14,6 +17,7 @@ public record GetSalesQuery(
     DateTime? EndDate = null
 ) : IQuery<PagedResult<SaleDto>>;
 
+[HasPermission(Permissions.Sales.View)]
 public class GetSalesQueryHandler : IQueryHandler<GetSalesQuery, PagedResult<SaleDto>>
 {
     private readonly ISaleRepository _saleRepository;

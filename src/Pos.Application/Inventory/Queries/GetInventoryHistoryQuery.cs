@@ -1,3 +1,5 @@
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Common.Models;
 using Pos.Application.Inventory.DTOs;
@@ -6,6 +8,7 @@ using Pos.Domain.Interfaces;
 
 namespace Pos.Application.Inventory.Queries;
 
+[HasPermission(Permissions.Inventory.View)]
 public record GetInventoryHistoryQuery(
     Guid ProductId,
     Guid? WarehouseId = null,
@@ -13,6 +16,7 @@ public record GetInventoryHistoryQuery(
     int PageSize = 10
 ) : IQuery<Result<PagedResult<InventoryMovementDto>>>;
 
+[HasPermission(Permissions.Inventory.View)]
 public class GetInventoryHistoryQueryHandler : IQueryHandler<GetInventoryHistoryQuery, Result<PagedResult<InventoryMovementDto>>>
 {
     private readonly IInventoryRepository _inventoryRepository;

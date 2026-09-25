@@ -1,3 +1,5 @@
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using FluentValidation;
 using Pos.Application.Customers.DTOs;
@@ -9,6 +11,7 @@ using Pos.Domain.Common;
 
 namespace Pos.Application.Customers.Commands;
 
+[HasPermission(Permissions.Customers.Update)]
 public record UpdateCustomerCommand(
     Guid Id,
     string FullName,
@@ -22,6 +25,7 @@ public record UpdateCustomerCommand(
     string? Country
 ) : ICommand<Result<CustomerDto>>;
 
+[HasPermission(Permissions.Customers.Update)]
 public class UpdateCustomerCommandValidator : AbstractValidator<UpdateCustomerCommand>
 {
     public UpdateCustomerCommandValidator()
@@ -38,6 +42,7 @@ public class UpdateCustomerCommandValidator : AbstractValidator<UpdateCustomerCo
     }
 }
 
+[HasPermission(Permissions.Customers.Update)]
 public class UpdateCustomerCommandHandler : ICommandHandler<UpdateCustomerCommand, Result<CustomerDto>>
 {
     private readonly ICustomerRepository _customerRepository;

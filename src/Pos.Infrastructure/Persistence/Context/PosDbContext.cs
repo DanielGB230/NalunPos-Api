@@ -155,6 +155,6 @@ public class PosDbContext : DbContext, IUnitOfWork
         where TEntity : class, ITenantOwnedEntity
     {
         modelBuilder.Entity<TEntity>()
-            .HasQueryFilter(e => e.TenantId == _currentTenantId);
+            .HasQueryFilter(e => (_currentTenantId == null && e.TenantId == Guid.Empty) || (_currentTenantId != null && e.TenantId == _currentTenantId));
     }
 }

@@ -25,7 +25,7 @@ public class LoginCommandHandlerTests
     public async Task HandleAsync_WithValidSuperAdminCredentials_ShouldReturnSuccessResultWithToken()
     {
         // Arrange
-        var user = User.Create("superadmin@pos.com", "HASH_ARGON2", UserRole.SuperAdmin, tenantId: null, firstName: "Super", lastName: "Admin");
+        var user = User.Create(new Email("superadmin@pos.com"), new PasswordHash("HASH_ARGON2"), Role.SuperAdminRoleId, tenantId: null, firstName: "Super", lastName: "Admin");
         _authUserLookup.Users.Add(user);
         _passwordHasher.ValidPassword = "Password123!";
 
@@ -39,7 +39,7 @@ public class LoginCommandHandlerTests
         Assert.NotNull(result.Value);
         Assert.Equal("fake-jwt-token-for-user", result.Value.Token);
         Assert.Equal(user.Id, result.Value.UserId);
-        Assert.Equal(UserRole.SuperAdmin, result.Value.Role);
+        Assert.Equal(Role.SuperAdminRoleId, result.Value.RoleId);
         Assert.Null(result.Value.TenantId);
     }
 
@@ -48,7 +48,8 @@ public class LoginCommandHandlerTests
     {
         // Arrange
         Guid tenantId = Guid.NewGuid();
-        var user = User.Create("admin@tenant.com", "HASH_ARGON2", UserRole.TenantAdmin, tenantId: tenantId, firstName: "Juan", lastName: "Pérez");
+        Guid tenantAdminRoleId = Guid.NewGuid();
+        var user = User.Create(new Email("admin@tenant.com"), new PasswordHash("HASH_ARGON2"), tenantAdminRoleId, tenantId: tenantId, firstName: "Juan", lastName: "Pérez");
         _authUserLookup.Users.Add(user);
         _passwordHasher.ValidPassword = "SecretPassword!";
 
@@ -60,7 +61,7 @@ public class LoginCommandHandlerTests
         // Assert
         Assert.True(result.IsSuccess);
         Assert.Equal(tenantId, result.Value.TenantId);
-        Assert.Equal(UserRole.TenantAdmin, result.Value.Role);
+        Assert.Equal(tenantAdminRoleId, result.Value.RoleId);
     }
 
     [Fact]
@@ -82,7 +83,7 @@ public class LoginCommandHandlerTests
     public async Task HandleAsync_WithIncorrectPassword_ShouldReturnIdenticalUnauthorizedError()
     {
         // Arrange
-        var user = User.Create("user@tenant.com", "HASH_ARGON2", UserRole.Cajero, tenantId: Guid.NewGuid());
+        var user = User.Create(new Email("user@tenant.com"), new PasswordHash("HASH_ARGON2"), Guid.NewGuid(), tenantId: Guid.NewGuid());
         _authUserLookup.Users.Add(user);
         _passwordHasher.ValidPassword = "RightPassword!";
 
@@ -101,7 +102,7 @@ public class LoginCommandHandlerTests
     public async Task HandleAsync_WithInactiveUser_ShouldReturnUnauthorizedError()
     {
         // Arrange
-        var user = User.Create("inactive@tenant.com", "HASH_ARGON2", UserRole.Cajero, tenantId: Guid.NewGuid());
+        var user = User.Create(new Email("inactive@tenant.com"), new PasswordHash("HASH_ARGON2"), Guid.NewGuid(), tenantId: Guid.NewGuid());
         user.Deactivate();
         _authUserLookup.Users.Add(user);
         _passwordHasher.ValidPassword = "Password123!";

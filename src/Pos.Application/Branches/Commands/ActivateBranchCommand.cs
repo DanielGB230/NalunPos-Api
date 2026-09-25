@@ -1,11 +1,15 @@
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Domain.Common;
 using Pos.Domain.Interfaces;
 
 namespace Pos.Application.Branches.Commands;
 
+[HasPermission(Permissions.Branches.Update)]
 public record ActivateBranchCommand(Guid Id) : ICommand<Result<bool>>;
 
+[HasPermission(Permissions.Branches.Update)]
 public class ActivateBranchCommandHandler : ICommandHandler<ActivateBranchCommand, Result<bool>>
 {
     private readonly IBranchRepository _branchRepository;

@@ -1,3 +1,5 @@
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using FluentValidation;
 using Pos.Application.Branches.DTOs;
@@ -9,6 +11,7 @@ using Pos.Domain.ValueObjects;
 
 namespace Pos.Application.Branches.Commands;
 
+[HasPermission(Permissions.Branches.Create)]
 public record CreateBranchCommand(
     string Name,
     string Street,
@@ -18,6 +21,7 @@ public record CreateBranchCommand(
     string PhoneNumber = ""
 ) : ICommand<Result<BranchDto>>;
 
+[HasPermission(Permissions.Branches.Create)]
 public class CreateBranchCommandValidator : AbstractValidator<CreateBranchCommand>
 {
     public CreateBranchCommandValidator()
@@ -33,6 +37,7 @@ public class CreateBranchCommandValidator : AbstractValidator<CreateBranchComman
     }
 }
 
+[HasPermission(Permissions.Branches.Create)]
 public class CreateBranchCommandHandler : ICommandHandler<CreateBranchCommand, Result<BranchDto>>
 {
     private readonly IBranchRepository _branchRepository;

@@ -9,7 +9,7 @@ namespace Pos.Domain.DomainEvents;
 public record UserCreatedDomainEvent(
     Guid UserId,
     string Email,
-    UserRole Role,
+    Guid RoleId,
     Guid? TenantId,
     DateTime OccurredOnUtc
 ) : IDomainEvent;

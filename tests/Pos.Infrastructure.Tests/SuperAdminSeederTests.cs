@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
+using Pos.Domain.Entities;
 using Pos.Domain.Enums;
 using Pos.Infrastructure.Authentication;
 using Pos.Infrastructure.Persistence.Context;
@@ -40,7 +41,7 @@ public class SuperAdminSeederTests
         await seeder.SeedAsync();
 
         // Assert
-        var seededUser = await context.Users.FirstOrDefaultAsync(u => u.Role == UserRole.SuperAdmin);
+        var seededUser = await context.Users.FirstOrDefaultAsync(u => u.RoleId == Role.SuperAdminRoleId);
         Assert.NotNull(seededUser);
         Assert.Equal("superadmin@nalunpos.com", seededUser.Email.Value);
         Assert.Null(seededUser.TenantId);
@@ -75,7 +76,7 @@ public class SuperAdminSeederTests
         await seeder.SeedAsync();
 
         // Assert — solo debe existir 1 SuperAdmin
-        int count = await context.Users.CountAsync(u => u.Role == UserRole.SuperAdmin);
+        int count = await context.Users.CountAsync(u => u.RoleId == Role.SuperAdminRoleId);
         Assert.Equal(1, count);
     }
 }

@@ -14,7 +14,7 @@ public class RoleTests
         var permissions = new List<string> { "Sales.Create", "Inventory.View" };
 
         // Act
-        var role = Role.Create(name, "Rol con acceso total", permissions);
+        var role = Role.Create(Guid.NewGuid(), name, "Rol con acceso total", permissions);
 
         // Assert
         Assert.NotEqual(Guid.Empty, role.Id);
@@ -28,6 +28,6 @@ public class RoleTests
     {
         // Arrange & Act & Assert
         Assert.Throws<DomainException>(() =>
-            Role.Create(""));
+            Role.Create(Guid.NewGuid(), ""));
     }
 }

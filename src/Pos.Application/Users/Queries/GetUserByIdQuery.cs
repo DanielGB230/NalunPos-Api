@@ -1,3 +1,5 @@
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Users.DTOs;
 using Pos.Domain.Common;
@@ -5,6 +7,7 @@ using Pos.Domain.Interfaces;
 
 namespace Pos.Application.Users.Queries;
 
+[HasPermission(Permissions.Users.View)]
 public record GetUserByIdQuery(Guid Id) : IQuery<Result<UserDto>>;
 
 public class GetUserByIdQueryHandler : IQueryHandler<GetUserByIdQuery, Result<UserDto>>

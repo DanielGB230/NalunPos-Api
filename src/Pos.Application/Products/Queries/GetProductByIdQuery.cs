@@ -1,3 +1,5 @@
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Products.DTOs;
 using Pos.Domain.Common;
@@ -5,8 +7,10 @@ using Pos.Domain.Interfaces;
 
 namespace Pos.Application.Products.Queries;
 
+[HasPermission(Permissions.Products.View)]
 public record GetProductByIdQuery(Guid Id) : IQuery<Result<ProductDto>>;
 
+[HasPermission(Permissions.Products.View)]
 public class GetProductByIdQueryHandler : IQueryHandler<GetProductByIdQuery, Result<ProductDto>>
 {
     private readonly IProductRepository _productRepository;

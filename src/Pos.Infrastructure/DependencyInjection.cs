@@ -110,14 +110,20 @@ public static class DependencyInjection
         services.AddScoped<IAgentActionRecordRepository, AgentActionRecordRepository>();
 
         // ── Seguridad y Autenticación ─────────────────────────────────────────
+#pragma warning disable EXTEXP0018
+        services.AddHybridCache();
+#pragma warning restore EXTEXP0018
+
         services.AddScoped<IPasswordHasher, PasswordHasher>();
         services.AddScoped<ITokenGenerator, JwtTokenGenerator>();
         services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
         services.AddScoped<IAuthUserLookup, AuthUserLookup>();
+        services.AddScoped<Pos.Application.Common.Authorization.ICurrentUserPermissions, CurrentUserPermissions>();
 
         // ── Seeders ───────────────────────────────────────────────────────────
         services.AddScoped<SuperAdminSeeder>();
+        services.AddScoped<Pos.Infrastructure.Persistence.Seed.DefaultRoleSeeder>();
 
         // ── Event Bus y ACL de servicios externos ─────────────────────────────
         services.AddSingleton<IEventBus, RabbitMqEventBus>();

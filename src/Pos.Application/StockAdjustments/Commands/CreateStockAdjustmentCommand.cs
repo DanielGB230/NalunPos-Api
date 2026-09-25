@@ -1,3 +1,5 @@
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using FluentValidation;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.StockAdjustments.DTOs;
@@ -11,6 +13,7 @@ namespace Pos.Application.StockAdjustments.Commands;
 
 public record CreateStockAdjustmentLineDto(Guid ProductId, decimal Quantity);
 
+[HasPermission(Permissions.StockAdjustments.Create)]
 public record CreateStockAdjustmentCommand(
     Guid WarehouseId,
     StockAdjustmentReason Reason,
@@ -18,6 +21,7 @@ public record CreateStockAdjustmentCommand(
     string? Notes = null
 ) : ICommand<Result<StockAdjustmentDto>>;
 
+[HasPermission(Permissions.StockAdjustments.Create)]
 public class CreateStockAdjustmentCommandValidator : AbstractValidator<CreateStockAdjustmentCommand>
 {
     public CreateStockAdjustmentCommandValidator()
@@ -33,6 +37,7 @@ public class CreateStockAdjustmentCommandValidator : AbstractValidator<CreateSto
     }
 }
 
+[HasPermission(Permissions.StockAdjustments.Create)]
 public class CreateStockAdjustmentCommandHandler : ICommandHandler<CreateStockAdjustmentCommand, Result<StockAdjustmentDto>>
 {
     private readonly IStockAdjustmentRepository _adjustmentRepository;

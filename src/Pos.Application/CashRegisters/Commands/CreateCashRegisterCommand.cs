@@ -1,3 +1,5 @@
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using FluentValidation;
 using Pos.Application.CashRegisters.DTOs;
@@ -6,8 +8,10 @@ using Pos.Domain.Interfaces;
 
 namespace Pos.Application.CashRegisters.Commands;
 
+[HasPermission(Permissions.CashRegisters.Create)]
 public record CreateCashRegisterCommand(string Name, string SerialNumber = "") : ICommand<CashRegisterDto>;
 
+[HasPermission(Permissions.CashRegisters.Create)]
 public class CreateCashRegisterCommandValidator : AbstractValidator<CreateCashRegisterCommand>
 {
     public CreateCashRegisterCommandValidator()
@@ -18,6 +22,7 @@ public class CreateCashRegisterCommandValidator : AbstractValidator<CreateCashRe
     }
 }
 
+[HasPermission(Permissions.CashRegisters.Create)]
 public class CreateCashRegisterCommandHandler : ICommandHandler<CreateCashRegisterCommand, CashRegisterDto>
 {
     private readonly ICashRegisterRepository _registerRepository;

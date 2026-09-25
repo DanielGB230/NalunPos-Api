@@ -1,3 +1,5 @@
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using FluentValidation;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Payments.DTOs;
@@ -10,6 +12,7 @@ using Pos.Domain.ValueObjects;
 
 namespace Pos.Application.Payments.Commands;
 
+[HasPermission(Permissions.Payments.Process)]
 public record ProcessPaymentCommand(
     Guid SaleId,
     decimal Amount,
@@ -18,6 +21,7 @@ public record ProcessPaymentCommand(
     string? ExternalReference = null
 ) : ICommand<Result<PaymentDto>>;
 
+[HasPermission(Permissions.Payments.Process)]
 public class ProcessPaymentCommandValidator : AbstractValidator<ProcessPaymentCommand>
 {
     public ProcessPaymentCommandValidator()
@@ -33,6 +37,7 @@ public class ProcessPaymentCommandValidator : AbstractValidator<ProcessPaymentCo
     }
 }
 
+[HasPermission(Permissions.Payments.Process)]
 public class ProcessPaymentCommandHandler : ICommandHandler<ProcessPaymentCommand, Result<PaymentDto>>
 {
     private readonly IPaymentRepository _paymentRepository;

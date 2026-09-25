@@ -1,3 +1,5 @@
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using FluentValidation;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.PurchaseOrders.DTOs;
@@ -16,11 +18,13 @@ public record ReceivePurchaseOrderLineDto(
     DateTime? ExpirationDate = null
 );
 
+[HasPermission(Permissions.PurchaseOrders.Receive)]
 public record ReceivePurchaseOrderCommand(
     Guid PurchaseOrderId,
     List<ReceivePurchaseOrderLineDto> ReceivedLines
 ) : ICommand<Result<PurchaseOrderDto>>;
 
+[HasPermission(Permissions.PurchaseOrders.Receive)]
 public class ReceivePurchaseOrderCommandValidator : AbstractValidator<ReceivePurchaseOrderCommand>
 {
     public ReceivePurchaseOrderCommandValidator()
@@ -35,6 +39,7 @@ public class ReceivePurchaseOrderCommandValidator : AbstractValidator<ReceivePur
     }
 }
 
+[HasPermission(Permissions.PurchaseOrders.Receive)]
 public class ReceivePurchaseOrderCommandHandler : ICommandHandler<ReceivePurchaseOrderCommand, Result<PurchaseOrderDto>>
 {
     private readonly IPurchaseOrderRepository _orderRepository;

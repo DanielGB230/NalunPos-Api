@@ -15,6 +15,7 @@ public class CreateTenantCommandHandlerTests
     private readonly FakeUserRepository _userRepository = new();
     private readonly FakeBranchRepository _branchRepository = new();
     private readonly FakeWarehouseRepository _warehouseRepository = new();
+    private readonly FakeRoleRepository _roleRepository = new();
     private readonly FakePasswordHasher _passwordHasher = new();
     private readonly FakeUnitOfWork _unitOfWork = new();
     private readonly CreateTenantCommandHandler _handler;
@@ -26,6 +27,7 @@ public class CreateTenantCommandHandlerTests
             _userRepository,
             _branchRepository,
             _warehouseRepository,
+            _roleRepository,
             _passwordHasher,
             _unitOfWork);
     }
@@ -54,7 +56,7 @@ public class CreateTenantCommandHandlerTests
         Assert.Single(_userRepository.Users);
         var createdUser = _userRepository.Users[0];
         Assert.Equal("admin@demopos.com", createdUser.Email.Value);
-        Assert.Equal(UserRole.TenantAdmin, createdUser.Role);
+        Assert.NotEqual(Guid.Empty, createdUser.RoleId);
         Assert.Equal(result.Value, createdUser.TenantId);
         Assert.Equal("HASHED_Password123!", createdUser.PasswordHash.Value);
 
@@ -89,7 +91,7 @@ public class CreateTenantCommandHandlerTests
     {
         // Arrange
         var existingTenant = Tenant.Create("Tenant 1", "20609999999");
-        var existingUser = User.Create("admin@demopos.com", "HASH", UserRole.TenantAdmin, existingTenant.Id);
+        var existingUser = User.Create(new Email("admin@demopos.com"), new PasswordHash("HASH"), Guid.NewGuid(), existingTenant.Id);
         _userRepository.Users.Add(existingUser);
 
         var command = new CreateTenantCommand(
@@ -233,6 +235,17 @@ public class CreateTenantCommandHandlerTests
         public Task<IReadOnlyList<Warehouse>> GetAllAsync(CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<Warehouse>>(Warehouses);
         public Task<int> CountByTenantAsync(CancellationToken cancellationToken = default) => Task.FromResult(Warehouses.Count);
         public void Update(Warehouse warehouse) { }
+    }
+
+    private sealed class FakeRoleRepository : IRoleRepository
+    {
+        public List<Role> Roles { get; } = [];
+        public Task AddAsync(Role role, CancellationToken cancellationToken = default) { Roles.Add(role); return Task.CompletedTask; }
+        public Task<bool> ExistsByNameAsync(string name, Guid? excludeId = null, CancellationToken cancellationToken = default) => Task.FromResult(Roles.Any(r => r.Name == name && r.Id != excludeId));
+        public Task<Role?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult(Roles.FirstOrDefault(r => r.Id == id));
+        public Task<Role?> GetByNameAsync(string name, CancellationToken cancellationToken = default) => Task.FromResult(Roles.FirstOrDefault(r => r.Name == name));
+        public Task<IReadOnlyList<Role>> GetAllAsync(CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<Role>>(Roles);
+        public void Update(Role role) { }
     }
 
     private sealed class FakeUnitOfWork : IUnitOfWork

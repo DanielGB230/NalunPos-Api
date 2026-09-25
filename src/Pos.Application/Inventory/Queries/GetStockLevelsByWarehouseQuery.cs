@@ -1,3 +1,5 @@
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Common.Models;
 using Pos.Application.Inventory.DTOs;
@@ -10,12 +12,14 @@ namespace Pos.Application.Inventory.Queries;
 /// Query: lista paginada de StockLevel para un almacén dado.
 /// Usada por la vista "Stock Actual" del módulo de inventario.
 /// </summary>
+[HasPermission(Permissions.Inventory.View)]
 public record GetStockLevelsByWarehouseQuery(
     Guid WarehouseId,
     int PageNumber = 1,
     int PageSize = 10
 ) : IQuery<Result<PagedResult<StockLevelDto>>>;
 
+[HasPermission(Permissions.Inventory.View)]
 public class GetStockLevelsByWarehouseQueryHandler
     : IQueryHandler<GetStockLevelsByWarehouseQuery, Result<PagedResult<StockLevelDto>>>
 {

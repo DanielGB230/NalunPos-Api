@@ -1,3 +1,5 @@
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using FluentValidation;
 using Pos.Application.CashRegisters.DTOs;
@@ -8,6 +10,7 @@ using Pos.Domain.ValueObjects;
 
 namespace Pos.Application.CashRegisters.Commands;
 
+[HasPermission(Permissions.CashRegisters.CloseSession)]
 public record CloseCashRegisterSessionCommand(
     Guid SessionId,
     decimal ActualFinalAmount,
@@ -16,6 +19,7 @@ public record CloseCashRegisterSessionCommand(
     string? Notes = null
 ) : ICommand<Result<CashRegisterSessionDto>>;
 
+[HasPermission(Permissions.CashRegisters.CloseSession)]
 public class CloseCashRegisterSessionCommandValidator : AbstractValidator<CloseCashRegisterSessionCommand>
 {
     public CloseCashRegisterSessionCommandValidator()
@@ -31,6 +35,7 @@ public class CloseCashRegisterSessionCommandValidator : AbstractValidator<CloseC
     }
 }
 
+[HasPermission(Permissions.CashRegisters.CloseSession)]
 public class CloseCashRegisterSessionCommandHandler : ICommandHandler<CloseCashRegisterSessionCommand, Result<CashRegisterSessionDto>>
 {
     private readonly ICashRegisterRepository _registerRepository;

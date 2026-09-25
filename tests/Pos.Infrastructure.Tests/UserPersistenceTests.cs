@@ -3,6 +3,7 @@ using Pos.Domain.Entities;
 using Pos.Domain.Enums;
 using Pos.Infrastructure.Authentication;
 using Pos.Infrastructure.Persistence.Context;
+using Pos.Domain.ValueObjects;
 using Xunit;
 
 namespace Pos.Infrastructure.Tests;
@@ -23,9 +24,9 @@ public class UserPersistenceTests
         string passwordHash = _hasher.HashPassword(plainPassword);
 
         var user = User.Create(
-            email: "admin@enterprise.com",
-            passwordHash: passwordHash,
-            role: UserRole.SuperAdmin,
+            email: new Email("admin@enterprise.com"),
+            passwordHash: new PasswordHash(passwordHash),
+            roleId: Role.SuperAdminRoleId,
             tenantId: null,
             firstName: "Admin",
             lastName: "Enterprise"
@@ -45,7 +46,7 @@ public class UserPersistenceTests
 
             Assert.NotNull(retrievedUser);
             Assert.Equal("admin@enterprise.com", retrievedUser.Email.Value);
-            Assert.Equal(UserRole.SuperAdmin, retrievedUser.Role);
+            Assert.Equal(Role.SuperAdminRoleId, retrievedUser.RoleId);
 
             // Confirmar que el password hash NO quedó en texto plano
             Assert.NotEqual(plainPassword, retrievedUser.PasswordHash.Value);

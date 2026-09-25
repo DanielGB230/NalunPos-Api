@@ -1,3 +1,5 @@
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.PosDevices.DTOs;
 using Pos.Domain.Common;
@@ -5,8 +7,10 @@ using Pos.Domain.Interfaces;
 
 namespace Pos.Application.PosDevices.Queries;
 
+[HasPermission(Permissions.PosDevices.View)]
 public record GetPosDeviceByIdQuery(Guid Id) : IQuery<Result<PosDeviceDto>>;
 
+[HasPermission(Permissions.PosDevices.View)]
 public class GetPosDeviceByIdQueryHandler : IQueryHandler<GetPosDeviceByIdQuery, Result<PosDeviceDto>>
 {
     private readonly IPosDeviceRepository _posDeviceRepository;

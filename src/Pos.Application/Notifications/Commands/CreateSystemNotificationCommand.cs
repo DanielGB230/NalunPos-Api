@@ -1,3 +1,5 @@
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using FluentValidation;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Notifications.DTOs;
@@ -9,12 +11,14 @@ using Pos.Domain.Common;
 
 namespace Pos.Application.Notifications.Commands;
 
+[HasPermission(Permissions.Notifications.Create)]
 public record CreateSystemNotificationCommand(
     Guid UserId,
     string Title,
     string Message
 ) : ICommand<Result<SystemNotificationDto>>;
 
+[HasPermission(Permissions.Notifications.Create)]
 public class CreateSystemNotificationCommandValidator : AbstractValidator<CreateSystemNotificationCommand>
 {
     public CreateSystemNotificationCommandValidator()
@@ -30,6 +34,7 @@ public class CreateSystemNotificationCommandValidator : AbstractValidator<Create
     }
 }
 
+[HasPermission(Permissions.Notifications.Create)]
 public class CreateSystemNotificationCommandHandler : ICommandHandler<CreateSystemNotificationCommand, Result<SystemNotificationDto>>
 {
     private readonly ISystemNotificationRepository _notificationRepository;

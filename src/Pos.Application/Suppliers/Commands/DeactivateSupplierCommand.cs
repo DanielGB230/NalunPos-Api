@@ -1,11 +1,15 @@
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Domain.Common;
 using Pos.Domain.Interfaces;
 
 namespace Pos.Application.Suppliers.Commands;
 
+[HasPermission(Permissions.Suppliers.Update)]
 public record DeactivateSupplierCommand(Guid Id) : ICommand<Result<bool>>;
 
+[HasPermission(Permissions.Suppliers.Update)]
 public class DeactivateSupplierCommandHandler : ICommandHandler<DeactivateSupplierCommand, Result<bool>>
 {
     private readonly ISupplierRepository _supplierRepository;

@@ -1,3 +1,5 @@
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using FluentValidation;
 using Pos.Application.AI.DTOs;
@@ -9,6 +11,7 @@ using Pos.Domain.Interfaces;
 
 namespace Pos.Application.AI.Commands;
 
+[HasPermission(Permissions.AiGovernance.ProposeAction)]
 public record ProposeAgentActionCommand(
     string AgentId,
     string ProposedActionType,

@@ -1,3 +1,5 @@
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Common.Models;
 using Pos.Application.Inventory.DTOs;
@@ -10,12 +12,14 @@ namespace Pos.Application.Inventory.Queries;
 /// Query: Kardex de movimientos filtrado por almacén (sin requerir productId).
 /// Usada por la vista "Kardex" del módulo de inventario.
 /// </summary>
+[HasPermission(Permissions.Inventory.View)]
 public record GetWarehouseMovementsQuery(
     Guid WarehouseId,
     int PageNumber = 1,
     int PageSize = 20
 ) : IQuery<Result<PagedResult<InventoryMovementDto>>>;
 
+[HasPermission(Permissions.Inventory.View)]
 public class GetWarehouseMovementsQueryHandler
     : IQueryHandler<GetWarehouseMovementsQuery, Result<PagedResult<InventoryMovementDto>>>
 {

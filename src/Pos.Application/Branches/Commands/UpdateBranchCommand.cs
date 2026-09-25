@@ -1,3 +1,5 @@
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using FluentValidation;
 using Pos.Application.Branches.DTOs;
@@ -8,6 +10,7 @@ using Pos.Domain.ValueObjects;
 
 namespace Pos.Application.Branches.Commands;
 
+[HasPermission(Permissions.Branches.Update)]
 public record UpdateBranchCommand(
     Guid Id,
     string Name,
@@ -18,6 +21,7 @@ public record UpdateBranchCommand(
     string PhoneNumber
 ) : ICommand<Result<BranchDto>>;
 
+[HasPermission(Permissions.Branches.Update)]
 public class UpdateBranchCommandValidator : AbstractValidator<UpdateBranchCommand>
 {
     public UpdateBranchCommandValidator()
@@ -36,6 +40,7 @@ public class UpdateBranchCommandValidator : AbstractValidator<UpdateBranchComman
     }
 }
 
+[HasPermission(Permissions.Branches.Update)]
 public class UpdateBranchCommandHandler : ICommandHandler<UpdateBranchCommand, Result<BranchDto>>
 {
     private readonly IBranchRepository _branchRepository;

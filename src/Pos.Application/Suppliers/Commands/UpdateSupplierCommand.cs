@@ -1,3 +1,5 @@
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using FluentValidation;
 using Pos.Application.Suppliers.DTOs;
@@ -9,6 +11,7 @@ using Pos.Domain.Common;
 
 namespace Pos.Application.Suppliers.Commands;
 
+[HasPermission(Permissions.Suppliers.Update)]
 public record UpdateSupplierCommand(
     Guid Id,
     string Name,
@@ -23,6 +26,7 @@ public record UpdateSupplierCommand(
     string Phone
 ) : ICommand<Result<SupplierDto>>;
 
+[HasPermission(Permissions.Suppliers.Update)]
 public class UpdateSupplierCommandValidator : AbstractValidator<UpdateSupplierCommand>
 {
     public UpdateSupplierCommandValidator()
@@ -39,6 +43,7 @@ public class UpdateSupplierCommandValidator : AbstractValidator<UpdateSupplierCo
     }
 }
 
+[HasPermission(Permissions.Suppliers.Update)]
 public class UpdateSupplierCommandHandler : ICommandHandler<UpdateSupplierCommand, Result<SupplierDto>>
 {
     private readonly ISupplierRepository _supplierRepository;

@@ -1,11 +1,15 @@
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Notifications.DTOs;
 using Pos.Domain.Interfaces;
 
 namespace Pos.Application.Notifications.Queries;
 
+[AuthenticatedOnly]
 public record GetUserNotificationsQuery(Guid UserId, bool UnreadOnly = false) : IQuery<IReadOnlyList<SystemNotificationDto>>;
 
+[AuthenticatedOnly]
 public class GetUserNotificationsQueryHandler : IQueryHandler<GetUserNotificationsQuery, IReadOnlyList<SystemNotificationDto>>
 {
     private readonly ISystemNotificationRepository _notificationRepository;
@@ -23,7 +27,7 @@ public class GetUserNotificationsQueryHandler : IQueryHandler<GetUserNotificatio
     {
         if (_currentUserService.UserId != request.UserId)
         {
-            throw new UnauthorizedAccessException("No tiene permisos para ver las notificaciones de otro usuario.");
+            throw new Pos.Domain.Exceptions.ForbiddenDomainException("No tiene permisos para ver las notificaciones de otro usuario.");
         }
 
         var items = await _notificationRepository.GetByUserIdAsync(request.UserId, request.UnreadOnly, cancellationToken);

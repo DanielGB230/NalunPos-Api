@@ -1,4 +1,6 @@
 using FluentValidation;
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Users.DTOs;
 using Pos.Domain.Entities;
@@ -11,12 +13,13 @@ using Pos.Domain.Common;
 
 namespace Pos.Application.Users.Commands;
 
+[HasPermission(Permissions.Users.Create)]
 public record CreateUserCommand(
     string FirstName,
     string LastName,
     string Email,
     string Password,
-    UserRole Role,
+    Guid RoleId,
     Guid? TenantId
 ) : ICommand<Result<UserDto>>;
 
@@ -75,7 +78,7 @@ public class CreateUserCommandHandler : ICommandHandler<CreateUserCommand, Resul
             user = User.Create(
                 new Email(request.Email),
                 new PasswordHash(passwordHash),
-                request.Role,
+                request.RoleId,
                 request.TenantId,
                 request.FirstName,
                 request.LastName);

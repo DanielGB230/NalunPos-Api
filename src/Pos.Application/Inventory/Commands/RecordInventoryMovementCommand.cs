@@ -1,3 +1,5 @@
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using FluentValidation;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Inventory.DTOs;
@@ -9,6 +11,7 @@ using Pos.Domain.Interfaces;
 
 namespace Pos.Application.Inventory.Commands;
 
+[HasPermission(Permissions.Inventory.AdjustStock)]
 public record RecordInventoryMovementCommand(
     Guid ProductId,
     Guid? WarehouseId,
@@ -18,6 +21,7 @@ public record RecordInventoryMovementCommand(
     string? Notes = null
 ) : ICommand<Result<InventoryMovementDto>>;
 
+[HasPermission(Permissions.Inventory.AdjustStock)]
 public class RecordInventoryMovementCommandValidator : AbstractValidator<RecordInventoryMovementCommand>
 {
     public RecordInventoryMovementCommandValidator()
@@ -36,6 +40,7 @@ public class RecordInventoryMovementCommandValidator : AbstractValidator<RecordI
     }
 }
 
+[HasPermission(Permissions.Inventory.AdjustStock)]
 public class RecordInventoryMovementCommandHandler : ICommandHandler<RecordInventoryMovementCommand, Result<InventoryMovementDto>>
 {
     private readonly IInventoryRepository _inventoryRepository;

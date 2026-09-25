@@ -1,3 +1,5 @@
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using FluentValidation;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.PurchaseOrders.DTOs;
@@ -16,6 +18,7 @@ public record CreatePurchaseOrderLineDto(
     string Currency = "USD"
 );
 
+[HasPermission(Permissions.PurchaseOrders.Create)]
 public record CreatePurchaseOrderCommand(
     Guid SupplierId,
     Guid WarehouseId,
@@ -24,6 +27,7 @@ public record CreatePurchaseOrderCommand(
     string? Notes = null
 ) : ICommand<Result<PurchaseOrderDto>>;
 
+[HasPermission(Permissions.PurchaseOrders.Create)]
 public class CreatePurchaseOrderCommandValidator : AbstractValidator<CreatePurchaseOrderCommand>
 {
     public CreatePurchaseOrderCommandValidator()
@@ -41,6 +45,7 @@ public class CreatePurchaseOrderCommandValidator : AbstractValidator<CreatePurch
     }
 }
 
+[HasPermission(Permissions.PurchaseOrders.Create)]
 public class CreatePurchaseOrderCommandHandler : ICommandHandler<CreatePurchaseOrderCommand, Result<PurchaseOrderDto>>
 {
     private readonly IPurchaseOrderRepository _orderRepository;

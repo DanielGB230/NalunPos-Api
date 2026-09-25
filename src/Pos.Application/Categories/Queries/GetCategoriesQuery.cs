@@ -1,3 +1,5 @@
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Categories.DTOs;
 using Pos.Application.Common.Models;
@@ -9,6 +11,7 @@ namespace Pos.Application.Categories.Queries;
 /// Query interna que transporta los parámetros de filtro y paginación al Handler.
 /// El controlador construye esta query a partir del GetCategoriesRequest.
 /// </summary>
+[HasPermission(Permissions.Categories.View)]
 public record GetCategoriesQuery(
     int PageNumber = 1,
     int PageSize = 10,
@@ -16,6 +19,7 @@ public record GetCategoriesQuery(
     bool? IsActive = null
 ) : IQuery<PagedResult<CategoryDto>>;
 
+[HasPermission(Permissions.Categories.View)]
 public class GetCategoriesQueryHandler : IQueryHandler<GetCategoriesQuery, PagedResult<CategoryDto>>
 {
     private readonly ICategoryRepository _categoryRepository;

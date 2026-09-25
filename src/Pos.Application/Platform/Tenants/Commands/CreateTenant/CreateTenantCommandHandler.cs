@@ -16,6 +16,7 @@ public class CreateTenantCommandHandler : ICommandHandler<CreateTenantCommand, R
     private readonly IUserRepository _userRepository;
     private readonly IBranchRepository _branchRepository;
     private readonly IWarehouseRepository _warehouseRepository;
+    private readonly IRoleRepository _roleRepository;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IUnitOfWork _unitOfWork;
 
@@ -24,6 +25,7 @@ public class CreateTenantCommandHandler : ICommandHandler<CreateTenantCommand, R
         IUserRepository userRepository,
         IBranchRepository branchRepository,
         IWarehouseRepository warehouseRepository,
+        IRoleRepository roleRepository,
         IPasswordHasher passwordHasher,
         IUnitOfWork unitOfWork)
     {
@@ -31,6 +33,7 @@ public class CreateTenantCommandHandler : ICommandHandler<CreateTenantCommand, R
         _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
         _branchRepository = branchRepository ?? throw new ArgumentNullException(nameof(branchRepository));
         _warehouseRepository = warehouseRepository ?? throw new ArgumentNullException(nameof(warehouseRepository));
+        _roleRepository = roleRepository ?? throw new ArgumentNullException(nameof(roleRepository));
         _passwordHasher = passwordHasher ?? throw new ArgumentNullException(nameof(passwordHasher));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
     }
@@ -59,16 +62,22 @@ public class CreateTenantCommandHandler : ICommandHandler<CreateTenantCommand, R
         User adminUser;
         Branch defaultBranch;
         Warehouse defaultWarehouse;
-
+        Role adminRole;
+        Role cajeroRole;
         try
         {
             tenant = Tenant.Create(command.Name, command.DocumentNumber);
             string passwordHash = _passwordHasher.HashPassword(command.AdminPassword);
 
+            // Crear roles básicos (Seeder should ideally handle this, but for CreateTenant, we do it inline or we expect seeder to run)
+            // But we need RoleId NOW to create the user.
+            adminRole = Role.Create(tenant.Id, "TenantAdmin", "Administrador de la Empresa");
+            cajeroRole = Role.Create(tenant.Id, "Cajero", "Cajero del Punto de Venta");
+
             adminUser = User.Create(
                 command.AdminEmail,
                 passwordHash,
-                UserRole.TenantAdmin,
+                adminRole.Id,
                 tenant.Id,
                 firstName: command.Name,
                 lastName: "Admin");
@@ -89,6 +98,8 @@ public class CreateTenantCommandHandler : ICommandHandler<CreateTenantCommand, R
         }
 
         await _tenantRepository.AddAsync(tenant, cancellationToken);
+        await _roleRepository.AddAsync(adminRole, cancellationToken);
+        await _roleRepository.AddAsync(cajeroRole, cancellationToken);
         await _userRepository.AddAsync(adminUser, cancellationToken);
         await _branchRepository.AddAsync(defaultBranch, cancellationToken);
         await _warehouseRepository.AddAsync(defaultWarehouse, cancellationToken);

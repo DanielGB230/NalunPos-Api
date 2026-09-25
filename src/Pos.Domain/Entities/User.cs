@@ -14,7 +14,7 @@ public class User : AggregateRoot<Guid>
 {
     public Email Email { get; private set; } = null!;
     public PasswordHash PasswordHash { get; private set; } = null!;
-    public UserRole Role { get; private set; }
+    public Guid RoleId { get; private set; }
     public Guid? TenantId { get; private set; }
     public string FirstName { get; private set; } = string.Empty;
     public string LastName { get; private set; } = string.Empty;
@@ -32,45 +32,45 @@ public class User : AggregateRoot<Guid>
         Guid id,
         Email email,
         PasswordHash passwordHash,
-        UserRole role,
+        Guid roleId,
         Guid? tenantId,
         string firstName = "",
         string lastName = "") : base(id)
     {
-        ValidateTenantRoleInvariant(role, tenantId);
-
         Email = email ?? throw new DomainException("El correo electrónico es requerido.");
         PasswordHash = passwordHash ?? throw new DomainException("El hash de la contraseña es requerido.");
-        Role = role;
+        
+        if (roleId == Guid.Empty) throw new DomainException("El RoleId no puede estar vacío.");
+        RoleId = roleId;
         TenantId = tenantId;
         FirstName = firstName?.Trim() ?? string.Empty;
         LastName = lastName?.Trim() ?? string.Empty;
         IsActive = true;
         CreatedAtUtc = DateTime.UtcNow;
 
-        RaiseDomainEvent(new UserCreatedDomainEvent(Id, Email.Value, Role, TenantId, CreatedAtUtc));
+        RaiseDomainEvent(new UserCreatedDomainEvent(Id, Email.Value, RoleId, TenantId, CreatedAtUtc));
     }
 
     public static User Create(
         Email email,
         PasswordHash passwordHash,
-        UserRole role,
+        Guid roleId,
         Guid? tenantId,
         string firstName = "",
         string lastName = "")
     {
-        return new User(Guid.CreateVersion7(), email, passwordHash, role, tenantId, firstName, lastName);
+        return new User(Guid.CreateVersion7(), email, passwordHash, roleId, tenantId, firstName, lastName);
     }
 
     public static User Create(
         string email,
         string passwordHash,
-        UserRole role,
+        Guid roleId,
         Guid? tenantId,
         string firstName = "",
         string lastName = "")
     {
-        return Create(new Email(email), new PasswordHash(passwordHash), role, tenantId, firstName, lastName);
+        return Create(new Email(email), new PasswordHash(passwordHash), roleId, tenantId, firstName, lastName);
     }
 
     public void UpdateDetails(string firstName, string lastName)
@@ -92,10 +92,10 @@ public class User : AggregateRoot<Guid>
         UpdatedAtUtc = DateTime.UtcNow;
     }
 
-    public void ChangeRole(UserRole newRole, Guid? newTenantId)
+    public void ChangeRole(Guid newRoleId, Guid? newTenantId)
     {
-        ValidateTenantRoleInvariant(newRole, newTenantId);
-        Role = newRole;
+        if (newRoleId == Guid.Empty) throw new DomainException("El RoleId no puede estar vacío.");
+        RoleId = newRoleId;
         TenantId = newTenantId;
         UpdatedAtUtc = DateTime.UtcNow;
     }
@@ -110,23 +110,5 @@ public class User : AggregateRoot<Guid>
     {
         IsActive = false;
         UpdatedAtUtc = DateTime.UtcNow;
-    }
-
-    private static void ValidateTenantRoleInvariant(UserRole role, Guid? tenantId)
-    {
-        if (role == UserRole.SuperAdmin)
-        {
-            if (tenantId.HasValue && tenantId.Value != Guid.Empty)
-            {
-                throw new DomainException("Un usuario SuperAdmin no debe tener un TenantId asignado.");
-            }
-        }
-        else
-        {
-            if (!tenantId.HasValue || tenantId.Value == Guid.Empty)
-            {
-                throw new DomainException($"Un usuario con rol '{role}' debe tener un TenantId obligatorio.");
-            }
-        }
     }
 }

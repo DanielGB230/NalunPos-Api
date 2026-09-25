@@ -1,3 +1,5 @@
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.PosDevices.DTOs;
 using Pos.Domain.Common;
@@ -5,8 +7,10 @@ using Pos.Domain.Interfaces;
 
 namespace Pos.Application.PosDevices.Commands;
 
+[HasPermission(Permissions.PosDevices.Ping)]
 public record PingPosDeviceCommand(Guid Id) : ICommand<Result<PosDeviceDto>>;
 
+[HasPermission(Permissions.PosDevices.Ping)]
 public class PingPosDeviceCommandHandler : ICommandHandler<PingPosDeviceCommand, Result<PosDeviceDto>>
 {
     private readonly IPosDeviceRepository _posDeviceRepository;

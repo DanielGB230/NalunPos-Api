@@ -1,3 +1,4 @@
+using Pos.Application.Common.Attributes;
 using Pos.Application.Common.Interfaces;
 using FluentValidation;
 using Pos.Application.Roles.DTOs;
@@ -9,6 +10,7 @@ using Pos.Domain.Common;
 
 namespace Pos.Application.Roles.Commands;
 
+[HasPermission(Pos.Application.Common.Authorization.Permissions.Roles.Create)]
 public record CreateRoleCommand(
     string Name,
     string? Description = null,
@@ -29,11 +31,13 @@ public class CreateRoleCommandHandler : ICommandHandler<CreateRoleCommand, Resul
 {
     private readonly IRoleRepository _roleRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ICurrentTenantContext _currentTenantContext;
 
-    public CreateRoleCommandHandler(IRoleRepository roleRepository, IUnitOfWork unitOfWork)
+    public CreateRoleCommandHandler(IRoleRepository roleRepository, IUnitOfWork unitOfWork, ICurrentTenantContext currentTenantContext)
     {
         _roleRepository = roleRepository ?? throw new ArgumentNullException(nameof(roleRepository));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _currentTenantContext = currentTenantContext ?? throw new ArgumentNullException(nameof(currentTenantContext));
     }
 
     public async Task<Result<RoleDto>> HandleAsync(CreateRoleCommand request, CancellationToken cancellationToken)
@@ -47,7 +51,8 @@ public class CreateRoleCommandHandler : ICommandHandler<CreateRoleCommand, Resul
         Role role;
         try
         {
-            role = Role.Create(request.Name, request.Description, request.Permissions);
+            var tenantId = _currentTenantContext.TenantId ?? throw new DomainException("TenantId is required.");
+            role = Role.Create(tenantId, request.Name, request.Description, request.Permissions);
         }
         catch (DomainException ex)
         {

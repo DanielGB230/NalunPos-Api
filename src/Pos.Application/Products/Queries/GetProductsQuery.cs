@@ -1,3 +1,5 @@
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Common.Models;
 using Pos.Application.Products.DTOs;
@@ -9,6 +11,7 @@ namespace Pos.Application.Products.Queries;
 /// Query interna que transporta los parámetros de filtro y paginación al Handler.
 /// El controlador construye esta query a partir del GetProductsRequest.
 /// </summary>
+[HasPermission(Permissions.Products.View)]
 public record GetProductsQuery(
     int PageNumber = 1,
     int PageSize = 10,
@@ -17,6 +20,7 @@ public record GetProductsQuery(
     bool? IsActive = null
 ) : IQuery<PagedResult<ProductDto>>;
 
+[HasPermission(Permissions.Products.View)]
 public class GetProductsQueryHandler : IQueryHandler<GetProductsQuery, PagedResult<ProductDto>>
 {
     private readonly IProductRepository _productRepository;

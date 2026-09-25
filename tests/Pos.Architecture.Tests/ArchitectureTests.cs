@@ -290,5 +290,49 @@ public class ArchitectureTests
             $"Las siguientes entidades contienen la propiedad 'TenantId' pero carecen de un Global Query Filter en PosDbContext: {string.Join(", ", missingFilterEntities)}"
         );
     }
+
+    [Fact]
+    public void All_CommandHandlers_And_QueryHandlers_Must_Define_Authorization_Rules()
+    {
+        var applicationAssembly = typeof(IEventBus).Assembly;
+        
+        var handlerTypes = applicationAssembly.GetTypes()
+            .Where(t => t.IsClass && !t.IsAbstract && 
+                        t.GetInterfaces().Any(i => i.IsGenericType && 
+                        (i.GetGenericTypeDefinition() == typeof(ICommandHandler<,>) || 
+                         i.GetGenericTypeDefinition() == typeof(IQueryHandler<,>))))
+            .ToList();
+
+        Assert.NotEmpty(handlerTypes);
+
+        var missingAuthorizationHandlers = new List<string>();
+
+        foreach (var handler in handlerTypes)
+        {
+            // Decorators are skipped
+            if (handler.Name.Contains("Decorator") || handler.Name.Contains("Behavior"))
+                continue;
+
+            var requestType = handler.GetInterfaces()
+                .First(i => i.IsGenericType && 
+                       (i.GetGenericTypeDefinition() == typeof(ICommandHandler<,>) || 
+                        i.GetGenericTypeDefinition() == typeof(IQueryHandler<,>)))
+                .GetGenericArguments()[0];
+
+            bool hasHasPermission = requestType.GetCustomAttributes(typeof(Pos.Application.Common.Attributes.HasPermissionAttribute), true).Length > 0;
+            bool hasAuthenticatedOnly = requestType.GetCustomAttributes(typeof(Pos.Application.Common.Attributes.AuthenticatedOnlyAttribute), true).Length > 0;
+            bool hasPublicUseCase = requestType.GetCustomAttributes(typeof(Pos.Application.Common.Attributes.PublicUseCaseAttribute), true).Length > 0;
+
+            if (!hasHasPermission && !hasAuthenticatedOnly && !hasPublicUseCase)
+            {
+                missingAuthorizationHandlers.Add(requestType.Name);
+            }
+        }
+
+        Assert.True(
+            missingAuthorizationHandlers.Count == 0,
+            $"Los siguientes comandos o consultas NO definen reglas de autorización explícita (Fail-Closed). Agrega [HasPermission], [AuthenticatedOnly] o [PublicUseCase]: {string.Join(", ", missingAuthorizationHandlers)}"
+        );
+    }
 }
 

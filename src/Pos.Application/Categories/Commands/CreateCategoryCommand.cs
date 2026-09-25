@@ -1,3 +1,5 @@
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using FluentValidation;
 using Pos.Application.Categories.DTOs;
@@ -9,8 +11,10 @@ using Pos.Domain.Common;
 
 namespace Pos.Application.Categories.Commands;
 
+[HasPermission(Permissions.Categories.Create)]
 public record CreateCategoryCommand(string Name, string? Description) : ICommand<Result<CategoryDto>>;
 
+[HasPermission(Permissions.Categories.Create)]
 public class CreateCategoryCommandValidator : AbstractValidator<CreateCategoryCommand>
 {
     public CreateCategoryCommandValidator()
@@ -24,6 +28,7 @@ public class CreateCategoryCommandValidator : AbstractValidator<CreateCategoryCo
     }
 }
 
+[HasPermission(Permissions.Categories.Create)]
 public class CreateCategoryCommandHandler : ICommandHandler<CreateCategoryCommand, Result<CategoryDto>>
 {
     private readonly ICategoryRepository _categoryRepository;

@@ -39,7 +39,10 @@ public class RoleConfiguration : IEntityTypeConfiguration<Role>
         builder.Property(r => r.Permissions)
             .HasColumnName("PermissionsJson");
 
-        builder.HasIndex(r => r.Name)
+        builder.HasIndex(r => new { r.TenantId, r.Name })
+            .IsUnique();
+
+        builder.HasIndex(r => new { r.TenantId, r.Id })
             .IsUnique();
     }
 }

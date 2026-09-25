@@ -1,3 +1,5 @@
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Common.Models;
 using Pos.Application.StockTransfers.DTOs;
@@ -6,8 +8,10 @@ using Pos.Domain.Interfaces;
 
 namespace Pos.Application.StockTransfers.Queries;
 
+[HasPermission(Permissions.StockTransfers.View)]
 public record GetStockTransfersQuery(int PageNumber = 1, int PageSize = 20) : IQuery<Result<PagedResult<StockTransferDto>>>;
 
+[HasPermission(Permissions.StockTransfers.View)]
 public class GetStockTransfersQueryHandler : IQueryHandler<GetStockTransfersQuery, Result<PagedResult<StockTransferDto>>>
 {
     private readonly IStockTransferRepository _transferRepository;

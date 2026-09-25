@@ -1,3 +1,5 @@
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using FluentValidation;
 using Pos.Application.Categories.DTOs;
@@ -8,8 +10,10 @@ using Pos.Domain.Common;
 
 namespace Pos.Application.Categories.Commands;
 
+[HasPermission(Permissions.Categories.Update)]
 public record UpdateCategoryCommand(Guid Id, string Name, string? Description) : ICommand<Result<CategoryDto>>;
 
+[HasPermission(Permissions.Categories.Update)]
 public class UpdateCategoryCommandValidator : AbstractValidator<UpdateCategoryCommand>
 {
     public UpdateCategoryCommandValidator()
@@ -26,6 +30,7 @@ public class UpdateCategoryCommandValidator : AbstractValidator<UpdateCategoryCo
     }
 }
 
+[HasPermission(Permissions.Categories.Update)]
 public class UpdateCategoryCommandHandler : ICommandHandler<UpdateCategoryCommand, Result<CategoryDto>>
 {
     private readonly ICategoryRepository _categoryRepository;

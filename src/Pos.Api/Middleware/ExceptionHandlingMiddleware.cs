@@ -38,6 +38,16 @@ public partial class ExceptionHandlingMiddleware
 
         var (statusCode, title, errors) = exception switch
         {
+            UnauthorizedDomainException unauthEx => (
+                HttpStatusCode.Unauthorized,
+                "No autorizado",
+                new List<string> { unauthEx.Message }),
+
+            ForbiddenDomainException forbEx => (
+                HttpStatusCode.Forbidden,
+                "Acceso denegado",
+                new List<string> { forbEx.Message }),
+
             ProductNotFoundException or CategoryNotFoundException => (
                 HttpStatusCode.NotFound,
                 "Recurso no encontrado",

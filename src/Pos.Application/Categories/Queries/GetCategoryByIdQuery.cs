@@ -1,3 +1,5 @@
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Categories.DTOs;
 using Pos.Domain.Common;
@@ -5,8 +7,10 @@ using Pos.Domain.Interfaces;
 
 namespace Pos.Application.Categories.Queries;
 
+[HasPermission(Permissions.Categories.View)]
 public record GetCategoryByIdQuery(Guid Id) : IQuery<Result<CategoryDto>>;
 
+[HasPermission(Permissions.Categories.View)]
 public class GetCategoryByIdQueryHandler : IQueryHandler<GetCategoryByIdQuery, Result<CategoryDto>>
 {
     private readonly ICategoryRepository _categoryRepository;

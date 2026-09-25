@@ -29,7 +29,7 @@ public class UpdateUserCommandHandlerTests
         var user = User.Create(
             new Email("usuario.original@nalunpos.com"),
             new PasswordHash("hashedPassword"),
-            UserRole.Cajero,
+            Guid.NewGuid(),
             Guid.NewGuid(),
             "Pedro",
             "Gomez"
@@ -41,7 +41,7 @@ public class UpdateUserCommandHandlerTests
             "Pedro Luis",
             "Gomez Silva",
             "pedro.actualizado@nalunpos.com",
-            UserRole.Supervisor,
+            Guid.NewGuid(),
             user.TenantId
         );
 
@@ -65,7 +65,7 @@ public class UpdateUserCommandHandlerTests
             "Inexistente",
             "Usuario",
             "noexiste@nalunpos.com",
-            UserRole.Cajero,
+            Guid.NewGuid(),
             null
         );
 

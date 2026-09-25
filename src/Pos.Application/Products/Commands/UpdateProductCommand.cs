@@ -1,3 +1,5 @@
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using FluentValidation;
 using Pos.Application.Products.DTOs;
@@ -8,6 +10,7 @@ using Pos.Domain.ValueObjects;
 
 namespace Pos.Application.Products.Commands;
 
+[HasPermission(Permissions.Products.Update)]
 public record UpdateProductCommand(
     Guid Id,
     string Name,
@@ -16,6 +19,7 @@ public record UpdateProductCommand(
     Guid CategoryId
 ) : ICommand<Result<ProductDto>>;
 
+[HasPermission(Permissions.Products.Update)]
 public class UpdateProductCommandValidator : AbstractValidator<UpdateProductCommand>
 {
     public UpdateProductCommandValidator()
@@ -32,6 +36,7 @@ public class UpdateProductCommandValidator : AbstractValidator<UpdateProductComm
     }
 }
 
+[HasPermission(Permissions.Products.Update)]
 public class UpdateProductCommandHandler : ICommandHandler<UpdateProductCommand, Result<ProductDto>>
 {
     private readonly IProductRepository _productRepository;

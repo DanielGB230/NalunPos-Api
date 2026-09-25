@@ -749,7 +749,10 @@ namespace Pos.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Name")
+                    b.HasIndex("TenantId", "Id")
+                        .IsUnique();
+
+                    b.HasIndex("TenantId", "Name")
                         .IsUnique();
 
                     b.ToTable("Roles", (string)null);
@@ -1136,10 +1139,8 @@ namespace Pos.Infrastructure.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
 
-                    b.Property<string>("Role")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                    b.Property<Guid>("RoleId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid?>("TenantId")
                         .HasColumnType("uniqueidentifier");
@@ -1153,6 +1154,8 @@ namespace Pos.Infrastructure.Migrations
                         .IsUnique();
 
                     b.HasIndex("TenantId");
+
+                    b.HasIndex("TenantId", "RoleId");
 
                     b.ToTable("Users", (string)null);
                 });
@@ -1218,6 +1221,9 @@ namespace Pos.Infrastructure.Migrations
 
                     b.Property<DateTimeOffset?>("ProcessedOnUtc")
                         .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Type")
                         .IsRequired()
@@ -1676,6 +1682,15 @@ namespace Pos.Infrastructure.Migrations
                         });
 
                     b.Navigation("Lines");
+                });
+
+            modelBuilder.Entity("Pos.Domain.Entities.User", b =>
+                {
+                    b.HasOne("Pos.Domain.Entities.Role", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "RoleId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("Pos.Domain.Entities.Warehouse", b =>

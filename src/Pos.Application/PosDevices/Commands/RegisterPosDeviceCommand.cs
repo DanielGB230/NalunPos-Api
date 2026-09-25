@@ -1,3 +1,5 @@
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using FluentValidation;
 using Pos.Application.PosDevices.DTOs;
@@ -9,12 +11,14 @@ using Pos.Domain.Common;
 
 namespace Pos.Application.PosDevices.Commands;
 
+[HasPermission(Permissions.PosDevices.Register)]
 public record RegisterPosDeviceCommand(
     Guid BranchId,
     string Name,
     string SerialNumber
 ) : ICommand<Result<PosDeviceDto>>;
 
+[HasPermission(Permissions.PosDevices.Register)]
 public class RegisterPosDeviceCommandValidator : AbstractValidator<RegisterPosDeviceCommand>
 {
     public RegisterPosDeviceCommandValidator()
@@ -30,6 +34,7 @@ public class RegisterPosDeviceCommandValidator : AbstractValidator<RegisterPosDe
     }
 }
 
+[HasPermission(Permissions.PosDevices.Register)]
 public class RegisterPosDeviceCommandHandler : ICommandHandler<RegisterPosDeviceCommand, Result<PosDeviceDto>>
 {
     private readonly IPosDeviceRepository _posDeviceRepository;

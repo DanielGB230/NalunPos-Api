@@ -1,3 +1,5 @@
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Sales.DTOs;
 using Pos.Domain.Common;
@@ -5,8 +7,10 @@ using Pos.Domain.Interfaces;
 
 namespace Pos.Application.Sales.Queries;
 
+[HasPermission(Permissions.Sales.View)]
 public record GetSaleByIdQuery(Guid Id) : IQuery<Result<SaleDto>>;
 
+[HasPermission(Permissions.Sales.View)]
 public class GetSaleByIdQueryHandler : IQueryHandler<GetSaleByIdQuery, Result<SaleDto>>
 {
     private readonly ISaleRepository _saleRepository;

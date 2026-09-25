@@ -1,3 +1,5 @@
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using FluentValidation;
 using Pos.Application.Suppliers.DTOs;
@@ -10,6 +12,7 @@ using Pos.Domain.Common;
 
 namespace Pos.Application.Suppliers.Commands;
 
+[HasPermission(Permissions.Suppliers.Create)]
 public record CreateSupplierCommand(
     string Name,
     string TaxId,
@@ -23,6 +26,7 @@ public record CreateSupplierCommand(
     string Phone
 ) : ICommand<Result<SupplierDto>>;
 
+[HasPermission(Permissions.Suppliers.Create)]
 public class CreateSupplierCommandValidator : AbstractValidator<CreateSupplierCommand>
 {
     public CreateSupplierCommandValidator()
@@ -50,6 +54,7 @@ public class CreateSupplierCommandValidator : AbstractValidator<CreateSupplierCo
     }
 }
 
+[HasPermission(Permissions.Suppliers.Create)]
 public class CreateSupplierCommandHandler : ICommandHandler<CreateSupplierCommand, Result<SupplierDto>>
 {
     private readonly ISupplierRepository _supplierRepository;

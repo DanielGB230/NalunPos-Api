@@ -11,11 +11,12 @@ public class CreateRoleCommandHandlerTests
 {
     private readonly FakeRoleRepository _roleRepository = new();
     private readonly FakeUnitOfWork _unitOfWork = new();
+    private readonly FakeCurrentTenantContext _currentTenantContext = new();
     private readonly CreateRoleCommandHandler _handler;
 
     public CreateRoleCommandHandlerTests()
     {
-        _handler = new CreateRoleCommandHandler(_roleRepository, _unitOfWork);
+        _handler = new CreateRoleCommandHandler(_roleRepository, _unitOfWork, _currentTenantContext);
     }
 
     [Fact]
@@ -43,7 +44,7 @@ public class CreateRoleCommandHandlerTests
     public async Task HandleAsync_WhenRoleNameAlreadyExists_ShouldReturnConflictResult()
     {
         // Arrange
-        var existingRole = Role.Create("SupervisorDeInventario", "Rol existente");
+        var existingRole = Role.Create(Guid.NewGuid(), "SupervisorDeInventario", "Rol existente");
         _roleRepository.Roles.Add(existingRole);
 
         var command = new CreateRoleCommand(
@@ -80,5 +81,12 @@ public class CreateRoleCommandHandlerTests
     {
         public int SaveChangesCount { get; private set; }
         public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) { SaveChangesCount++; return Task.FromResult(1); }
+    }
+
+    private sealed class FakeCurrentTenantContext : ICurrentTenantContext
+    {
+        public Guid? TenantId { get; set; } = Guid.NewGuid();
+        public bool IsSuperAdmin => false;
+        public bool HasTenant { get; } = true;
     }
 }

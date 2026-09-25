@@ -37,7 +37,7 @@ public sealed partial class SuperAdminSeeder
         string? rawPassword = _configuration["SuperAdminSettings:Password"];
 
         var existingSuperAdmin = await _context.Users
-            .FirstOrDefaultAsync(u => u.Role == UserRole.SuperAdmin, cancellationToken);
+            .FirstOrDefaultAsync(u => u.RoleId == Role.SuperAdminRoleId, cancellationToken);
 
         if (existingSuperAdmin != null)
         {
@@ -78,10 +78,36 @@ public sealed partial class SuperAdminSeeder
 
         string passwordHash = _passwordHasher.HashPassword(rawPassword);
 
+        // Crear o verificar el Rol SuperAdmin global
+        var superAdminRole = await _context.Set<Role>().IgnoreQueryFilters()
+            .FirstOrDefaultAsync(r => r.Id == Role.SuperAdminRoleId, cancellationToken);
+            
+        if (superAdminRole == null)
+        {
+            var pType = typeof(Role);
+            var constructor = pType.GetConstructor(
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance,
+                null,
+                new[] { typeof(Guid), typeof(Guid), typeof(string), typeof(string), typeof(IEnumerable<string>) },
+                null);
+                
+            if (constructor != null)
+            {
+                superAdminRole = (Role)constructor.Invoke(new object[] { Role.SuperAdminRoleId, Guid.Empty, "SuperAdmin", "Administrador Global del Sistema", Array.Empty<string>() });
+            }
+            else
+            {
+                // Fallback if reflection fails, this shouldn't happen but just in case
+                superAdminRole = Role.Create(Guid.Empty, "SuperAdmin", "Administrador Global");
+                typeof(Role).GetProperty("Id")?.SetValue(superAdminRole, Role.SuperAdminRoleId);
+            }
+            await _context.Set<Role>().AddAsync(superAdminRole, cancellationToken);
+        }
+
         var superAdmin = User.Create(
             email:        email,
             passwordHash: passwordHash,
-            role:         UserRole.SuperAdmin,
+            roleId:       Role.SuperAdminRoleId,
             tenantId:     null,
             firstName:    firstName,
             lastName:     lastName);

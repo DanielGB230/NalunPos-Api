@@ -1,3 +1,5 @@
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using FluentValidation;
 using Pos.Application.Products.DTOs;
@@ -9,6 +11,7 @@ using Pos.Domain.ValueObjects;
 
 namespace Pos.Application.Products.Commands;
 
+[HasPermission(Permissions.Products.Create)]
 public record CreateProductCommand(
     string Name,
     string Sku,
@@ -21,6 +24,7 @@ public record CreateProductCommand(
     int InitialStock = 0
 ) : ICommand<Result<ProductDto>>;
 
+[HasPermission(Permissions.Products.Create)]
 public class CreateProductCommandValidator : AbstractValidator<CreateProductCommand>
 {
     public CreateProductCommandValidator()
@@ -54,6 +58,7 @@ public class CreateProductCommandValidator : AbstractValidator<CreateProductComm
     }
 }
 
+[HasPermission(Permissions.Products.Create)]
 public class CreateProductCommandHandler : ICommandHandler<CreateProductCommand, Result<ProductDto>>
 {
     private readonly IProductRepository _productRepository;

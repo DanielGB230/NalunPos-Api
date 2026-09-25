@@ -1,3 +1,5 @@
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using FluentValidation;
 using Pos.Application.Authentication.DTOs;
 using Pos.Application.Common.Interfaces;
@@ -7,8 +9,10 @@ using Pos.Domain.Interfaces;
 
 namespace Pos.Application.Authentication.Queries;
 
+[PublicUseCase]
 public record LoginQuery(string Email, string Password) : IQuery<Result<AuthResponseDto>>;
 
+[PublicUseCase]
 public class LoginQueryValidator : AbstractValidator<LoginQuery>
 {
     public LoginQueryValidator()
@@ -22,6 +26,7 @@ public class LoginQueryValidator : AbstractValidator<LoginQuery>
     }
 }
 
+[PublicUseCase]
 public class LoginQueryHandler : IQueryHandler<LoginQuery, Result<AuthResponseDto>>
 {
     private readonly IUserRepository _userRepository;

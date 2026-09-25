@@ -55,7 +55,7 @@ public class LoginCommandHandler : ICommandHandler<LoginCommand, Result<LoginRes
             Token: token,
             ExpiresAtUtc: expiresAtUtc,
             UserId: user.Id,
-            Role: user.Role,
+            RoleId: user.RoleId,
             TenantId: user.TenantId
         );
 

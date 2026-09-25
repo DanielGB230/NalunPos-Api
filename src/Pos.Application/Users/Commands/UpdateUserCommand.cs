@@ -1,4 +1,6 @@
 using FluentValidation;
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Users.DTOs;
 using Pos.Domain.Enums;
@@ -10,12 +12,13 @@ using Pos.Domain.Common;
 
 namespace Pos.Application.Users.Commands;
 
+[HasPermission(Permissions.Users.Update)]
 public record UpdateUserCommand(
     Guid Id,
     string FirstName,
     string LastName,
     string Email,
-    UserRole Role,
+    Guid RoleId,
     Guid? TenantId
 ) : ICommand<Result<UserDto>>;
 
@@ -72,7 +75,7 @@ public class UpdateUserCommandHandler : ICommandHandler<UpdateUserCommand, Resul
         {
             user.UpdateDetails(request.FirstName, request.LastName);
             user.UpdateEmail(new Email(request.Email));
-            user.ChangeRole(request.Role, request.TenantId);
+            user.ChangeRole(request.RoleId, request.TenantId);
         }
         catch (DomainException ex)
         {

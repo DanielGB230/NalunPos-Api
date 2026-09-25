@@ -1,11 +1,15 @@
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Domain.Common;
 using Pos.Domain.Interfaces;
 
 namespace Pos.Application.Categories.Commands;
 
+[HasPermission(Permissions.Categories.Update)]
 public record ActivateCategoryCommand(Guid Id) : ICommand<Result<bool>>;
 
+[HasPermission(Permissions.Categories.Update)]
 public class ActivateCategoryCommandHandler : ICommandHandler<ActivateCategoryCommand, Result<bool>>
 {
     private readonly ICategoryRepository _categoryRepository;

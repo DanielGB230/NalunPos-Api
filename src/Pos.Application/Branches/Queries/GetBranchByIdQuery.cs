@@ -1,3 +1,5 @@
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Branches.DTOs;
 using Pos.Domain.Common;
@@ -5,8 +7,10 @@ using Pos.Domain.Interfaces;
 
 namespace Pos.Application.Branches.Queries;
 
+[HasPermission(Permissions.Branches.View)]
 public record GetBranchByIdQuery(Guid Id) : IQuery<Result<BranchDto>>;
 
+[HasPermission(Permissions.Branches.View)]
 public class GetBranchByIdQueryHandler : IQueryHandler<GetBranchByIdQuery, Result<BranchDto>>
 {
     private readonly IBranchRepository _branchRepository;

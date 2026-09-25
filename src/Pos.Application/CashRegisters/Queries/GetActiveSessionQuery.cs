@@ -1,11 +1,15 @@
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.CashRegisters.DTOs;
 using Pos.Domain.Interfaces;
 
 namespace Pos.Application.CashRegisters.Queries;
 
+[HasPermission(Permissions.CashRegisters.View)]
 public record GetActiveSessionQuery(Guid CashRegisterId) : IQuery<CashRegisterSessionDto?>;
 
+[HasPermission(Permissions.CashRegisters.View)]
 public class GetActiveSessionQueryHandler : IQueryHandler<GetActiveSessionQuery, CashRegisterSessionDto?>
 {
     private readonly ICashRegisterRepository _registerRepository;

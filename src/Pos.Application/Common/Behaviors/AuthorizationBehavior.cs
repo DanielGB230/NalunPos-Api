@@ -1,5 +1,6 @@
 using System.Reflection;
 using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Domain.Exceptions;
 using Pos.Domain.Interfaces;
@@ -7,34 +8,45 @@ using Pos.Domain.Interfaces;
 namespace Pos.Application.Common.Behaviors;
 
 /// <summary>
-/// Pipeline behavior de autorización basada en permisos — reemplaza MediatR.IPipelineBehavior.
-/// Verifica que el usuario autenticado tenga los permisos declarados en [HasPermission]
-/// antes de delegar al handler interno.
+/// Pipeline behavior de autorización basada en permisos (Fail-Closed).
 /// </summary>
-public class AuthorizationBehavior<TRequest, TResponse>
+public class AuthorizationBehavior<TRequest, TResponse> : ICommandHandler<TRequest, TResponse>
     where TRequest : ICommand<TResponse>
 {
     private readonly ICurrentUserService _currentUserService;
     private readonly IUserRepository _userRepository;
+    private readonly ICurrentUserPermissions _currentUserPermissions;
     private readonly ICommandHandler<TRequest, TResponse> _inner;
 
     public AuthorizationBehavior(
         ICurrentUserService currentUserService,
         IUserRepository userRepository,
+        ICurrentUserPermissions currentUserPermissions,
         ICommandHandler<TRequest, TResponse> inner)
     {
         _currentUserService = currentUserService ?? throw new ArgumentNullException(nameof(currentUserService));
         _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
+        _currentUserPermissions = currentUserPermissions ?? throw new ArgumentNullException(nameof(currentUserPermissions));
         _inner = inner ?? throw new ArgumentNullException(nameof(inner));
     }
 
     public async Task<TResponse> HandleAsync(TRequest request, CancellationToken cancellationToken = default)
     {
-        var attributes = request.GetType().GetCustomAttributes<HasPermissionAttribute>().ToList();
-
-        if (attributes.Count == 0)
+        var requestType = request.GetType();
+        
+        bool isPublicUseCase = requestType.GetCustomAttribute<PublicUseCaseAttribute>() != null;
+        if (isPublicUseCase)
         {
             return await _inner.HandleAsync(request, cancellationToken);
+        }
+
+        bool isAuthenticatedOnly = requestType.GetCustomAttribute<AuthenticatedOnlyAttribute>() != null;
+        var permissionAttributes = requestType.GetCustomAttributes<HasPermissionAttribute>().ToList();
+
+        // Fail-Closed: If not marked with PublicUseCase, AuthenticatedOnly or HasPermission, it's denied by default.
+        if (!isAuthenticatedOnly && permissionAttributes.Count == 0)
+        {
+            throw new UnauthorizedDomainException("Acceso denegado: el handler no declara reglas de autorización (Fail-Closed).");
         }
 
         if (!_currentUserService.UserId.HasValue)
@@ -46,6 +58,19 @@ public class AuthorizationBehavior<TRequest, TResponse>
         if (user is null || !user.IsActive)
         {
             throw new UnauthorizedDomainException("El usuario autenticado no existe o está inactivo.");
+        }
+
+        if (permissionAttributes.Count > 0)
+        {
+            var userPermissions = await _currentUserPermissions.GetPermissionsAsync(user.TenantId, user.RoleId, cancellationToken);
+
+            foreach (var attr in permissionAttributes)
+            {
+                if (!userPermissions.Contains(attr.Permission))
+                {
+                    throw new ForbiddenDomainException($"El usuario no tiene el permiso requerido: {attr.Permission}.");
+                }
+            }
         }
 
         return await _inner.HandleAsync(request, cancellationToken);

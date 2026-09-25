@@ -1,3 +1,5 @@
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Common.Models;
 using Pos.Application.Suppliers.DTOs;
@@ -9,6 +11,7 @@ namespace Pos.Application.Suppliers.Queries;
 /// Query interna que transporta los parámetros de filtro y paginación al Handler.
 /// El controlador construye esta query a partir del GetSuppliersRequest.
 /// </summary>
+[HasPermission(Permissions.Suppliers.View)]
 public record GetSuppliersQuery(
     int PageNumber = 1,
     int PageSize = 10,
@@ -16,6 +19,7 @@ public record GetSuppliersQuery(
     bool? IsActive = null
 ) : IQuery<PagedResult<SupplierDto>>;
 
+[HasPermission(Permissions.Suppliers.View)]
 public class GetSuppliersQueryHandler : IQueryHandler<GetSuppliersQuery, PagedResult<SupplierDto>>
 {
     private readonly ISupplierRepository _supplierRepository;

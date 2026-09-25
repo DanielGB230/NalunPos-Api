@@ -1,3 +1,5 @@
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Suppliers.DTOs;
 using Pos.Domain.Common;
@@ -5,8 +7,10 @@ using Pos.Domain.Interfaces;
 
 namespace Pos.Application.Suppliers.Queries;
 
+[HasPermission(Permissions.Suppliers.View)]
 public record GetSupplierByIdQuery(Guid Id) : IQuery<Result<SupplierDto>>;
 
+[HasPermission(Permissions.Suppliers.View)]
 public class GetSupplierByIdQueryHandler : IQueryHandler<GetSupplierByIdQuery, Result<SupplierDto>>
 {
     private readonly ISupplierRepository _supplierRepository;

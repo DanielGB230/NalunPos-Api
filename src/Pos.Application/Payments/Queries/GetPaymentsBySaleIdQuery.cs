@@ -1,11 +1,15 @@
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Payments.DTOs;
 using Pos.Domain.Interfaces;
 
 namespace Pos.Application.Payments.Queries;
 
+[HasPermission(Permissions.Payments.View)]
 public record GetPaymentsBySaleIdQuery(Guid SaleId) : IQuery<IReadOnlyList<PaymentDto>>;
 
+[HasPermission(Permissions.Payments.View)]
 public class GetPaymentsBySaleIdQueryHandler : IQueryHandler<GetPaymentsBySaleIdQuery, IReadOnlyList<PaymentDto>>
 {
     private readonly IPaymentRepository _paymentRepository;

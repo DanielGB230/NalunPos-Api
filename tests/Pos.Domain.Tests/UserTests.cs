@@ -9,19 +9,20 @@ namespace Pos.Domain.Tests;
 public class UserTests
 {
     [Fact]
-    public void CreateSuperAdminWithNullTenantIdShouldSucceedAndEmitEvent()
+    public void CreateUserWithNullTenantIdShouldSucceedAndEmitEvent()
     {
         // Arrange
         string email = "superadmin@pos.com";
         string passwordHash = "ARGON2ID_HASH_SAMPLE";
+        Guid roleId = Guid.NewGuid();
 
         // Act
-        var user = User.Create(email, passwordHash, UserRole.SuperAdmin, tenantId: null, firstName: "Super", lastName: "Admin");
+        var user = User.Create(email, passwordHash, roleId, tenantId: null, firstName: "Super", lastName: "Admin");
 
         // Assert
         Assert.NotEqual(Guid.Empty, user.Id);
         Assert.Equal(email, user.Email.Value);
-        Assert.Equal(UserRole.SuperAdmin, user.Role);
+        Assert.Equal(roleId, user.RoleId);
         Assert.Null(user.TenantId);
         Assert.True(user.IsActive);
         Assert.Single(user.DomainEvents);
@@ -29,49 +30,30 @@ public class UserTests
     }
 
     [Fact]
-    public void CreateTenantUserWithValidTenantIdShouldSucceed()
+    public void CreateUserWithValidTenantIdShouldSucceed()
     {
         // Arrange
         Guid tenantId = Guid.NewGuid();
+        Guid roleId = Guid.NewGuid();
 
         // Act
-        var user = User.Create("cajero@tenant.com", "HASH_SAMPLE", UserRole.Cajero, tenantId: tenantId, firstName: "Pedro", lastName: "Pérez");
+        var user = User.Create("cajero@tenant.com", "HASH_SAMPLE", roleId, tenantId: tenantId, firstName: "Pedro", lastName: "Pérez");
 
         // Assert
         Assert.Equal(tenantId, user.TenantId);
-        Assert.Equal(UserRole.Cajero, user.Role);
+        Assert.Equal(roleId, user.RoleId);
     }
 
     [Fact]
-    public void CreateSuperAdminWithNonNullTenantIdShouldThrowDomainException()
+    public void CreateUserWithEmptyRoleIdShouldThrowDomainException()
     {
         // Arrange
         Guid tenantId = Guid.NewGuid();
 
         // Act & Assert
         var ex = Assert.Throws<DomainException>(() =>
-            User.Create("superadmin@pos.com", "HASH", UserRole.SuperAdmin, tenantId: tenantId));
+            User.Create("admin@tenant.com", "HASH", Guid.Empty, tenantId: tenantId));
 
-        Assert.Contains("SuperAdmin", ex.Message);
-    }
-
-    [Fact]
-    public void CreateTenantAdminWithNullTenantIdShouldThrowDomainException()
-    {
-        // Act & Assert
-        var ex = Assert.Throws<DomainException>(() =>
-            User.Create("admin@tenant.com", "HASH", UserRole.TenantAdmin, tenantId: null));
-
-        Assert.Contains("TenantId obligatorio", ex.Message);
-    }
-
-    [Fact]
-    public void CreateCajeroWithEmptyTenantIdShouldThrowDomainException()
-    {
-        // Act & Assert
-        var ex = Assert.Throws<DomainException>(() =>
-            User.Create("cajero@tenant.com", "HASH", UserRole.Cajero, tenantId: Guid.Empty));
-
-        Assert.Contains("TenantId obligatorio", ex.Message);
+        Assert.Contains("RoleId", ex.Message);
     }
 }

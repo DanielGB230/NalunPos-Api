@@ -32,7 +32,7 @@ public class CreateUserCommandHandlerTests
             "Mendoza",
             "carlos.mendoza@nalunpos.com",
             "SecurePassword123!",
-            UserRole.Cajero,
+            Guid.NewGuid(),
             Guid.NewGuid()
         );
 
@@ -54,7 +54,7 @@ public class CreateUserCommandHandlerTests
         var existingUser = User.Create(
             new Email("existente@nalunpos.com"),
             new PasswordHash("hashedPassword"),
-            UserRole.TenantAdmin,
+            Guid.NewGuid(),
             Guid.NewGuid(),
             "Maria",
             "Perez"
@@ -66,7 +66,7 @@ public class CreateUserCommandHandlerTests
             "Perez",
             "existente@nalunpos.com",
             "Password123!",
-            UserRole.Cajero,
+            Guid.NewGuid(),
             Guid.NewGuid()
         );
 

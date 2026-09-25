@@ -65,7 +65,7 @@ public class TenantFullE2EIntegrationTests
         var authLookup = sp.GetRequiredService<IAuthUserLookup>();
         var userInDb = await authLookup.FindByEmailAsync(adminEmail);
         Assert.NotNull(userInDb);
-        Assert.Equal(UserRole.TenantAdmin, userInDb.Role);
+        Assert.NotEqual(Guid.Empty, userInDb.RoleId);
         Assert.Equal(createdTenantId, userInDb.TenantId);
         Assert.NotNull(userInDb.PasswordHash.Value);
 
@@ -77,12 +77,12 @@ public class TenantFullE2EIntegrationTests
         var jwtToken = handler.ReadJwtToken(token);
 
         var tenantIdClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "tenant_id" || c.Type == "tenantId")?.Value;
-        var roleClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "role" || c.Type == "http://schemas.microsoft.com/ws/2008/06/identity/claims/role")?.Value;
+        var roleClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "roleId")?.Value;
         var emailClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "email" || c.Type == "sub")?.Value;
 
         Assert.NotNull(tenantIdClaim);
         Assert.Equal(createdTenantId.ToString(), tenantIdClaim);
-        Assert.Equal(UserRole.TenantAdmin.ToString(), roleClaim);
+        Assert.Equal(userInDb.RoleId.ToString(), roleClaim);
 
         // 5. Query Verification via GetTenantsQuery
         var getTenantsResult = await dispatcher.SendAsync(new GetTenantsQuery(1, 10, taxId));

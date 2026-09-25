@@ -1,3 +1,5 @@
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using FluentValidation;
 using Pos.Application.Sales.DTOs;
@@ -17,6 +19,7 @@ public record CreateSaleItemDto(
     decimal UnitPriceAmount
 );
 
+[HasPermission(Permissions.Sales.Create)]
 public record CreateSaleCommand(
     string ReceiptNumber,
     Guid SessionId,
@@ -26,6 +29,7 @@ public record CreateSaleCommand(
     string Currency = "USD"
 ) : ICommand<Result<SaleDto>>;
 
+[HasPermission(Permissions.Sales.Create)]
 public class CreateSaleCommandValidator : AbstractValidator<CreateSaleCommand>
 {
     public CreateSaleCommandValidator()
@@ -49,6 +53,7 @@ public class CreateSaleCommandValidator : AbstractValidator<CreateSaleCommand>
     }
 }
 
+[HasPermission(Permissions.Sales.Create)]
 public class CreateSaleCommandHandler : ICommandHandler<CreateSaleCommand, Result<SaleDto>>
 {
     private readonly ISaleRepository _saleRepository;

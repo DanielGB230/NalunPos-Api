@@ -31,7 +31,7 @@ public class LoginQueryHandlerTests
         var user = User.Create(
             new Email("admin@nalunpos.com"),
             new PasswordHash(hashedPassword),
-            UserRole.SuperAdmin,
+            Role.SuperAdminRoleId,
             null,
             "Super",
             "Admin"
@@ -56,7 +56,7 @@ public class LoginQueryHandlerTests
         var user = User.Create(
             new Email("admin@nalunpos.com"),
             new PasswordHash(_passwordHasher.HashPassword("CorrectPass")),
-            UserRole.SuperAdmin,
+            Role.SuperAdminRoleId,
             null,
             "Super",
             "Admin"

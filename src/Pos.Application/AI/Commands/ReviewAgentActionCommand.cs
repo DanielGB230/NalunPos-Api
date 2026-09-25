@@ -1,3 +1,5 @@
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using FluentValidation;
 using Pos.Application.AI.DTOs;
 using Pos.Application.Common.Interfaces;
@@ -7,6 +9,7 @@ using Pos.Domain.Interfaces;
 
 namespace Pos.Application.AI.Commands;
 
+[HasPermission(Permissions.AiGovernance.ReviewAction)]
 public record ReviewAgentActionCommand(
     Guid RecordId,
     bool Approve

@@ -1,3 +1,5 @@
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Common.Models;
 using Pos.Application.Users.DTOs;
@@ -9,6 +11,7 @@ namespace Pos.Application.Users.Queries;
 /// Query interna que transporta los parámetros de filtro y paginación al Handler.
 /// El controlador construye esta query a partir del GetUsersRequest.
 /// </summary>
+[HasPermission(Permissions.Users.View)]
 public record GetUsersQuery(
     int PageNumber = 1,
     int PageSize = 10,

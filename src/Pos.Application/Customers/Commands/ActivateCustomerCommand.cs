@@ -1,11 +1,15 @@
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Domain.Common;
 using Pos.Domain.Interfaces;
 
 namespace Pos.Application.Customers.Commands;
 
+[HasPermission(Permissions.Customers.Update)]
 public record ActivateCustomerCommand(Guid Id) : ICommand<Result<bool>>;
 
+[HasPermission(Permissions.Customers.Update)]
 public class ActivateCustomerCommandHandler : ICommandHandler<ActivateCustomerCommand, Result<bool>>
 {
     private readonly ICustomerRepository _customerRepository;

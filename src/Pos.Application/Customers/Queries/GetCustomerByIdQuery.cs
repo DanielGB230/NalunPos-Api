@@ -1,3 +1,5 @@
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Customers.DTOs;
 using Pos.Domain.Common;
@@ -5,8 +7,10 @@ using Pos.Domain.Interfaces;
 
 namespace Pos.Application.Customers.Queries;
 
+[HasPermission(Permissions.Customers.View)]
 public record GetCustomerByIdQuery(Guid Id) : IQuery<Result<CustomerDto>>;
 
+[HasPermission(Permissions.Customers.View)]
 public class GetCustomerByIdQueryHandler : IQueryHandler<GetCustomerByIdQuery, Result<CustomerDto>>
 {
     private readonly ICustomerRepository _customerRepository;

@@ -1,3 +1,5 @@
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using FluentValidation;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Invoicing.DTOs;
@@ -11,6 +13,7 @@ using Pos.Domain.Common;
 
 namespace Pos.Application.Invoicing.Commands;
 
+[HasPermission(Permissions.Invoices.Issue)]
 public record IssueInvoiceCommand(
     Guid SaleId,
     InvoiceDocumentType DocumentType,
@@ -19,6 +22,7 @@ public record IssueInvoiceCommand(
     string CustomerTaxCountryCode = "PE"
 ) : ICommand<Result<InvoiceDto>>;
 
+[HasPermission(Permissions.Invoices.Issue)]
 public class IssueInvoiceCommandValidator : AbstractValidator<IssueInvoiceCommand>
 {
     public IssueInvoiceCommandValidator()
@@ -34,6 +38,7 @@ public class IssueInvoiceCommandValidator : AbstractValidator<IssueInvoiceComman
     }
 }
 
+[HasPermission(Permissions.Invoices.Issue)]
 public class IssueInvoiceCommandHandler : ICommandHandler<IssueInvoiceCommand, Result<InvoiceDto>>
 {
     private readonly IInvoiceRepository _invoiceRepository;

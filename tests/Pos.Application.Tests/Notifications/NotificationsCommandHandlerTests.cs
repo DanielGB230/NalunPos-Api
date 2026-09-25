@@ -20,7 +20,7 @@ public class NotificationsCommandHandlerTests
     public async Task CreateSystemNotification_WhenUserExists_ShouldCreateNotificationAndSendPush()
     {
         // Arrange
-        var user = User.Create(new Email("destinatario@test.com"), new PasswordHash("hash"), UserRole.Cajero, Guid.NewGuid(), "Ana", "Torres");
+        var user = User.Create(new Email("destinatario@test.com"), new PasswordHash("hash"), Guid.NewGuid(), Guid.NewGuid(), "Ana", "Torres");
         _userRepository.Users.Add(user);
 
         var command = new CreateSystemNotificationCommand(user.Id, "Alerta de Stock", "El producto X está bajo en stock.");

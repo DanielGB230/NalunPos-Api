@@ -1,3 +1,5 @@
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Common.Models;
 using Pos.Application.Customers.DTOs;
@@ -9,6 +11,7 @@ namespace Pos.Application.Customers.Queries;
 /// Query interna que transporta los parámetros de filtro y paginación al Handler.
 /// El controlador construye esta query a partir del GetCustomersRequest.
 /// </summary>
+[HasPermission(Permissions.Customers.View)]
 public record GetCustomersQuery(
     int PageNumber = 1,
     int PageSize = 10,
@@ -16,6 +19,7 @@ public record GetCustomersQuery(
     bool? IsActive = null
 ) : IQuery<PagedResult<CustomerDto>>;
 
+[HasPermission(Permissions.Customers.View)]
 public class GetCustomersQueryHandler : IQueryHandler<GetCustomersQuery, PagedResult<CustomerDto>>
 {
     private readonly ICustomerRepository _customerRepository;

@@ -1,3 +1,5 @@
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Inventory.DTOs;
 using Pos.Domain.Common;
@@ -5,8 +7,10 @@ using Pos.Domain.Interfaces;
 
 namespace Pos.Application.Inventory.Queries;
 
+[HasPermission(Permissions.Inventory.View)]
 public record GetProductStockQuery(Guid ProductId, Guid? WarehouseId = null) : IQuery<Result<ProductStockDto>>;
 
+[HasPermission(Permissions.Inventory.View)]
 public class GetProductStockQueryHandler : IQueryHandler<GetProductStockQuery, Result<ProductStockDto>>
 {
     private readonly IStockLevelRepository _stockLevelRepository;

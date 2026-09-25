@@ -10,6 +10,8 @@ namespace Pos.Domain.Entities;
 /// </summary>
 public class Role : AggregateRoot<Guid>, ITenantOwnedEntity
 {
+    public static readonly Guid SuperAdminRoleId = Guid.Parse("00000000-0000-0000-0000-000000000001");
+
     private readonly List<string> _permissions = [];
 
     public Guid TenantId { get; private set; }
@@ -22,8 +24,9 @@ public class Role : AggregateRoot<Guid>, ITenantOwnedEntity
     {
     }
 
-    private Role(Guid id, string name, string? description, IEnumerable<string>? permissions) : base(id)
+    private Role(Guid id, Guid tenantId, string name, string? description, IEnumerable<string>? permissions) : base(id)
     {
+        TenantId = tenantId;
         SetName(name);
         Description = description?.Trim();
         if (permissions != null)
@@ -34,9 +37,9 @@ public class Role : AggregateRoot<Guid>, ITenantOwnedEntity
         RaiseDomainEvent(new RoleCreatedDomainEvent(Id, Name, DateTime.UtcNow));
     }
 
-    public static Role Create(string name, string? description = null, IEnumerable<string>? permissions = null)
+    public static Role Create(Guid tenantId, string name, string? description = null, IEnumerable<string>? permissions = null)
     {
-        return new Role(Guid.NewGuid(), name, description, permissions);
+        return new Role(Guid.NewGuid(), tenantId, name, description, permissions);
     }
 
     public void UpdatePermissions(IEnumerable<string> permissions)

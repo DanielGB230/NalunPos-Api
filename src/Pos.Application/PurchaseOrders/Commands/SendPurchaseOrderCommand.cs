@@ -1,3 +1,5 @@
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.PurchaseOrders.DTOs;
 using Pos.Domain.Common;
@@ -6,8 +8,10 @@ using Pos.Domain.Interfaces;
 
 namespace Pos.Application.PurchaseOrders.Commands;
 
+[HasPermission(Permissions.PurchaseOrders.Send)]
 public record SendPurchaseOrderCommand(Guid PurchaseOrderId) : ICommand<Result<PurchaseOrderDto>>;
 
+[HasPermission(Permissions.PurchaseOrders.Send)]
 public class SendPurchaseOrderCommandHandler : ICommandHandler<SendPurchaseOrderCommand, Result<PurchaseOrderDto>>
 {
     private readonly IPurchaseOrderRepository _orderRepository;

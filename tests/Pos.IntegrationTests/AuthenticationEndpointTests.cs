@@ -10,6 +10,7 @@ using Xunit.Abstractions;
 
 using Microsoft.Extensions.Configuration;
 using Pos.IntegrationTests.Fixtures;
+using Pos.Domain.ValueObjects;
 
 namespace Pos.IntegrationTests;
 
@@ -93,22 +94,40 @@ public class AuthenticationEndpointTests : IClassFixture<CustomWebApplicationFac
         Assert.Empty(unprotectedEndpoints);
     }
 
-    private string GenerateJwtToken(Pos.Domain.Enums.UserRole role, Guid? tenantId = null, Guid? overrideUserId = null)
+    private string GenerateJwtToken(Guid roleId, Guid? tenantId = null, Guid? overrideUserId = null)
     {
         var config = _factory.Services.GetRequiredService<IConfiguration>();
         var generator = new Pos.Infrastructure.Authentication.JwtTokenGenerator(config);
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<Pos.Infrastructure.Persistence.Context.PosDbContext>();
+
+        var role = db.Roles.FirstOrDefault(r => r.Id == roleId);
+        if (role == null)
+        {
+            role = Pos.Domain.Entities.Role.Create(tenantId ?? Guid.Empty, "TestRole_" + Guid.NewGuid().ToString()[..6], "Test Role");
+            db.Roles.Add(role);
+            roleId = role.Id;
+        }
+
+        var emailStr = $"test_{Guid.NewGuid().ToString()[..8]}@domain.com";
         var user = Pos.Domain.Entities.User.Create(
-            "testuser@domain.com",
-            "hashedpassword",
-            role,
+            new Email(emailStr),
+            new PasswordHash("hashedpassword"),
+            roleId,
             tenantId,
             "Test",
             "User"
         );
+
         if (overrideUserId.HasValue)
         {
             typeof(Pos.Domain.Common.Entity<Guid>).GetProperty(nameof(Pos.Domain.Entities.User.Id))!.SetValue(user, overrideUserId.Value);
         }
+
+        db.Users.Add(user);
+        db.SaveChangesAsync().GetAwaiter().GetResult();
+
         return generator.GenerateToken(user);
     }
 
@@ -117,7 +136,7 @@ public class AuthenticationEndpointTests : IClassFixture<CustomWebApplicationFac
     {
         // Arrange
         var client = _factory.CreateClient();
-        string token = GenerateJwtToken(Pos.Domain.Enums.UserRole.Cajero, tenantId: Guid.NewGuid());
+        string token = GenerateJwtToken(Guid.NewGuid(), tenantId: Guid.NewGuid());
         client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
 
         // Act
@@ -138,7 +157,7 @@ public class AuthenticationEndpointTests : IClassFixture<CustomWebApplicationFac
         Guid userBId = Guid.NewGuid();
         Guid tenantId = Guid.NewGuid();
 
-        string tokenUserA = GenerateJwtToken(Pos.Domain.Enums.UserRole.Cajero, tenantId: tenantId, overrideUserId: userAId);
+        string tokenUserA = GenerateJwtToken(Guid.NewGuid(), tenantId: tenantId, overrideUserId: userAId);
         client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", tokenUserA);
 
         // Act - User A tries to read User B's notifications
@@ -156,7 +175,7 @@ public class AuthenticationEndpointTests : IClassFixture<CustomWebApplicationFac
         Guid userAId = Guid.NewGuid();
         Guid tenantId = Guid.NewGuid();
 
-        string tokenUserA = GenerateJwtToken(Pos.Domain.Enums.UserRole.Cajero, tenantId: tenantId, overrideUserId: userAId);
+        string tokenUserA = GenerateJwtToken(Guid.NewGuid(), tenantId: tenantId, overrideUserId: userAId);
         client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", tokenUserA);
 
         // Act - User A reads their own notifications

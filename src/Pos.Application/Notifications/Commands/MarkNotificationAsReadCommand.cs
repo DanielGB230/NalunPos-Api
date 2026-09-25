@@ -1,3 +1,5 @@
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Notifications.DTOs;
 using Pos.Domain.Common;
@@ -5,8 +7,10 @@ using Pos.Domain.Interfaces;
 
 namespace Pos.Application.Notifications.Commands;
 
+[AuthenticatedOnly]
 public record MarkNotificationAsReadCommand(Guid Id) : ICommand<Result<SystemNotificationDto>>;
 
+[AuthenticatedOnly]
 public class MarkNotificationAsReadCommandHandler : ICommandHandler<MarkNotificationAsReadCommand, Result<SystemNotificationDto>>
 {
     private readonly ISystemNotificationRepository _notificationRepository;

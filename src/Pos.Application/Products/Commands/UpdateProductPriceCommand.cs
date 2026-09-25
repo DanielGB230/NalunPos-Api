@@ -1,3 +1,5 @@
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using FluentValidation;
 using Pos.Application.Products.DTOs;
@@ -8,6 +10,7 @@ using Pos.Domain.ValueObjects;
 
 namespace Pos.Application.Products.Commands;
 
+[HasPermission(Permissions.Products.Update)]
 public record UpdateProductPriceCommand(
     Guid ProductId,
     decimal PriceAmount,
@@ -15,6 +18,7 @@ public record UpdateProductPriceCommand(
     decimal? CostAmount = null
 ) : ICommand<Result<ProductDto>>;
 
+[HasPermission(Permissions.Products.Update)]
 public class UpdateProductPriceCommandValidator : AbstractValidator<UpdateProductPriceCommand>
 {
     public UpdateProductPriceCommandValidator()
@@ -31,6 +35,7 @@ public class UpdateProductPriceCommandValidator : AbstractValidator<UpdateProduc
     }
 }
 
+[HasPermission(Permissions.Products.Update)]
 public class UpdateProductPriceCommandHandler : ICommandHandler<UpdateProductPriceCommand, Result<ProductDto>>
 {
     private readonly IProductRepository _productRepository;

@@ -1,3 +1,5 @@
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.PurchaseOrders.DTOs;
 using Pos.Domain.Common;
@@ -5,9 +7,11 @@ using Pos.Domain.Interfaces;
 
 namespace Pos.Application.PurchaseOrders.Queries;
 
+[HasPermission(Permissions.PurchaseOrders.View)]
 public record GetPurchaseOrdersQuery(int PageNumber = 1, int PageSize = 20)
     : IQuery<Result<(IReadOnlyList<PurchaseOrderDto> Items, int TotalCount)>>;
 
+[HasPermission(Permissions.PurchaseOrders.View)]
 public class GetPurchaseOrdersQueryHandler
     : IQueryHandler<GetPurchaseOrdersQuery, Result<(IReadOnlyList<PurchaseOrderDto> Items, int TotalCount)>>
 {

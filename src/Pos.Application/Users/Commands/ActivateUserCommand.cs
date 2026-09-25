@@ -1,9 +1,12 @@
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Domain.Common;
 using Pos.Domain.Interfaces;
 
 namespace Pos.Application.Users.Commands;
 
+[HasPermission(Permissions.Users.Update)]
 public record ActivateUserCommand(Guid Id) : ICommand<Result<bool>>;
 
 public class ActivateUserCommandHandler : ICommandHandler<ActivateUserCommand, Result<bool>>

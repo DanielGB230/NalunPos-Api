@@ -1,3 +1,5 @@
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Invoicing.DTOs;
 using Pos.Domain.Common;
@@ -5,8 +7,10 @@ using Pos.Domain.Interfaces;
 
 namespace Pos.Application.Invoicing.Queries;
 
+[HasPermission(Permissions.Invoices.View)]
 public record GetInvoiceByIdQuery(Guid Id) : IQuery<Result<InvoiceDto>>;
 
+[HasPermission(Permissions.Invoices.View)]
 public class GetInvoiceByIdQueryHandler : IQueryHandler<GetInvoiceByIdQuery, Result<InvoiceDto>>
 {
     private readonly IInvoiceRepository _invoiceRepository;

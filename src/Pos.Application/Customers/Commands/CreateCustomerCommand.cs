@@ -1,3 +1,5 @@
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using FluentValidation;
 using Pos.Application.Customers.DTOs;
@@ -10,6 +12,7 @@ using Pos.Domain.Common;
 
 namespace Pos.Application.Customers.Commands;
 
+[HasPermission(Permissions.Customers.Create)]
 public record CreateCustomerCommand(
     string FullName,
     string TaxId,
@@ -22,6 +25,7 @@ public record CreateCustomerCommand(
     string? Country = null
 ) : ICommand<Result<CustomerDto>>;
 
+[HasPermission(Permissions.Customers.Create)]
 public class CreateCustomerCommandValidator : AbstractValidator<CreateCustomerCommand>
 {
     public CreateCustomerCommandValidator()
@@ -39,6 +43,7 @@ public class CreateCustomerCommandValidator : AbstractValidator<CreateCustomerCo
     }
 }
 
+[HasPermission(Permissions.Customers.Create)]
 public class CreateCustomerCommandHandler : ICommandHandler<CreateCustomerCommand, Result<CustomerDto>>
 {
     private readonly ICustomerRepository _customerRepository;

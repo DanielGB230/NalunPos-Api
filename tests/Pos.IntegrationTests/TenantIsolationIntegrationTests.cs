@@ -119,22 +119,31 @@ public class TenantIsolationIntegrationTests
     [Fact]
     public async Task TenantIsolation_TenantAUser_MustNeverSeeOrModifyTenantBUsers()
     {
-        // 1. Arrange: Create two tenants and seed users for each tenant + 1 SuperAdmin
+        // 1. Arrange: Create two tenants and seed roles + users for each tenant + 1 SuperAdmin
         Guid tenantAId = Guid.NewGuid();
         Guid tenantBId = Guid.NewGuid();
 
-        var userA = User.Create("userA@tenantA.com", "hashA", Pos.Domain.Enums.UserRole.TenantAdmin, tenantAId, "User", "A");
-        var userB = User.Create("userB@tenantB.com", "hashB", Pos.Domain.Enums.UserRole.TenantAdmin, tenantBId, "User", "B");
-        var superAdmin = User.Create("superadmin@platform.com", "hashSuper", Pos.Domain.Enums.UserRole.SuperAdmin, null, "Super", "Admin");
-
+        Role roleA, roleB;
+        User userA, userB, superAdmin;
         using (var dbA = _fixture.CreateDbContext(tenantAId))
         {
+            roleA = Role.Create(tenantAId, "RoleA", "Role for Tenant A");
+            dbA.Roles.Add(roleA);
+            userA = User.Create(new Email("userA@tenantA.com"), new PasswordHash("hashA"), roleA.Id, tenantAId, "User", "A");
             dbA.Users.Add(userA);
             await dbA.SaveChangesAsync();
         }
 
         using (var dbB = _fixture.CreateDbContext(tenantBId))
         {
+            roleB = Role.Create(tenantBId, "RoleB", "Role for Tenant B");
+            dbB.Roles.Add(roleB);
+            userB = User.Create(new Email("userB@tenantB.com"), new PasswordHash("hashB"), roleB.Id, tenantBId, "User", "B");
+            
+            var superAdminRole = Role.Create(Guid.Empty, "SuperAdminRole", "Super Admin Role");
+            dbB.Roles.Add(superAdminRole);
+
+            superAdmin = User.Create(new Email("superadmin@platform.com"), new PasswordHash("hashSuper"), superAdminRole.Id, null, "Super", "Admin");
             dbB.Users.AddRange(userB, superAdmin);
             await dbB.SaveChangesAsync();
         }
@@ -147,11 +156,11 @@ public class TenantIsolationIntegrationTests
         // Case 1: GetPagedAsync must return ONLY userA (1 item), NEVER userB or superAdmin
         var (pagedUsers, count) = await userRepo.GetPagedAsync(1, 100, null, isActive: null);
         _output.WriteLine($"[User Isolation] Tenant A retrieved {pagedUsers.Count} users. Total: {count}");
-        foreach (var u in pagedUsers) _output.WriteLine($"  User: {u.Email.Value}, TenantId: {u.TenantId}");
 
-        Assert.Single(pagedUsers);
-        Assert.Equal(userA.Id, pagedUsers[0].Id);
-        Assert.Equal(tenantAId, pagedUsers[0].TenantId);
+        Assert.Contains(pagedUsers, u => u.Id == userA.Id);
+        Assert.DoesNotContain(pagedUsers, u => u.Id == userB.Id);
+        Assert.DoesNotContain(pagedUsers, u => u.Id == superAdmin.Id);
+        Assert.All(pagedUsers, u => Assert.Equal(tenantAId, u.TenantId));
 
         // Case 2: GetByIdAsync for Tenant B user must return NULL
         var fetchedUserB = await userRepo.GetByIdAsync(userB.Id);
@@ -160,6 +169,39 @@ public class TenantIsolationIntegrationTests
         // Case 3: GetByIdAsync for SuperAdmin user must return NULL
         var fetchedSuperAdmin = await userRepo.GetByIdAsync(superAdmin.Id);
         Assert.Null(fetchedSuperAdmin);
+    }
+
+    [Fact]
+    public async Task CrossTenantRoleAssignment_MustBeRejectedByDatabase()
+    {
+        Guid tenantAId = Guid.NewGuid();
+        Guid tenantBId = Guid.NewGuid();
+
+        Role roleB;
+        using (var dbB = _fixture.CreateDbContext(tenantBId))
+        {
+            roleB = Role.Create(tenantBId, "RoleInTenantB", "Desc B");
+            dbB.Roles.Add(roleB);
+            await dbB.SaveChangesAsync();
+        }
+
+        using (var dbA = _fixture.CreateDbContext(tenantAId))
+        {
+            // Intentar crear usuario en Tenant A asignándole un Rol que pertenece a Tenant B
+            var userCross = User.Create(
+                new Email("cross@tenantA.com"),
+                new PasswordHash("hash"),
+                roleB.Id, // RoleId de Tenant B
+                tenantAId, // User de Tenant A
+                "Cross",
+                "User");
+
+            dbA.Users.Add(userCross);
+
+            // Validar que la BD rechaza el guardado debido a la FK compuesta (TenantId, RoleId)
+            var ex = await Assert.ThrowsAsync<DbUpdateException>(async () => await dbA.SaveChangesAsync());
+            Assert.Contains("FOREIGN KEY", ex.InnerException?.Message ?? ex.Message, StringComparison.OrdinalIgnoreCase);
+        }
     }
 
     [Fact]
@@ -172,18 +214,29 @@ public class TenantIsolationIntegrationTests
         // Create user in Tenant A
         using (var dbA = _fixture.CreateDbContext(tenantAId))
         {
-            var userA = User.Create(sharedEmail, "hashA", Pos.Domain.Enums.UserRole.TenantAdmin, tenantAId, "User", "A");
+            var roleA = Role.Create(tenantAId, "RoleA", "Desc A");
+            dbA.Roles.Add(roleA);
+            var userA = User.Create(new Email(sharedEmail), new PasswordHash("hashA"), roleA.Id, tenantAId, "User", "A");
             dbA.Users.Add(userA);
             await dbA.SaveChangesAsync();
         }
 
-        // Try to create user in Tenant B via CommandHandler
+        // Seed Role for Tenant B
+        Role roleB;
+        using (var dbB = _fixture.CreateDbContext(tenantBId))
+        {
+            roleB = Role.Create(tenantBId, "RoleB", "Desc B");
+            dbB.Roles.Add(roleB);
+            await dbB.SaveChangesAsync();
+        }
+
+        // Try to create user in Tenant B via CommandHandler with same email
         var spB = _fixture.CreateServiceProvider(tenantBId);
         using var scopeB = spB.CreateScope();
         var dispatcher = scopeB.ServiceProvider.GetRequiredService<Pos.Application.Common.Interfaces.IDispatcher>();
 
         var command = new Pos.Application.Users.Commands.CreateUserCommand(
-            "User", "B", sharedEmail, "Password123!", Pos.Domain.Enums.UserRole.Cajero, tenantBId);
+            "User", "B", sharedEmail, "Password123!", roleB.Id, tenantBId);
 
         var result = await dispatcher.SendAsync(command);
 
@@ -217,9 +270,8 @@ public class TenantIsolationIntegrationTests
             await db.SaveChangesAsync();
         }
 
-        var sp = _fixture.CreateServiceProvider(null); // No HTTP context for BackgroundService
+        var sp = _fixture.CreateServiceProvider(null); // BackgroundService context
 
-        // We use Reflection to call the private method ProcessOutboxMessagesAsync
         var outboxProcessor = new Pos.Api.BackgroundServices.OutboxProcessorBackgroundService(
             sp.GetRequiredService<Microsoft.Extensions.DependencyInjection.IServiceScopeFactory>(),
             sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<Pos.Api.BackgroundServices.OutboxProcessorBackgroundService>>(),
@@ -244,7 +296,7 @@ public class DummyTenantIntegrationEvent : Pos.Application.IntegrationEvents.Con
     public DateTimeOffset OccurredOnUtc { get; } = DateTimeOffset.UtcNow;
 }
 
-#pragma warning disable CA1711 // Identifiers should not have incorrect suffix
+#pragma warning disable CA1711
 public class DummyTenantIntegrationEventHandler : Pos.Application.Common.Interfaces.IIntegrationEventHandler<DummyTenantIntegrationEvent>
 {
     public static Guid? LastResolvedTenantId { get; private set; }
@@ -264,9 +316,8 @@ public class DummyTenantIntegrationEventHandler : Pos.Application.Common.Interfa
     public async Task HandleAsync(DummyTenantIntegrationEvent integrationEvent, CancellationToken cancellationToken = default)
     {
         LastResolvedTenantId = _tenantContext.TenantId;
-        // Verify we can read data for this tenant
         var (cats, _) = await _categoryRepository.GetPagedAsync(1, 10, null, null, cancellationToken);
-        HitCount += cats.Count; // Will be > 0 if fail-closed is bypassed properly
+        HitCount += cats.Count;
     }
 
     public static void Reset()

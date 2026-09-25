@@ -1,3 +1,5 @@
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.AI.Abstractions;
 using Pos.Application.AI.DTOs;
@@ -6,6 +8,7 @@ using Pos.Domain.Interfaces;
 
 namespace Pos.Application.AI.Queries;
 
+[HasPermission(Permissions.AiGovernance.View)]
 public record GetDemandForecastQuery(Guid ProductId, int DaysAhead = 30) : IQuery<Result<DemandForecastDto>>;
 
 public class GetDemandForecastQueryHandler : IQueryHandler<GetDemandForecastQuery, Result<DemandForecastDto>>
