@@ -9,7 +9,9 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
 {
     public void Configure(EntityTypeBuilder<User> builder)
     {
-        builder.ToTable("Users");
+        builder.ToTable("Users", t => t.HasCheckConstraint(
+            "CK_Users_PlatformRole",
+            "[TenantId] IS NOT NULL OR [RoleId] = '00000000-0000-0000-0000-000000000001'"));
 
         builder.HasKey(u => u.Id);
 

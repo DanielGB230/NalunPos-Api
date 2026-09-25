@@ -334,5 +334,81 @@ public class ArchitectureTests
             $"Los siguientes comandos o consultas NO definen reglas de autorización explícita (Fail-Closed). Agrega [HasPermission], [AuthenticatedOnly] o [PublicUseCase]: {string.Join(", ", missingAuthorizationHandlers)}"
         );
     }
+
+    [Fact]
+    public void All_TenantOwned_Entities_MustBeCoveredBy_RowLevelSecurityPolicy()
+    {
+        var options = new Microsoft.EntityFrameworkCore.DbContextOptionsBuilder<Pos.Infrastructure.Persistence.Context.PosDbContext>()
+            .UseInMemoryDatabase("GovernanceRlsArchitectureTestDb")
+            .Options;
+
+        using var dbContext = new Pos.Infrastructure.Persistence.Context.PosDbContext(options, currentTenantId: Guid.NewGuid());
+        var entityTypes = dbContext.Model.GetEntityTypes();
+
+        var coveredTablesInSecurityPolicy = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "Users", "Roles", "Products", "Categories", "Suppliers",
+            "InventoryMovements", "Customers", "CashRegisters", "CashRegisterSessions",
+            "Sales", "PurchaseOrders", "Warehouses", "Containers",
+            "StockLevels", "StockAdjustments", "StockTransfers", "Payments",
+            "Invoices", "AuditLogs", "Branches", "PosDevices",
+            "SystemNotifications", "OutboxMessages", "AgentActionRecords"
+        };
+
+        var unhandledTables = new List<string>();
+
+        foreach (var entityType in entityTypes)
+        {
+            if (entityType.IsOwned()) continue;
+
+            var clrType = entityType.ClrType;
+            if (clrType == null) continue;
+
+            if (clrType.Name == "Tenant") continue; // Entidad de plataforma
+
+            var hasTenantIdProperty = clrType.GetProperty("TenantId") != null;
+            if (hasTenantIdProperty)
+            {
+                string tableName = entityType.GetTableName() ?? clrType.Name;
+                if (!coveredTablesInSecurityPolicy.Contains(tableName))
+                {
+                    unhandledTables.Add($"{clrType.Name} (Tabla: {tableName})");
+                }
+            }
+        }
+
+        Assert.True(
+            unhandledTables.Count == 0,
+            $"Las siguientes entidades multi-tenant NO están cubiertas por la SECURITY POLICY de RLS en SQL Server: {string.Join(", ", unhandledTables)}"
+        );
+    }
+
+    [Fact]
+    public void AllowGlobalUserLookup_MustOnlyBeReferencedBy_AuthUserLookup()
+    {
+        var applicationAssembly = typeof(IEventBus).Assembly;
+        var typesInApplication = applicationAssembly.GetTypes();
+
+        foreach (var type in typesInApplication)
+        {
+            Assert.DoesNotContain("AllowGlobalUserLookup", type.Name);
+        }
+
+        var infrastructureAssembly = typeof(DependencyInjection).Assembly;
+        var repositoryTypes = infrastructureAssembly.GetTypes()
+            .Where(t => t.IsClass && !t.IsAbstract && t.Namespace == "Pos.Infrastructure.Persistence.Repositories")
+            .ToList();
+
+        Assert.NotEmpty(repositoryTypes);
+
+        foreach (var repo in repositoryTypes)
+        {
+            var methods = repo.GetMethods();
+            foreach (var method in methods)
+            {
+                Assert.DoesNotContain("AllowGlobalUserLookup", method.Name);
+            }
+        }
+    }
 }
 

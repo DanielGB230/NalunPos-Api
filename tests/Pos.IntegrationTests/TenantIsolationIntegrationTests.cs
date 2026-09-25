@@ -214,6 +214,30 @@ public class TenantIsolationIntegrationTests
     }
 
     [Fact]
+    public async Task PlatformUser_WithInvalidRoleId_MustBeRejectedByCheckConstraint()
+    {
+        // 1. Arrange: Attempt to create a platform user (TenantId = null) with an invalid RoleId (NOT SuperAdminRoleId)
+        Guid randomInvalidRoleId = Guid.NewGuid();
+
+        using (var dbSuper = _fixture.CreateDbContext(tenantId: null))
+        {
+            var invalidPlatformUser = User.Create(
+                new Email("invalid_platform_user@platform.com"),
+                new PasswordHash("hashSecret123!"),
+                randomInvalidRoleId, // Invalid RoleId for platform user!
+                tenantId: null,
+                "Invalid",
+                "PlatformUser");
+
+            dbSuper.Users.Add(invalidPlatformUser);
+
+            // 2. Act & Assert: SQL Server CHECK CONSTRAINT (CK_Users_PlatformRole) must reject the save!
+            var ex = await Assert.ThrowsAsync<DbUpdateException>(async () => await dbSuper.SaveChangesAsync());
+            Assert.Contains("CK_Users_PlatformRole", ex.InnerException?.Message ?? ex.Message, StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    [Fact]
     public async Task CreateUser_WithEmailAlreadyUsedInAnotherTenant_ShouldReturnConflict()
     {
         Guid tenantAId = Guid.NewGuid();
