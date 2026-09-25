@@ -1,6 +1,7 @@
+using Microsoft.AspNetCore.Mvc;
+using Pos.Api.Contracts.Requests;
 using Pos.Api.Extensions;
 using Pos.Application.Common.Interfaces;
-using Microsoft.AspNetCore.Mvc;
 using Pos.Application.Roles.Commands;
 using Pos.Application.Roles.DTOs;
 using Pos.Application.Roles.Queries;
@@ -31,9 +32,10 @@ public class RolesController : ControllerBase
     [ProducesResponseType(typeof(RoleDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> CreateRole(
-        [FromBody] CreateRoleCommand command,
+        [FromBody] CreateRoleRequest request,
         CancellationToken cancellationToken)
     {
+        var command = new CreateRoleCommand(request.Name, request.Description, request.Permissions);
         var result = await _dispatcher.SendAsync(command, cancellationToken);
         return this.ToActionResult(result);
     }

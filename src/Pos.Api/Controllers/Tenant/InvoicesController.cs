@@ -1,6 +1,7 @@
+using Microsoft.AspNetCore.Mvc;
+using Pos.Api.Contracts.Requests;
 using Pos.Api.Extensions;
 using Pos.Application.Common.Interfaces;
-using Microsoft.AspNetCore.Mvc;
 using Pos.Application.Invoicing.Commands;
 using Pos.Application.Invoicing.DTOs;
 using Pos.Application.Invoicing.Queries;
@@ -22,9 +23,15 @@ public class InvoicesController : ControllerBase
     [ProducesResponseType(typeof(InvoiceDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> IssueInvoice(
-        [FromBody] IssueInvoiceCommand command,
+        [FromBody] IssueInvoiceRequest request,
         CancellationToken cancellationToken)
     {
+        var command = new IssueInvoiceCommand(
+            request.SaleId,
+            request.DocumentType,
+            request.CustomerTaxIdValue,
+            request.CustomerTaxCountryCode);
+
         var result = await _dispatcher.SendAsync(command, cancellationToken);
         return this.ToActionResult(result);
     }

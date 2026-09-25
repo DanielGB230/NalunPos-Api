@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Pos.Api.Contracts.Requests;
 using Pos.Api.Extensions;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Common.Models;
@@ -76,9 +77,10 @@ public class WarehousesController : ControllerBase
     [ProducesResponseType(typeof(WarehouseDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> CreateWarehouse(
-        [FromBody] CreateWarehouseCommand command,
+        [FromBody] CreateWarehouseRequest request,
         CancellationToken cancellationToken)
     {
+        var command = new CreateWarehouseCommand(request.BranchId, request.Name, request.Description, request.IsDefault);
         var result = await _dispatcher.SendAsync(command, cancellationToken);
         return this.ToActionResult(result);
     }

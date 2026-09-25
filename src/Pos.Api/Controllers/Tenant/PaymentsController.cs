@@ -1,6 +1,7 @@
-using Pos.Application.Common.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using Pos.Api.Contracts.Requests;
 using Pos.Api.Extensions;
+using Pos.Application.Common.Interfaces;
 using Pos.Application.Payments.Commands;
 using Pos.Application.Payments.DTOs;
 using Pos.Application.Payments.Queries;
@@ -23,9 +24,16 @@ public class PaymentsController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> ProcessPayment(
-        [FromBody] ProcessPaymentCommand command,
+        [FromBody] ProcessPaymentRequest request,
         CancellationToken cancellationToken)
     {
+        var command = new ProcessPaymentCommand(
+            request.SaleId,
+            request.Amount,
+            request.Method,
+            request.Currency,
+            request.ExternalReference);
+
         var result = await _dispatcher.SendAsync(command, cancellationToken);
         return this.ToActionResult(result);
     }

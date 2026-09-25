@@ -1,11 +1,12 @@
-using Pos.Api.Extensions;
-using Pos.Application.Common.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Pos.Api.Contracts.Requests;
+using Pos.Api.Extensions;
 using Pos.Application.Categories.Commands;
 using Pos.Application.Categories.DTOs;
 using Pos.Application.Categories.Queries;
+using Pos.Application.Common.Interfaces;
 using Pos.Application.Common.Models;
-using Microsoft.AspNetCore.Authorization;
 
 namespace Pos.Api.Controllers.Tenant;
 
@@ -51,9 +52,10 @@ public class CategoriesController : ControllerBase
     [ProducesResponseType(typeof(CategoryDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> CreateCategory(
-        [FromBody] CreateCategoryCommand command,
+        [FromBody] CreateCategoryRequest request,
         CancellationToken cancellationToken)
     {
+        var command = new CreateCategoryCommand(request.Name, request.Description);
         var result = await _dispatcher.SendAsync(command, cancellationToken);
         return this.ToActionResult(result);
     }
@@ -64,14 +66,10 @@ public class CategoriesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UpdateCategory(
         Guid id,
-        [FromBody] UpdateCategoryCommand command,
+        [FromBody] UpdateCategoryRequest request,
         CancellationToken cancellationToken)
     {
-        if (id != command.Id)
-        {
-            return BadRequest("El ID de la ruta no coincide con el ID del cuerpo del mensaje.");
-        }
-
+        var command = new UpdateCategoryCommand(id, request.Name, request.Description);
         var result = await _dispatcher.SendAsync(command, cancellationToken);
         return this.ToActionResult(result);
     }

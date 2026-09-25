@@ -1,10 +1,12 @@
-using Pos.Application.Common.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Pos.Api.Contracts.Requests;
 using Pos.Api.Extensions;
 using Pos.Application.AI.Commands;
 using Pos.Application.AI.DTOs;
 using Pos.Application.AI.Queries;
+using Pos.Application.Common.Interfaces;
+using Pos.Application.Common.Models;
 
 namespace Pos.Api.Controllers.Tenant;
 
@@ -21,10 +23,12 @@ public class AiGovernanceController : ControllerBase
     }
 
     [HttpGet("pending")]
-    [ProducesResponseType(typeof(IReadOnlyList<AgentActionRecordDto>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<IReadOnlyList<AgentActionRecordDto>>> GetPendingActions(CancellationToken cancellationToken)
+    [ProducesResponseType(typeof(PagedResult<AgentActionRecordDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<PagedResult<AgentActionRecordDto>>> GetPendingActions(
+        [FromQuery] GetPendingActionsRequest request,
+        CancellationToken cancellationToken = default)
     {
-        var query = new GetPendingAgentActionsQuery();
+        var query = new GetPendingAgentActionsQuery(request.PageNumber, request.PageSize);
         var result = await _dispatcher.SendAsync(query, cancellationToken);
         return Ok(result);
     }
@@ -34,9 +38,15 @@ public class AiGovernanceController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> ProposeAction(
-        [FromBody] ProposeAgentActionCommand command,
+        [FromBody] ProposeAgentActionRequest request,
         CancellationToken cancellationToken)
     {
+        var command = new ProposeAgentActionCommand(
+            request.AgentId,
+            request.ProposedActionType,
+            request.PayloadJson,
+            request.RiskLevel);
+
         var result = await _dispatcher.SendAsync(command, cancellationToken);
         return this.ToActionResult(result);
     }
@@ -47,9 +57,10 @@ public class AiGovernanceController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> ReviewAction(
         Guid id,
-        [FromBody] bool approve,
+        [FromBody] ReviewAgentActionRequest request,
         CancellationToken cancellationToken)
     {
+        bool approve = string.Equals(request.Action, "Approve", StringComparison.OrdinalIgnoreCase);
         var command = new ReviewAgentActionCommand(id, approve);
         var result = await _dispatcher.SendAsync(command, cancellationToken);
         return this.ToActionResult(result);

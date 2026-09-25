@@ -9,16 +9,16 @@ namespace Pos.Application.Users.Queries;
 
 /// <summary>
 /// Query interna que transporta los parámetros de filtro y paginación al Handler.
-/// El controlador construye esta query a partir del GetUsersRequest.
 /// </summary>
 [HasPermission(Permissions.Users.View)]
 public record GetUsersQuery(
     int PageNumber = 1,
-    int PageSize = 10,
+    int PageSize = 20,
     string? SearchTerm = null,
     bool? IsActive = null
 ) : IQuery<PagedResult<UserDto>>;
 
+[HasPermission(Permissions.Users.View)]
 public class GetUsersQueryHandler : IQueryHandler<GetUsersQuery, PagedResult<UserDto>>
 {
     private readonly IUserRepository _userRepository;
@@ -30,15 +30,18 @@ public class GetUsersQueryHandler : IQueryHandler<GetUsersQuery, PagedResult<Use
 
     public async Task<PagedResult<UserDto>> HandleAsync(GetUsersQuery request, CancellationToken cancellationToken)
     {
+        int pageNumber = request.PageNumber < 1 ? 1 : request.PageNumber;
+        int pageSize = Math.Min(request.PageSize < 1 ? 20 : request.PageSize, 100);
+
         var (items, totalCount) = await _userRepository.GetPagedAsync(
-            request.PageNumber,
-            request.PageSize,
+            pageNumber,
+            pageSize,
             request.SearchTerm,
             request.IsActive,
             cancellationToken);
 
         var dtos = items.Select(UserDto.FromEntity).ToList();
 
-        return new PagedResult<UserDto>(dtos, request.PageNumber, request.PageSize, totalCount);
+        return new PagedResult<UserDto>(dtos, pageNumber, pageSize, totalCount);
     }
 }

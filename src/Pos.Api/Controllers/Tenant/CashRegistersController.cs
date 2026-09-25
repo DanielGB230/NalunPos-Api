@@ -1,9 +1,10 @@
-using Pos.Application.Common.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using Pos.Api.Contracts.Requests;
 using Pos.Api.Extensions;
 using Pos.Application.CashRegisters.Commands;
 using Pos.Application.CashRegisters.DTOs;
 using Pos.Application.CashRegisters.Queries;
+using Pos.Application.Common.Interfaces;
 
 namespace Pos.Api.Controllers.Tenant;
 
@@ -31,34 +32,39 @@ public class CashRegistersController : ControllerBase
     [ProducesResponseType(typeof(CashRegisterDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<CashRegisterDto>> CreateCashRegister(
-        [FromBody] CreateCashRegisterCommand command,
+        [FromBody] CreateCashRegisterRequest request,
         CancellationToken cancellationToken)
     {
+        var command = new CreateCashRegisterCommand(request.Name, request.SerialNumber);
         var result = await _dispatcher.SendAsync(command, cancellationToken);
         return CreatedAtAction(nameof(GetCashRegisters), null, result);
     }
 
-    [HttpPost("sessions/open")]
+    [HttpPost("{registerId:guid}/sessions/open")]
     [ProducesResponseType(typeof(CashRegisterSessionDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> OpenSession(
-        [FromBody] OpenCashRegisterSessionCommand command,
+        Guid registerId,
+        [FromBody] OpenCashRegisterSessionRequest request,
         CancellationToken cancellationToken)
     {
+        var command = new OpenCashRegisterSessionCommand(registerId, request.UserId, request.InitialAmount, request.Currency, request.Notes);
         var result = await _dispatcher.SendAsync(command, cancellationToken);
         return this.ToActionResult(result);
     }
 
-    [HttpPost("sessions/close")]
+    [HttpPost("sessions/{sessionId:guid}/close")]
     [ProducesResponseType(typeof(CashRegisterSessionDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> CloseSession(
-        [FromBody] CloseCashRegisterSessionCommand command,
+        Guid sessionId,
+        [FromBody] CloseCashRegisterSessionRequest request,
         CancellationToken cancellationToken)
     {
+        var command = new CloseCashRegisterSessionCommand(sessionId, request.ActualFinalAmount, request.ExpectedFinalAmount, request.Currency, request.Notes);
         var result = await _dispatcher.SendAsync(command, cancellationToken);
         return this.ToActionResult(result);
     }

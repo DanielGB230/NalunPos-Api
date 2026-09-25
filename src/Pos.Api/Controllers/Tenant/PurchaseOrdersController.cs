@@ -1,10 +1,10 @@
 using Microsoft.AspNetCore.Mvc;
+using Pos.Api.Contracts.Requests;
 using Pos.Api.Extensions;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.PurchaseOrders.Commands;
 using Pos.Application.PurchaseOrders.DTOs;
 using Pos.Application.PurchaseOrders.Queries;
-using Pos.Domain.Enums;
 
 namespace Pos.Api.Controllers.Tenant;
 
@@ -20,12 +20,12 @@ public class PurchaseOrdersController : ControllerBase
     }
 
     [HttpGet]
-    [ProducesResponseType(typeof(IReadOnlyList<PurchaseOrderDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Pos.Application.Common.Models.PagedResult<PurchaseOrderDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetPurchaseOrders(
         [FromQuery] GetPurchaseOrdersRequest request,
         CancellationToken cancellationToken = default)
     {
-        var query = new GetPurchaseOrdersQuery(request.PageNumber, request.PageSize);
+        var query = new GetPurchaseOrdersQuery(request.PageNumber, request.PageSize, request.SupplierId, request.WarehouseId, request.Status);
         var result = await _dispatcher.SendAsync(query, cancellationToken);
         return this.ToActionResult(result);
     }
@@ -34,9 +34,16 @@ public class PurchaseOrdersController : ControllerBase
     [ProducesResponseType(typeof(PurchaseOrderDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> CreatePurchaseOrder(
-        [FromBody] CreatePurchaseOrderCommand command,
+        [FromBody] CreatePurchaseOrderRequest request,
         CancellationToken cancellationToken)
     {
+        var command = new CreatePurchaseOrderCommand(
+            request.SupplierId,
+            request.WarehouseId,
+            request.OrderNumber,
+            request.Items.Select(i => new CreatePurchaseOrderLineDto(i.ProductId, i.Quantity, i.UnitCostAmount, i.Currency)).ToList(),
+            request.Notes);
+
         var result = await _dispatcher.SendAsync(command, cancellationToken);
         return this.ToActionResult(result);
     }
@@ -58,10 +65,12 @@ public class PurchaseOrdersController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> ReceivePurchaseOrder(
         Guid id,
-        [FromBody] List<ReceivePurchaseOrderLineDto> lines,
+        [FromBody] ReceivePurchaseOrderRequest request,
         CancellationToken cancellationToken)
     {
-        var command = new ReceivePurchaseOrderCommand(id, lines);
+        var command = new ReceivePurchaseOrderCommand(
+            id,
+            request.Lines.Select(l => new ReceivePurchaseOrderLineDto(l.ProductId, l.ReceivedQuantity, l.BatchNumber, l.ExpirationDate)).ToList());
         var result = await _dispatcher.SendAsync(command, cancellationToken);
         return this.ToActionResult(result);
     }

@@ -1,6 +1,7 @@
+using Microsoft.AspNetCore.Mvc;
+using Pos.Api.Contracts.Requests;
 using Pos.Api.Extensions;
 using Pos.Application.Common.Interfaces;
-using Microsoft.AspNetCore.Mvc;
 using Pos.Application.Common.Models;
 using Pos.Application.Suppliers.Commands;
 using Pos.Application.Suppliers.DTOs;
@@ -49,9 +50,21 @@ public class SuppliersController : ControllerBase
     [ProducesResponseType(typeof(SupplierDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> CreateSupplier(
-        [FromBody] CreateSupplierCommand command,
+        [FromBody] CreateSupplierRequest request,
         CancellationToken cancellationToken)
     {
+        var command = new CreateSupplierCommand(
+            request.Name,
+            request.ContactName,
+            request.Email,
+            request.Phone,
+            request.Street,
+            request.City,
+            request.Country,
+            request.ZipCode,
+            request.TaxIdValue,
+            request.TaxCountryCode);
+
         var result = await _dispatcher.SendAsync(command, cancellationToken);
         return this.ToActionResult(result);
     }
@@ -62,13 +75,21 @@ public class SuppliersController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UpdateSupplier(
         Guid id,
-        [FromBody] UpdateSupplierCommand command,
+        [FromBody] UpdateSupplierRequest request,
         CancellationToken cancellationToken)
     {
-        if (id != command.Id)
-        {
-            return BadRequest("El ID de la ruta no coincide con el ID del cuerpo.");
-        }
+        var command = new UpdateSupplierCommand(
+            id,
+            request.Name,
+            request.ContactName,
+            request.Email,
+            request.Phone,
+            request.Street,
+            request.City,
+            request.Country,
+            request.ZipCode,
+            request.TaxIdValue,
+            request.TaxCountryCode);
 
         var result = await _dispatcher.SendAsync(command, cancellationToken);
         return this.ToActionResult(result);

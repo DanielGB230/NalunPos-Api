@@ -1,7 +1,8 @@
-using Pos.Api.Extensions;
-using Pos.Application.Common.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Pos.Api.Contracts.Requests;
+using Pos.Api.Extensions;
+using Pos.Application.Common.Interfaces;
 using Pos.Application.PosDevices.Commands;
 using Pos.Application.PosDevices.DTOs;
 using Pos.Application.PosDevices.Queries;
@@ -45,9 +46,10 @@ public class PosDevicesController : ControllerBase
     [ProducesResponseType(typeof(PosDeviceDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> RegisterPosDevice(
-        [FromBody] RegisterPosDeviceCommand command,
+        [FromBody] RegisterPosDeviceRequest request,
         CancellationToken cancellationToken)
     {
+        var command = new RegisterPosDeviceCommand(request.BranchId, request.Name, request.SerialNumber);
         var result = await _dispatcher.SendAsync(command, cancellationToken);
         return this.ToActionResult(result);
     }

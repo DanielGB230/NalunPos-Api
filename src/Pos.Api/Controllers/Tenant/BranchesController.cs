@@ -1,11 +1,11 @@
-using Pos.Api.Extensions;
-using Pos.Application.Common.Interfaces;
-using Pos.Application.Common.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Pos.Api.Contracts.Requests;
+using Pos.Api.Extensions;
 using Pos.Application.Branches.Commands;
 using Pos.Application.Branches.DTOs;
 using Pos.Application.Branches.Queries;
+using Pos.Application.Common.Interfaces;
 
 namespace Pos.Api.Controllers.Tenant;
 
@@ -46,9 +46,17 @@ public class BranchesController : ControllerBase
     [ProducesResponseType(typeof(BranchDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> CreateBranch(
-        [FromBody] CreateBranchCommand command,
+        [FromBody] CreateBranchRequest request,
         CancellationToken cancellationToken)
     {
+        var command = new CreateBranchCommand(
+            request.Name,
+            request.Street,
+            request.City,
+            request.Country,
+            request.ZipCode,
+            request.PhoneNumber);
+
         var result = await _dispatcher.SendAsync(command, cancellationToken);
         return this.ToActionResult(result);
     }
@@ -59,13 +67,17 @@ public class BranchesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UpdateBranch(
         Guid id,
-        [FromBody] UpdateBranchCommand command,
+        [FromBody] UpdateBranchRequest request,
         CancellationToken cancellationToken)
     {
-        if (id != command.Id)
-        {
-            return BadRequest("El ID de la ruta no coincide con el ID del cuerpo.");
-        }
+        var command = new UpdateBranchCommand(
+            id,
+            request.Name,
+            request.Street,
+            request.City,
+            request.Country,
+            request.ZipCode,
+            request.PhoneNumber);
 
         var result = await _dispatcher.SendAsync(command, cancellationToken);
         return this.ToActionResult(result);

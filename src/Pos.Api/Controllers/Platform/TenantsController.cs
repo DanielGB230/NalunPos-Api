@@ -1,10 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Pos.Api.Contracts.Requests;
 using Pos.Api.Extensions;
 using Pos.Application.Common.Interfaces;
-using Pos.Application.Platform.Tenants.Commands.CreateTenant;
-
 using Pos.Application.Common.Models;
+using Pos.Application.Platform.Tenants.Commands.CreateTenant;
 using Pos.Application.Platform.Tenants.DTOs;
 using Pos.Application.Platform.Tenants.Queries.GetTenants;
 
@@ -50,7 +50,7 @@ public class TenantsController : ControllerBase
     /// <summary>
     /// Aprovisiona un nuevo Tenant y crea su usuario Administrador inicial en la plataforma.
     /// </summary>
-    /// <param name="command">Command con datos del tenant y credenciales del administrador inicial</param>
+    /// <param name="request">Request con datos del tenant y credenciales del administrador inicial</param>
     /// <param name="cancellationToken">Token de cancelación</param>
     /// <returns>ID (Guid) del nuevo Tenant creado</returns>
     [HttpPost]
@@ -60,9 +60,15 @@ public class TenantsController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> CreateTenant(
-        [FromBody] CreateTenantCommand command,
+        [FromBody] CreateTenantRequest request,
         CancellationToken cancellationToken)
     {
+        var command = new CreateTenantCommand(
+            request.Name,
+            request.DocumentNumber,
+            request.AdminEmail,
+            request.AdminPassword);
+
         var result = await _dispatcher.SendAsync(command, cancellationToken);
         return this.ToActionResult(result);
     }

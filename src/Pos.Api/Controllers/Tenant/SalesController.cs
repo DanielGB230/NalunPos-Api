@@ -1,6 +1,7 @@
-using Pos.Application.Common.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using Pos.Api.Contracts.Requests;
 using Pos.Api.Extensions;
+using Pos.Application.Common.Interfaces;
 using Pos.Application.Common.Models;
 using Pos.Application.Sales.Commands;
 using Pos.Application.Sales.DTOs;
@@ -28,8 +29,8 @@ public class SalesController : ControllerBase
         var query = new GetSalesQuery(
             request.PageNumber,
             request.PageSize,
-            request.SessionId,
             request.CustomerId,
+            request.Status,
             request.StartDate,
             request.EndDate);
 
@@ -53,9 +54,17 @@ public class SalesController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> CreateSale(
-        [FromBody] CreateSaleCommand command,
+        [FromBody] CreateSaleRequest request,
         CancellationToken cancellationToken)
     {
+        var command = new CreateSaleCommand(
+            request.ReceiptNumber,
+            request.SessionId,
+            request.CustomerId,
+            request.Items.Select(i => new CreateSaleItemDto(i.ProductId, i.ProductName, i.Quantity, i.UnitPriceAmount)).ToList(),
+            request.TaxRatePercentage,
+            request.Currency);
+
         var result = await _dispatcher.SendAsync(command, cancellationToken);
         return this.ToActionResult(result);
     }

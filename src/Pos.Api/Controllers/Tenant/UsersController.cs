@@ -1,6 +1,7 @@
+using Microsoft.AspNetCore.Mvc;
+using Pos.Api.Contracts.Requests;
 using Pos.Api.Extensions;
 using Pos.Application.Common.Interfaces;
-using Microsoft.AspNetCore.Mvc;
 using Pos.Application.Common.Models;
 using Pos.Application.Users.Commands;
 using Pos.Application.Users.DTOs;
@@ -49,9 +50,17 @@ public class UsersController : ControllerBase
     [ProducesResponseType(typeof(UserDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> CreateUser(
-        [FromBody] CreateUserCommand command,
+        [FromBody] CreateUserRequest request,
         CancellationToken cancellationToken)
     {
+        var command = new CreateUserCommand(
+            request.FirstName,
+            request.LastName,
+            request.Email,
+            request.Password,
+            request.RoleId,
+            request.TenantId);
+
         var result = await _dispatcher.SendAsync(command, cancellationToken);
         return this.ToActionResult(result);
     }
@@ -62,13 +71,16 @@ public class UsersController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UpdateUser(
         Guid id,
-        [FromBody] UpdateUserCommand command,
+        [FromBody] UpdateUserRequest request,
         CancellationToken cancellationToken)
     {
-        if (id != command.Id)
-        {
-            return BadRequest("El ID de la ruta no coincide con el ID del cuerpo.");
-        }
+        var command = new UpdateUserCommand(
+            id,
+            request.FirstName,
+            request.LastName,
+            request.Email,
+            request.RoleId,
+            request.TenantId);
 
         var result = await _dispatcher.SendAsync(command, cancellationToken);
         return this.ToActionResult(result);

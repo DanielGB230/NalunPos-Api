@@ -1,7 +1,8 @@
-using Pos.Api.Extensions;
-using Pos.Application.Common.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Pos.Api.Contracts.Requests;
+using Pos.Api.Extensions;
+using Pos.Application.Common.Interfaces;
 using Pos.Application.Notifications.Commands;
 using Pos.Application.Notifications.DTOs;
 using Pos.Application.Notifications.Queries;
@@ -24,10 +25,10 @@ public class NotificationsController : ControllerBase
     [ProducesResponseType(typeof(IReadOnlyList<SystemNotificationDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IReadOnlyList<SystemNotificationDto>>> GetUserNotifications(
         Guid userId,
-        [FromQuery] bool unreadOnly = false,
+        [FromQuery] GetUserNotificationsRequest request,
         CancellationToken cancellationToken = default)
     {
-        var query = new GetUserNotificationsQuery(userId, unreadOnly);
+        var query = new GetUserNotificationsQuery(userId, request.UnreadOnly ?? false);
         var result = await _dispatcher.SendAsync(query, cancellationToken);
         return Ok(result);
     }
@@ -36,9 +37,10 @@ public class NotificationsController : ControllerBase
     [ProducesResponseType(typeof(SystemNotificationDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> CreateNotification(
-        [FromBody] CreateSystemNotificationCommand command,
+        [FromBody] CreateSystemNotificationRequest request,
         CancellationToken cancellationToken)
     {
+        var command = new CreateSystemNotificationCommand(request.UserId, request.Title, request.Message);
         var result = await _dispatcher.SendAsync(command, cancellationToken);
         return this.ToActionResult(result);
     }

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Pos.Api.Contracts.Requests;
 using Pos.Api.Extensions;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.StockAdjustments.Commands;
@@ -21,9 +22,15 @@ public class StockAdjustmentsController : ControllerBase
     [ProducesResponseType(typeof(StockAdjustmentDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> CreateAdjustment(
-        [FromBody] CreateStockAdjustmentCommand command,
+        [FromBody] CreateStockAdjustmentRequest request,
         CancellationToken cancellationToken)
     {
+        var command = new CreateStockAdjustmentCommand(
+            request.WarehouseId,
+            request.Reason,
+            request.Items.Select(i => new CreateStockAdjustmentLineDto(i.ProductId, i.Quantity)).ToList(),
+            request.Notes);
+
         var result = await _dispatcher.SendAsync(command, cancellationToken);
         return this.ToActionResult(result);
     }

@@ -9,7 +9,12 @@ using Pos.Domain.Interfaces;
 namespace Pos.Application.StockTransfers.Queries;
 
 [HasPermission(Permissions.StockTransfers.View)]
-public record GetStockTransfersQuery(int PageNumber = 1, int PageSize = 20) : IQuery<Result<PagedResult<StockTransferDto>>>;
+public record GetStockTransfersQuery(
+    int PageNumber = 1,
+    int PageSize = 20,
+    Guid? SourceWarehouseId = null,
+    Guid? DestinationWarehouseId = null
+) : IQuery<Result<PagedResult<StockTransferDto>>>;
 
 [HasPermission(Permissions.StockTransfers.View)]
 public class GetStockTransfersQueryHandler : IQueryHandler<GetStockTransfersQuery, Result<PagedResult<StockTransferDto>>>
@@ -26,7 +31,7 @@ public class GetStockTransfersQueryHandler : IQueryHandler<GetStockTransfersQuer
         ArgumentNullException.ThrowIfNull(query);
 
         int page = query.PageNumber < 1 ? 1 : query.PageNumber;
-        int size = query.PageSize < 1 ? 20 : query.PageSize;
+        int size = Math.Min(query.PageSize < 1 ? 20 : query.PageSize, 100);
 
         var (items, totalCount) = await _transferRepository.GetPagedAsync(page, size, cancellationToken);
         var dtos = items.Select(StockTransferDto.FromEntity).ToList();

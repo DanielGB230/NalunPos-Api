@@ -9,12 +9,11 @@ namespace Pos.Application.Products.Queries;
 
 /// <summary>
 /// Query interna que transporta los parámetros de filtro y paginación al Handler.
-/// El controlador construye esta query a partir del GetProductsRequest.
 /// </summary>
 [HasPermission(Permissions.Products.View)]
 public record GetProductsQuery(
     int PageNumber = 1,
-    int PageSize = 10,
+    int PageSize = 20,
     string? SearchTerm = null,
     Guid? CategoryId = null,
     bool? IsActive = null
@@ -32,9 +31,12 @@ public class GetProductsQueryHandler : IQueryHandler<GetProductsQuery, PagedResu
 
     public async Task<PagedResult<ProductDto>> HandleAsync(GetProductsQuery request, CancellationToken cancellationToken)
     {
+        int pageNumber = request.PageNumber < 1 ? 1 : request.PageNumber;
+        int pageSize = Math.Min(request.PageSize < 1 ? 20 : request.PageSize, 100);
+
         var (items, totalCount) = await _productRepository.GetPagedAsync(
-            request.PageNumber,
-            request.PageSize,
+            pageNumber,
+            pageSize,
             request.SearchTerm,
             request.CategoryId,
             request.IsActive,
@@ -42,6 +44,6 @@ public class GetProductsQueryHandler : IQueryHandler<GetProductsQuery, PagedResu
 
         var dtos = items.Select(ProductDto.FromEntity).ToList();
 
-        return new PagedResult<ProductDto>(dtos, request.PageNumber, request.PageSize, totalCount);
+        return new PagedResult<ProductDto>(dtos, pageNumber, pageSize, totalCount);
     }
 }

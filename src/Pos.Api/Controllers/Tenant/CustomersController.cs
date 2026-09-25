@@ -1,6 +1,7 @@
+using Microsoft.AspNetCore.Mvc;
+using Pos.Api.Contracts.Requests;
 using Pos.Api.Extensions;
 using Pos.Application.Common.Interfaces;
-using Microsoft.AspNetCore.Mvc;
 using Pos.Application.Common.Models;
 using Pos.Application.Customers.Commands;
 using Pos.Application.Customers.DTOs;
@@ -49,9 +50,20 @@ public class CustomersController : ControllerBase
     [ProducesResponseType(typeof(CustomerDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> CreateCustomer(
-        [FromBody] CreateCustomerCommand command,
+        [FromBody] CreateCustomerRequest request,
         CancellationToken cancellationToken)
     {
+        var command = new CreateCustomerCommand(
+            request.FullName,
+            request.TaxId,
+            request.TaxCountryCode,
+            request.Email,
+            request.Phone,
+            request.Street,
+            request.City,
+            request.ZipCode,
+            request.Country);
+
         var result = await _dispatcher.SendAsync(command, cancellationToken);
         return this.ToActionResult(result);
     }
@@ -62,13 +74,20 @@ public class CustomersController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UpdateCustomer(
         Guid id,
-        [FromBody] UpdateCustomerCommand command,
+        [FromBody] UpdateCustomerRequest request,
         CancellationToken cancellationToken)
     {
-        if (id != command.Id)
-        {
-            return BadRequest("El ID de la ruta no coincide con el ID del cuerpo.");
-        }
+        var command = new UpdateCustomerCommand(
+            id,
+            request.FullName,
+            request.TaxId,
+            request.TaxCountryCode,
+            request.Email,
+            request.Phone,
+            request.Street,
+            request.City,
+            request.ZipCode,
+            request.Country);
 
         var result = await _dispatcher.SendAsync(command, cancellationToken);
         return this.ToActionResult(result);

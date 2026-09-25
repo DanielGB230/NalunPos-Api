@@ -1,6 +1,8 @@
-using Pos.Application.Common.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Pos.Api.Contracts.Requests;
 using Pos.Api.Extensions;
+using Pos.Application.Common.Interfaces;
 using Pos.Application.Common.Models;
 using Pos.Application.Products.Commands;
 using Pos.Application.Products.DTOs;
@@ -10,6 +12,7 @@ namespace Pos.Api.Controllers.Tenant;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class ProductsController : ControllerBase
 {
     private readonly IDispatcher _dispatcher;
@@ -47,14 +50,24 @@ public class ProductsController : ControllerBase
     }
 
     [HttpPost]
-    [ProducesResponseType(typeof(ProductDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProductDto), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> CreateProduct(
-        [FromBody] CreateProductCommand command,
+        [FromBody] CreateProductRequest request,
         CancellationToken cancellationToken)
     {
+        var command = new CreateProductCommand(
+            request.Name,
+            request.Sku,
+            request.PriceAmount,
+            request.Currency,
+            request.CategoryId,
+            request.Description,
+            request.Barcode,
+            request.CostAmount,
+            request.InitialStock);
+
         var result = await _dispatcher.SendAsync(command, cancellationToken);
         return this.ToActionResult(result);
     }
@@ -65,13 +78,15 @@ public class ProductsController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UpdateProduct(
         Guid id,
-        [FromBody] UpdateProductCommand command,
+        [FromBody] UpdateProductRequest request,
         CancellationToken cancellationToken)
     {
-        if (id != command.Id)
-        {
-            return BadRequest("El ID de la ruta no coincide con el ID del cuerpo de la solicitud.");
-        }
+        var command = new UpdateProductCommand(
+            id,
+            request.Name,
+            request.Description,
+            request.Barcode,
+            request.CategoryId);
 
         var result = await _dispatcher.SendAsync(command, cancellationToken);
         return this.ToActionResult(result);
@@ -83,13 +98,13 @@ public class ProductsController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UpdateProductPrice(
         Guid id,
-        [FromBody] UpdateProductPriceCommand command,
+        [FromBody] UpdateProductPriceRequest request,
         CancellationToken cancellationToken)
     {
-        if (id != command.ProductId)
-        {
-            return BadRequest("El ID de la ruta no coincide con el ProductId del cuerpo.");
-        }
+        var command = new UpdateProductPriceCommand(
+            id,
+            request.PriceAmount,
+            request.Currency);
 
         var result = await _dispatcher.SendAsync(command, cancellationToken);
         return this.ToActionResult(result);

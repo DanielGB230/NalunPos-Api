@@ -1,6 +1,7 @@
-using Pos.Application.Common.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using Pos.Api.Contracts.Requests;
 using Pos.Api.Extensions;
+using Pos.Application.Common.Interfaces;
 using Pos.Application.Common.Models;
 using Pos.Application.Inventory.Commands;
 using Pos.Application.Inventory.DTOs;
@@ -24,9 +25,17 @@ public class InventoryController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> RecordMovement(
-        [FromBody] RecordInventoryMovementCommand command,
+        [FromBody] RecordInventoryMovementRequest request,
         CancellationToken cancellationToken)
     {
+        var command = new RecordInventoryMovementCommand(
+            request.ProductId,
+            request.WarehouseId,
+            request.Quantity,
+            request.MovementType,
+            request.ReferenceId,
+            request.Notes);
+
         var result = await _dispatcher.SendAsync(command, cancellationToken);
         return this.ToActionResult(result);
     }

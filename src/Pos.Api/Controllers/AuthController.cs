@@ -33,9 +33,10 @@ public class AuthController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Login(
-        [FromBody] LoginCommand command,
+        [FromBody] Pos.Api.Contracts.Requests.LoginRequest request,
         CancellationToken cancellationToken)
     {
+        var command = new LoginCommand(request.Email, request.Password);
         var result = await _dispatcher.SendAsync(command, cancellationToken);
         return this.ToActionResult(result);
     }

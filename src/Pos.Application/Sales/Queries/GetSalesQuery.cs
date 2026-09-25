@@ -10,9 +10,9 @@ namespace Pos.Application.Sales.Queries;
 [HasPermission(Permissions.Sales.View)]
 public record GetSalesQuery(
     int PageNumber = 1,
-    int PageSize = 10,
-    Guid? SessionId = null,
+    int PageSize = 20,
     Guid? CustomerId = null,
+    Pos.Domain.Enums.SaleStatus? Status = null,
     DateTime? StartDate = null,
     DateTime? EndDate = null
 ) : IQuery<PagedResult<SaleDto>>;
@@ -29,10 +29,13 @@ public class GetSalesQueryHandler : IQueryHandler<GetSalesQuery, PagedResult<Sal
 
     public async Task<PagedResult<SaleDto>> HandleAsync(GetSalesQuery request, CancellationToken cancellationToken)
     {
+        int pageNumber = request.PageNumber < 1 ? 1 : request.PageNumber;
+        int pageSize = Math.Min(request.PageSize < 1 ? 20 : request.PageSize, 100);
+
         var (items, totalCount) = await _saleRepository.GetPagedAsync(
-            request.PageNumber,
-            request.PageSize,
-            request.SessionId,
+            pageNumber,
+            pageSize,
+            null, // SessionId
             request.CustomerId,
             request.StartDate,
             request.EndDate,
@@ -40,6 +43,6 @@ public class GetSalesQueryHandler : IQueryHandler<GetSalesQuery, PagedResult<Sal
 
         var dtos = items.Select(SaleDto.FromEntity).ToList();
 
-        return new PagedResult<SaleDto>(dtos, request.PageNumber, request.PageSize, totalCount);
+        return new PagedResult<SaleDto>(dtos, pageNumber, pageSize, totalCount);
     }
 }
