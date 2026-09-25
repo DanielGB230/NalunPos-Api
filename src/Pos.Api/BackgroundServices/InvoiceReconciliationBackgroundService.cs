@@ -142,7 +142,7 @@ public class InvoiceReconciliationBackgroundService : BackgroundService
                 {
                     await unitOfWork.SaveChangesAsync(cancellationToken);
                 }
-                catch (DbUpdateConcurrencyException)
+                catch (Exception ex) when (ex is DbUpdateConcurrencyException || ex is Pos.Domain.Exceptions.ConcurrencyException)
                 {
                     if (_logger.IsEnabled(LogLevel.Information))
                     {

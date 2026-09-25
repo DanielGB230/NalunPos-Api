@@ -1,3 +1,5 @@
+using Microsoft.EntityFrameworkCore;
+using Pos.Domain.Exceptions;
 using Pos.Domain.Interfaces;
 using Pos.Infrastructure.Persistence.Context;
 
@@ -14,6 +16,13 @@ public class UnitOfWork : IUnitOfWork
 
     public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
-        return await _context.SaveChangesAsync(cancellationToken);
+        try
+        {
+            return await _context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            throw new ConcurrencyException("Conflicto de concurrencia optimista al guardar cambios en la base de datos.", ex);
+        }
     }
 }

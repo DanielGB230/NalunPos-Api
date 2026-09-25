@@ -7,6 +7,8 @@ using Pos.Domain.Entities;
 using Pos.Domain.Enums;
 using Pos.Domain.Interfaces;
 
+using Pos.Domain.Exceptions;
+
 namespace Pos.Application.Invoicing.Commands;
 
 [HasPermission(Permissions.Invoices.Issue)]
@@ -77,9 +79,9 @@ public class ReconcileInvoiceCommandHandler : ICommandHandler<ReconcileInvoiceCo
         {
             await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
-        catch (Exception)
+        catch (ConcurrencyException)
         {
-            // Omitir silenciosamente en conflicto de concurrencia o cambio paralelo
+            // Omitir silenciosamente en conflicto de concurrencia (ya fue procesado por otro proceso)
         }
 
         foreach (var domainEvent in invoice.DomainEvents)
