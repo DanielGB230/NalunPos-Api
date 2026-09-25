@@ -410,5 +410,14 @@ public class ArchitectureTests
             }
         }
     }
+
+    [Fact]
+    public void Dispatcher_MustNot_Use_Dynamic_Or_Runtime_Binder()
+    {
+        var dispatcherType = typeof(Pos.Application.Common.Dispatching.Dispatcher);
+        var referencedAssemblies = dispatcherType.Assembly.GetReferencedAssemblies();
+
+        Assert.DoesNotContain(referencedAssemblies, a => a.Name?.Contains("Microsoft.CSharp") == true);
+    }
 }
 
