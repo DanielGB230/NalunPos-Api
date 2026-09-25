@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Pos.Api.Contracts.Requests;
 using Pos.Api.Extensions;
 using Pos.Application.Common.Interfaces;
+using Pos.Application.Common.Models;
 using Pos.Application.Notifications.Commands;
 using Pos.Application.Notifications.DTOs;
 using Pos.Application.Notifications.Queries;
@@ -22,13 +23,18 @@ public class NotificationsController : ControllerBase
     }
 
     [HttpGet("user/{userId:guid}")]
-    [ProducesResponseType(typeof(IReadOnlyList<SystemNotificationDto>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<IReadOnlyList<SystemNotificationDto>>> GetUserNotifications(
+    [ProducesResponseType(typeof(PagedResult<SystemNotificationDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<PagedResult<SystemNotificationDto>>> GetUserNotifications(
         Guid userId,
         [FromQuery] GetUserNotificationsRequest request,
         CancellationToken cancellationToken = default)
     {
-        var query = new GetUserNotificationsQuery(userId, request.UnreadOnly ?? false);
+        var query = new GetUserNotificationsQuery(
+            userId,
+            request.UnreadOnly ?? false,
+            request.PageNumber,
+            request.PageSize);
+
         var result = await _dispatcher.SendAsync(query, cancellationToken);
         return Ok(result);
     }
