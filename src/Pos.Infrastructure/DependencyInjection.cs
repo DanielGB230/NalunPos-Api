@@ -35,6 +35,7 @@ public static class DependencyInjection
         services.AddScoped<AuditSaveChangesInterceptor>();
         services.AddScoped<InsertOutboxMessagesInterceptor>();
         services.AddScoped<TenantSaveChangesInterceptor>();
+        services.AddScoped<TenantSessionContextInterceptor>();
 
         // ── PosDbContext ──────────────────────────────────────────────────────
         // El overload (IServiceProvider, DbContextOptionsBuilder) permite resolver
@@ -48,6 +49,7 @@ public static class DependencyInjection
             var auditInterceptor = provider.GetRequiredService<AuditSaveChangesInterceptor>();
             var outboxInterceptor = provider.GetRequiredService<InsertOutboxMessagesInterceptor>();
             var tenantInterceptor = provider.GetRequiredService<TenantSaveChangesInterceptor>();
+            var sessionContextInterceptor = provider.GetRequiredService<TenantSessionContextInterceptor>();
 
             if (!string.IsNullOrWhiteSpace(connectionString))
             {
@@ -63,7 +65,7 @@ public static class DependencyInjection
                 options.UseInMemoryDatabase("NalunPosDb_Test");
             }
 
-            options.AddInterceptors(auditInterceptor, outboxInterceptor, tenantInterceptor);
+            options.AddInterceptors(auditInterceptor, outboxInterceptor, tenantInterceptor, sessionContextInterceptor);
         });
 
         // Factory override para inyectar el currentTenantId en cada instancia de PosDbContext.
@@ -75,12 +77,13 @@ public static class DependencyInjection
             var auditInterceptor = provider.GetRequiredService<AuditSaveChangesInterceptor>();
             var outboxInterceptor = provider.GetRequiredService<InsertOutboxMessagesInterceptor>();
             var tenantInterceptor = provider.GetRequiredService<TenantSaveChangesInterceptor>();
+            var sessionContextInterceptor = provider.GetRequiredService<TenantSessionContextInterceptor>();
             var tenantContext = provider.GetService<ICurrentTenantContext>();
 
             // Extracción del TenantId: desacopla PosDbContext de la infraestructura HTTP
             Guid? currentTenantId = tenantContext?.TenantId;
 
-            return new PosDbContext(options, auditInterceptor, outboxInterceptor, tenantInterceptor, currentTenantId);
+            return new PosDbContext(options, auditInterceptor, outboxInterceptor, tenantInterceptor, sessionContextInterceptor, currentTenantId);
         });
 
         // ── Repositorios y UnitOfWork ─────────────────────────────────────────

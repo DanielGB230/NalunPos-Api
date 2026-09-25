@@ -1,7 +1,8 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
+#pragma warning disable CA1861
 
 namespace Pos.Infrastructure.Migrations
 {

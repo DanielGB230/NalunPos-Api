@@ -27,6 +27,7 @@ public class PosDbContext : DbContext, IUnitOfWork
     private readonly AuditSaveChangesInterceptor? _auditInterceptor;
     private readonly InsertOutboxMessagesInterceptor? _outboxInterceptor;
     private readonly TenantSaveChangesInterceptor? _tenantInterceptor;
+    private readonly TenantSessionContextInterceptor? _sessionContextInterceptor;
 
     // ── Estado multi-tenant capturado en construcción ─────────────────────────
     /// <summary>
@@ -42,11 +43,13 @@ public class PosDbContext : DbContext, IUnitOfWork
         AuditSaveChangesInterceptor? auditInterceptor = null,
         InsertOutboxMessagesInterceptor? outboxInterceptor = null,
         TenantSaveChangesInterceptor? tenantInterceptor = null,
+        TenantSessionContextInterceptor? sessionContextInterceptor = null,
         Guid? currentTenantId = null) : base(options)
     {
         _auditInterceptor = auditInterceptor;
         _outboxInterceptor = outboxInterceptor;
         _tenantInterceptor = tenantInterceptor;
+        _sessionContextInterceptor = sessionContextInterceptor;
         _currentTenantId = currentTenantId;
     }
 
@@ -91,6 +94,9 @@ public class PosDbContext : DbContext, IUnitOfWork
 
         if (_tenantInterceptor is not null)
             optionsBuilder.AddInterceptors(_tenantInterceptor);
+
+        if (_sessionContextInterceptor is not null)
+            optionsBuilder.AddInterceptors(_sessionContextInterceptor);
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

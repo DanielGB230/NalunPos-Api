@@ -32,7 +32,7 @@ public class UserRepository : IUserRepository
         if (string.IsNullOrWhiteSpace(email)) return false;
         string normalized = email.Trim().ToLowerInvariant();
         var emailVo = new Pos.Domain.ValueObjects.Email(normalized);
-        return await _context.Users.AnyAsync(u => u.Email == emailVo && (excludeId == null || u.Id != excludeId.Value), cancellationToken);
+        return await _context.Users.IgnoreQueryFilters().AnyAsync(u => u.Email == emailVo && (excludeId == null || u.Id != excludeId.Value), cancellationToken);
     }
 
     public async Task AddAsync(User user, CancellationToken cancellationToken = default)

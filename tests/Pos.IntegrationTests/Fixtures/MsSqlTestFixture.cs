@@ -10,6 +10,7 @@ using Pos.Domain.ValueObjects;
 using Pos.Infrastructure.ExternalServices.Dummy;
 using Pos.Infrastructure.Multitenancy;
 using Pos.Infrastructure.Persistence.Context;
+using Pos.Infrastructure.Persistence.Interceptors;
 using Pos.Infrastructure.Persistence.Repositories;
 using Testcontainers.MsSql;
 using Xunit;
@@ -20,12 +21,13 @@ public class TestTenantContext : ICurrentTenantContext, ITenantSetter
 {
     private Guid? _tenantId;
     public Guid? TenantId => _tenantId;
-    public bool IsSuperAdmin => false;
+    public bool IsSuperAdmin { get; set; }
     public bool HasTenant => TenantId.HasValue;
 
-    public TestTenantContext(Guid? tenantId)
+    public TestTenantContext(Guid? tenantId, bool isSuperAdmin = false)
     {
         _tenantId = tenantId;
+        IsSuperAdmin = isSuperAdmin;
     }
 
     public void SetTenantId(Guid? tenantId)
@@ -95,9 +97,9 @@ public class MsSqlTestFixture : IAsyncLifetime, IDisposable
             _connectionString = "Server=(localdb)\\mssqllocaldb;Database=NalunPos_IntegrationTestsDb;Trusted_Connection=True;TrustServerCertificate=True;MultipleActiveResultSets=true;";
         }
 
-        using var dbContext = CreateDbContext();
+        using var dbContext = CreateDbContext(tenantId: null, isSuperAdmin: true);
         await dbContext.Database.EnsureDeletedAsync();
-        await dbContext.Database.EnsureCreatedAsync();
+        await dbContext.Database.MigrateAsync();
 
         Console.ForegroundColor = ConsoleColor.Green;
         Console.WriteLine("==========================================================================");
@@ -120,24 +122,27 @@ public class MsSqlTestFixture : IAsyncLifetime, IDisposable
         GC.SuppressFinalize(this);
     }
 
-    public PosDbContext CreateDbContext(Guid? tenantId = null)
+    public PosDbContext CreateDbContext(Guid? tenantId = null, bool? isSuperAdmin = null)
     {
         var optionsBuilder = new DbContextOptionsBuilder<PosDbContext>();
         optionsBuilder.UseSqlServer(ConnectionString);
 
-        var tenantContext = new TestTenantContext(tenantId);
-        optionsBuilder.AddInterceptors(new TenantSaveChangesInterceptor(tenantContext));
+        bool superAdminFlag = isSuperAdmin ?? false;
+        var tenantContext = new TestTenantContext(tenantId, superAdminFlag);
+        var sessionContextInterceptor = new TenantSessionContextInterceptor(tenantContext);
+        optionsBuilder.AddInterceptors(new TenantSaveChangesInterceptor(tenantContext), sessionContextInterceptor);
 
-        return new PosDbContext(optionsBuilder.Options, currentTenantId: tenantId);
+        return new PosDbContext(optionsBuilder.Options, sessionContextInterceptor: sessionContextInterceptor, currentTenantId: tenantId);
     }
 
-    public IServiceProvider CreateServiceProvider(Guid? tenantId = null)
+    public IServiceProvider CreateServiceProvider(Guid? tenantId = null, bool? isSuperAdmin = null)
     {
         var services = new ServiceCollection();
 
         services.AddLogging(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Warning));
 
-        services.AddScoped<TestTenantContext>(_ => new TestTenantContext(tenantId));
+        bool superAdminFlag = isSuperAdmin ?? (!tenantId.HasValue);
+        services.AddScoped<TestTenantContext>(_ => new TestTenantContext(tenantId, superAdminFlag));
         services.AddScoped<ICurrentTenantContext>(sp => sp.GetRequiredService<TestTenantContext>());
         services.AddScoped<ITenantSetter>(sp => sp.GetRequiredService<TestTenantContext>());
 
@@ -146,6 +151,7 @@ public class MsSqlTestFixture : IAsyncLifetime, IDisposable
         services.AddScoped<TestCurrentUserService>(_ => testUserService);
 
         services.AddScoped<TenantSaveChangesInterceptor>();
+        services.AddScoped<TenantSessionContextInterceptor>();
 
         services.AddScoped<PosDbContext>(sp =>
         {
@@ -153,10 +159,11 @@ public class MsSqlTestFixture : IAsyncLifetime, IDisposable
             optionsBuilder.UseSqlServer(ConnectionString);
 
             var tenantInterceptor = sp.GetRequiredService<TenantSaveChangesInterceptor>();
-            optionsBuilder.AddInterceptors(tenantInterceptor);
+            var sessionContextInterceptor = sp.GetRequiredService<TenantSessionContextInterceptor>();
+            optionsBuilder.AddInterceptors(tenantInterceptor, sessionContextInterceptor);
 
             var tenantContext = sp.GetRequiredService<ICurrentTenantContext>();
-            return new PosDbContext(optionsBuilder.Options, currentTenantId: tenantContext.TenantId);
+            return new PosDbContext(optionsBuilder.Options, sessionContextInterceptor: sessionContextInterceptor, currentTenantId: tenantContext.TenantId);
         });
 
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<PosDbContext>());

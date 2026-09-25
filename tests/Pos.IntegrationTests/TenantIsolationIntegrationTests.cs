@@ -139,13 +139,22 @@ public class TenantIsolationIntegrationTests
             roleB = Role.Create(tenantBId, "RoleB", "Role for Tenant B");
             dbB.Roles.Add(roleB);
             userB = User.Create(new Email("userB@tenantB.com"), new PasswordHash("hashB"), roleB.Id, tenantBId, "User", "B");
-            
-            var superAdminRole = Role.Create(Guid.Empty, "SuperAdminRole", "Super Admin Role");
-            dbB.Roles.Add(superAdminRole);
+            dbB.Users.Add(userB);
+            await dbB.SaveChangesAsync();
+        }
+
+        using (var dbSuper = _fixture.CreateDbContext(tenantId: null))
+        {
+            var superAdminRole = await dbSuper.Roles.IgnoreQueryFilters().FirstOrDefaultAsync(r => r.Id == Role.SuperAdminRoleId);
+            if (superAdminRole == null)
+            {
+                superAdminRole = Role.Create(Guid.Empty, "SuperAdminRole", "Super Admin Role");
+                dbSuper.Roles.Add(superAdminRole);
+            }
 
             superAdmin = User.Create(new Email("superadmin@platform.com"), new PasswordHash("hashSuper"), superAdminRole.Id, null, "Super", "Admin");
-            dbB.Users.AddRange(userB, superAdmin);
-            await dbB.SaveChangesAsync();
+            dbSuper.Users.Add(superAdmin);
+            await dbSuper.SaveChangesAsync();
         }
 
         // 2. Act & Assert: Query UserRepository as Tenant A
