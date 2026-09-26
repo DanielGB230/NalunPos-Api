@@ -1,5 +1,7 @@
+using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Pos.Api.Contracts.Requests;
 using Pos.Api.Extensions;
 using Pos.Application.Common.Interfaces;
@@ -11,8 +13,10 @@ using Pos.Application.Products.Queries;
 namespace Pos.Api.Controllers.Tenant;
 
 [ApiController]
-[Route("api/[controller]")]
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/products")]
 [Authorize]
+[EnableRateLimiting("GlobalApiPolicy")]
 public class ProductsController : ControllerBase
 {
     private readonly IDispatcher _dispatcher;

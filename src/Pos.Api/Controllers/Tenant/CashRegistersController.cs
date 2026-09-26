@@ -1,4 +1,6 @@
+using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Pos.Api.Contracts.Requests;
 using Pos.Api.Extensions;
 using Pos.Application.CashRegisters.Commands;
@@ -9,7 +11,9 @@ using Pos.Application.Common.Interfaces;
 namespace Pos.Api.Controllers.Tenant;
 
 [ApiController]
-[Route("api/[controller]")]
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/cash-registers")]
+[EnableRateLimiting("GlobalApiPolicy")]
 public class CashRegistersController : ControllerBase
 {
     private readonly IDispatcher _dispatcher;

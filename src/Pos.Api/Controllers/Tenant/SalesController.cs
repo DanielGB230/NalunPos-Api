@@ -1,4 +1,6 @@
+using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Pos.Api.Contracts.Requests;
 using Pos.Api.Extensions;
 using Pos.Application.Common.Interfaces;
@@ -10,7 +12,9 @@ using Pos.Application.Sales.Queries;
 namespace Pos.Api.Controllers.Tenant;
 
 [ApiController]
-[Route("api/[controller]")]
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/sales")]
+[EnableRateLimiting("GlobalApiPolicy")]
 public class SalesController : ControllerBase
 {
     private readonly IDispatcher _dispatcher;
@@ -49,6 +53,7 @@ public class SalesController : ControllerBase
     }
 
     [HttpPost]
+    [EnableRateLimiting("PosCheckoutPolicy")]
     [ProducesResponseType(typeof(SaleDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]

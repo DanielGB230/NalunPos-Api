@@ -1,5 +1,7 @@
+using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Pos.Api.Contracts.Requests;
 using Pos.Api.Extensions;
 using Pos.Application.Common.Interfaces;
@@ -16,8 +18,10 @@ namespace Pos.Api.Controllers.Platform;
 /// Ultra-delgado: Delega el 100% de la ejecución a IDispatcher.
 /// </summary>
 [ApiController]
-[Route("api/v1/platform/tenants")]
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/platform/tenants")]
 [Authorize(Roles = "SuperAdmin")]
+[EnableRateLimiting("SensitiveOperationsPolicy")]
 public class TenantsController : ControllerBase
 {
     private readonly IDispatcher _dispatcher;

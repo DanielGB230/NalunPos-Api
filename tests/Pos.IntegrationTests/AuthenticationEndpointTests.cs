@@ -161,7 +161,7 @@ public class AuthenticationEndpointTests : IClassFixture<CustomWebApplicationFac
         client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", tokenUserA);
 
         // Act - User A tries to read User B's notifications
-        var response = await client.GetAsync($"/api/Notifications/user/{userBId}");
+        var response = await client.GetAsync($"/api/v1/Notifications/user/{userBId}");
 
         // Assert
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
@@ -179,7 +179,7 @@ public class AuthenticationEndpointTests : IClassFixture<CustomWebApplicationFac
         client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", tokenUserA);
 
         // Act - User A reads their own notifications
-        var response = await client.GetAsync($"/api/Notifications/user/{userAId}");
+        var response = await client.GetAsync($"/api/v1/Notifications/user/{userAId}");
 
         // Assert
         Assert.NotEqual(HttpStatusCode.Unauthorized, response.StatusCode);

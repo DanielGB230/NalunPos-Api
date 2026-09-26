@@ -1,4 +1,6 @@
+using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Pos.Api.Contracts.Requests;
 using Pos.Api.Extensions;
 using Pos.Application.Common.Interfaces;
@@ -10,7 +12,9 @@ using Pos.Application.StockTransfers.Queries;
 namespace Pos.Api.Controllers.Tenant;
 
 [ApiController]
-[Route("api/stock-transfers")]
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/stock-transfers")]
+[EnableRateLimiting("SensitiveOperationsPolicy")]
 public class StockTransfersController : ControllerBase
 {
     private readonly IDispatcher _dispatcher;

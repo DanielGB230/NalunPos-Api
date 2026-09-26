@@ -1,5 +1,7 @@
+using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Pos.Api.Extensions;
 using Pos.Application.Authentication.Commands.Login;
 using Pos.Application.Common.Interfaces;
@@ -11,7 +13,9 @@ namespace Pos.Api.Controllers;
 /// Ultra-delgado: Delega el 100% de la ejecución a IDispatcher.
 /// </summary>
 [ApiController]
-[Route("api/v1/auth")]
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/auth")]
+[EnableRateLimiting("AuthPolicy")]
 public class AuthController : ControllerBase
 {
     private readonly IDispatcher _dispatcher;

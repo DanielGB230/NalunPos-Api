@@ -1,5 +1,7 @@
+using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Pos.Api.Contracts.Requests;
 using Pos.Api.Extensions;
 using Pos.Application.Branches.Commands;
@@ -11,7 +13,9 @@ namespace Pos.Api.Controllers.Tenant;
 
 [Authorize]
 [ApiController]
-[Route("api/[controller]")]
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/branches")]
+[EnableRateLimiting("GlobalApiPolicy")]
 public class BranchesController : ControllerBase
 {
     private readonly IDispatcher _dispatcher;

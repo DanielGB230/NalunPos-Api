@@ -1,6 +1,8 @@
+using Asp.Versioning;
 using Pos.Application.Common.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Pos.Api.Extensions;
 using Pos.Application.AI.DTOs;
 using Pos.Application.AI.Queries;
@@ -9,7 +11,9 @@ namespace Pos.Api.Controllers.Tenant;
 
 [Authorize]
 [ApiController]
-[Route("api/[controller]")]
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/demand-forecast")]
+[EnableRateLimiting("GlobalApiPolicy")]
 public class DemandForecastController : ControllerBase
 {
     private readonly IDispatcher _dispatcher;

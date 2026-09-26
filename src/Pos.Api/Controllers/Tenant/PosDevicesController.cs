@@ -1,5 +1,7 @@
+using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Pos.Api.Contracts.Requests;
 using Pos.Api.Extensions;
 using Pos.Application.Common.Interfaces;
@@ -11,7 +13,9 @@ namespace Pos.Api.Controllers.Tenant;
 
 [Authorize]
 [ApiController]
-[Route("api/[controller]")]
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/pos-devices")]
+[EnableRateLimiting("GlobalApiPolicy")]
 public class PosDevicesController : ControllerBase
 {
     private readonly IDispatcher _dispatcher;

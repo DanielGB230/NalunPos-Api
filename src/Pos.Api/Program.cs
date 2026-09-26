@@ -1,10 +1,15 @@
 using System.Text;
 using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
+using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
+using OpenTelemetry.Trace;
 using Pos.Api.BackgroundServices;
 using Pos.Api.Middleware;
 using Pos.Application;
@@ -14,6 +19,113 @@ using Pos.Infrastructure.Persistence.Seed;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// 1. Configuración de Logging Estructurado con JsonConsole e IncludeScopes = true
+builder.Logging.ClearProviders();
+builder.Logging.AddJsonConsole(options =>
+{
+    options.IncludeScopes = true;
+    options.JsonWriterOptions = new System.Text.Json.JsonWriterOptions
+    {
+        Indented = false
+    };
+});
+
+// 2. Configuración de OpenTelemetry Tracing Básica con Console Exporter
+builder.Services.AddOpenTelemetry()
+    .WithTracing(tracing => tracing
+        .AddSource("Pos.Api")
+        .AddAspNetCoreInstrumentation(options => options.RecordException = true)
+        .AddHttpClientInstrumentation()
+        .AddConsoleExporter());
+
+// 3. Configuración de Asp.Versioning
+builder.Services.AddApiVersioning(options =>
+{
+    options.DefaultApiVersion = new ApiVersion(1, 0);
+    options.AssumeDefaultVersionWhenUnspecified = true;
+    options.ReportApiVersions = true;
+}).AddApiExplorer(options =>
+{
+    options.GroupNameFormat = "'v'VVV";
+    options.SubstituteApiVersionInUrl = true;
+});
+
+// 4. Configuración de Rate Limiting nativo (.NET 10)
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.OnRejected = async (context, cancellationToken) =>
+    {
+        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+        context.HttpContext.Response.Headers.RetryAfter = "60";
+        var problemDetails = new ProblemDetails
+        {
+            Status = StatusCodes.Status429TooManyRequests,
+            Title = "Demasiadas peticiones",
+            Detail = "Se ha superado el límite de peticiones permitido. Intente nuevamente en unos momentos.",
+            Instance = context.HttpContext.Request.Path
+        };
+        await context.HttpContext.Response.WriteAsJsonAsync(problemDetails, cancellationToken);
+    };
+
+    // AuthPolicy: 10/min por IP para login/refresh
+    options.AddPolicy("AuthPolicy", httpContext =>
+    {
+        var clientIp = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown-ip";
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: clientIp,
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            });
+    });
+
+    // PosCheckoutPolicy: 120/min por TenantId para CreateSale
+    options.AddPolicy("PosCheckoutPolicy", httpContext =>
+    {
+        var tenantId = httpContext.Items["TenantId"]?.ToString() ?? httpContext.Connection.RemoteIpAddress?.ToString() ?? "global";
+        return RateLimitPartition.GetSlidingWindowLimiter(
+            partitionKey: tenantId,
+            factory: _ => new SlidingWindowRateLimiterOptions
+            {
+                PermitLimit = 120,
+                Window = TimeSpan.FromMinutes(1),
+                SegmentsPerWindow = 6,
+                QueueLimit = 0
+            });
+    });
+
+    // SensitiveOperationsPolicy: 60/min por TenantId para CreateUser, IssueInvoice, etc.
+    options.AddPolicy("SensitiveOperationsPolicy", httpContext =>
+    {
+        var tenantId = httpContext.Items["TenantId"]?.ToString() ?? httpContext.Connection.RemoteIpAddress?.ToString() ?? "global";
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: tenantId,
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 60,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            });
+    });
+
+    // GlobalApiPolicy: 300/min por TenantId para el resto
+    options.AddPolicy("GlobalApiPolicy", httpContext =>
+    {
+        var tenantId = httpContext.Items["TenantId"]?.ToString() ?? httpContext.Connection.RemoteIpAddress?.ToString() ?? "global";
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: tenantId,
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 300,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            });
+    });
+});
 
 // Inyección de dependencias de capas Clean Architecture (Application + Infrastructure)
 builder.Services
@@ -138,6 +250,7 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
+app.UseMiddleware<CorrelationIdMiddleware>();
 
 if (app.Environment.IsDevelopment())
 {
@@ -154,6 +267,7 @@ app.UseCors("AllowFrontend");
 app.UseAuthentication();
 app.UseMiddleware<TenantResolutionMiddleware>();
 app.UseAuthorization();
+app.UseRateLimiter();
 app.MapControllers();
 
 app.Run();
