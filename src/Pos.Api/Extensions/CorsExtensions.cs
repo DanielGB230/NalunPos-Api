@@ -1,20 +1,24 @@
+using Pos.Api.Options;
+
 namespace Pos.Api.Extensions;
 
 public static class CorsExtensions
 {
     public static IServiceCollection AddCustomCors(this IServiceCollection services, IConfiguration configuration)
     {
+        var settings = configuration.GetSection(CorsSettings.SectionName).Get<CorsSettings>() ?? new CorsSettings();
+
+        if (settings.AllowedOrigins.Count == 0)
+        {
+            throw new InvalidOperationException("CorsSettings:AllowedOrigins debe estar configurado con al menos un origen. No se permite SetIsOriginAllowed(_ => true).");
+        }
+
         services.AddCors(options =>
         {
             options.AddPolicy("AllowFrontend", policy =>
             {
-                policy.WithOrigins(
-                          "http://localhost:4200",
-                          "http://localhost:4201",
-                          "https://localhost:4200",
-                          "https://localhost:4201"
-                      )
-                      .SetIsOriginAllowed(_ => true)
+                policy.WithOrigins(settings.AllowedOrigins.ToArray())
+                      // ELIMINADO: .SetIsOriginAllowed(_ => true) por vulnerabilidad
                       .AllowAnyHeader()
                       .AllowAnyMethod()
                       .AllowCredentials();

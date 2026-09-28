@@ -26,10 +26,11 @@ public class JwtTokenGenerator : IJwtTokenGenerator, ITokenGenerator
         ArgumentNullException.ThrowIfNull(user);
 
         string secretKey = _configuration["JwtSettings:Secret"]
-                           ?? _configuration["Jwt:Secret"]
-                           ?? "SuperSecretEnterpriseJwtKey_LongEnoughFor256Bits_NalunPos2026!";
-        string issuer = _configuration["JwtSettings:Issuer"] ?? _configuration["Jwt:Issuer"] ?? "NalunPosApi";
-        string audience = _configuration["JwtSettings:Audience"] ?? _configuration["Jwt:Audience"] ?? "NalunPosClients";
+                           ?? throw new InvalidOperationException("JwtSettings:Secret is required.");
+        string issuer = _configuration["JwtSettings:Issuer"] 
+                        ?? throw new InvalidOperationException("JwtSettings:Issuer is required.");
+        string audience = _configuration["JwtSettings:Audience"] 
+                          ?? throw new InvalidOperationException("JwtSettings:Audience is required.");
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);

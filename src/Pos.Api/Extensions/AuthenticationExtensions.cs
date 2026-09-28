@@ -2,16 +2,29 @@ using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
+using Pos.Api.Options;
 
 namespace Pos.Api.Extensions;
 
 public static class AuthenticationExtensions
 {
+    /// <summary>
+    /// Configura JWT Bearer Authentication con ValidateOnStart.
+    /// Si JwtSettings:Secret está ausente o tiene menos de 32 bytes, la app NO arranca.
+    /// El secreto no tiene valor por defecto en código.
+    /// </summary>
     public static IServiceCollection AddCustomAuthentication(this IServiceCollection services, IConfiguration configuration)
     {
-        string jwtSecret = configuration["JwtSettings:Secret"] ?? "SuperSecretEnterpriseJwtKey_LongEnoughFor256Bits_NalunPos2026!";
-        string jwtIssuer = configuration["JwtSettings:Issuer"] ?? "NalunPosApi";
-        string jwtAudience = configuration["JwtSettings:Audience"] ?? "NalunPosClients";
+        services.AddOptions<JwtSettings>()
+            .Bind(configuration.GetSection(JwtSettings.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        var jwtSettings = configuration.GetSection(JwtSettings.SectionName).Get<JwtSettings>()
+            ?? throw new InvalidOperationException(
+                "JwtSettings no está configurado. La aplicación requiere JwtSettings:Secret, JwtSettings:Issuer " +
+                "y JwtSettings:Audience vía user-secrets o variables de entorno. El secreto debe tener " +
+                "mínimo 32 caracteres (256 bits).");
 
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
@@ -22,9 +35,9 @@ public static class AuthenticationExtensions
                     ValidateAudience = true,
                     ValidateLifetime = true,
                     ValidateIssuerSigningKey = true,
-                    ValidIssuer = jwtIssuer,
-                    ValidAudience = jwtAudience,
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret))
+                    ValidIssuer = jwtSettings.Issuer,
+                    ValidAudience = jwtSettings.Audience,
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Secret))
                 };
             });
 

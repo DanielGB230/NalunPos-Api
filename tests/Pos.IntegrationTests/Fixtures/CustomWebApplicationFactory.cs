@@ -19,7 +19,8 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
                 ["SuperAdminSettings:LastName"] = "Admin",
                 ["JwtSettings:Secret"] = "SuperSecretEnterpriseJwtKey_LongEnoughFor256Bits_NalunPos2026!",
                 ["JwtSettings:Issuer"] = "NalunPosApi",
-                ["JwtSettings:Audience"] = "NalunPosClients"
+                ["JwtSettings:Audience"] = "NalunPosClients",
+                ["CorsSettings:AllowedOrigins:0"] = "http://localhost:4200"
             });
         });
     }
