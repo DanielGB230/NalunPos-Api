@@ -45,6 +45,7 @@ builder.Services.AddControllers()
     {
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
     });
+builder.Services.AddProblemDetails(); // Requerido para IProblemDetailsService en el middleware
 
 // 10. Configuración de OpenAPI y Scalar
 builder.Services.AddCustomOpenApi();
