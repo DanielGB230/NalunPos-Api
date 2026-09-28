@@ -18,7 +18,10 @@ public record CreateUserRequest(
 public record UpdateUserRequest(
     string FirstName,
     string LastName,
-    string Email,
+    string Email
+);
+
+public record UpdateUserRoleRequest(
     Guid RoleId,
     Guid? TenantId = null
 );

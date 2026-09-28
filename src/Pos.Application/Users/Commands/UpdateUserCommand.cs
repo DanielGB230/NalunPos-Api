@@ -17,9 +17,7 @@ public record UpdateUserCommand(
     Guid Id,
     string FirstName,
     string LastName,
-    string Email,
-    Guid RoleId,
-    Guid? TenantId
+    string Email
 ) : ICommand<Result<UserDto>>;
 
 public class UpdateUserCommandValidator : AbstractValidator<UpdateUserCommand>
@@ -75,7 +73,6 @@ public class UpdateUserCommandHandler : ICommandHandler<UpdateUserCommand, Resul
         {
             user.UpdateDetails(request.FirstName, request.LastName);
             user.UpdateEmail(new Email(request.Email));
-            user.ChangeRole(request.RoleId, request.TenantId);
         }
         catch (DomainException ex)
         {

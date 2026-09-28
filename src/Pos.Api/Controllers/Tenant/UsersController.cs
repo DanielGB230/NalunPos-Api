@@ -83,7 +83,24 @@ public class UsersController : ControllerBase
             id,
             request.FirstName,
             request.LastName,
-            request.Email,
+            request.Email);
+
+        var result = await _dispatcher.SendAsync(command, cancellationToken);
+        return this.ToActionResult(result);
+    }
+
+    [HttpPatch("{id:guid}/role")]
+    [EnableRateLimiting("SensitiveOperationsPolicy")]
+    [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateUserRole(
+        Guid id,
+        [FromBody] UpdateUserRoleRequest request,
+        CancellationToken cancellationToken)
+    {
+        var command = new UpdateUserRoleCommand(
+            id,
             request.RoleId,
             request.TenantId);
 

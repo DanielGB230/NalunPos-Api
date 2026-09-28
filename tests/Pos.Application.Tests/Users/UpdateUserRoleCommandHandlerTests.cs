@@ -2,32 +2,29 @@ using Pos.Application.Common.Interfaces;
 using Pos.Application.Users.Commands;
 using Pos.Domain.Common;
 using Pos.Domain.Entities;
-using Pos.Domain.Enums;
 using Pos.Domain.Interfaces;
 using Pos.Domain.ValueObjects;
 using Xunit;
 
 namespace Pos.Application.Tests.Users;
 
-public class UpdateUserCommandHandlerTests
+public class UpdateUserRoleCommandHandlerTests
 {
     private readonly FakeUserRepository _userRepository = new();
     private readonly FakeUnitOfWork _unitOfWork = new();
-    private readonly FakeAuthUserLookup _authUserLookup;
-    private readonly UpdateUserCommandHandler _handler;
+    private readonly UpdateUserRoleCommandHandler _handler;
 
-    public UpdateUserCommandHandlerTests()
+    public UpdateUserRoleCommandHandlerTests()
     {
-        _authUserLookup = new FakeAuthUserLookup(_userRepository.Users);
-        _handler = new UpdateUserCommandHandler(_userRepository, _unitOfWork, _authUserLookup);
+        _handler = new UpdateUserRoleCommandHandler(_userRepository, _unitOfWork);
     }
 
     [Fact]
-    public async Task HandleAsync_WithValidData_ShouldUpdateUserAndReturnSuccess()
+    public async Task HandleAsync_WithValidRole_ShouldUpdateRoleAndReturnSuccess()
     {
         // Arrange
         var user = User.Create(
-            new Email("usuario.original@nalunpos.com"),
+            new Email("usuario.role@nalunpos.com"),
             new PasswordHash("hashedPassword"),
             Guid.NewGuid(),
             Guid.NewGuid(),
@@ -36,11 +33,11 @@ public class UpdateUserCommandHandlerTests
         );
         _userRepository.Users.Add(user);
 
-        var command = new UpdateUserCommand(
+        var newRoleId = Guid.NewGuid();
+        var command = new UpdateUserRoleCommand(
             user.Id,
-            "Pedro Luis",
-            "Gomez Silva",
-            "pedro.actualizado@nalunpos.com"
+            newRoleId,
+            user.TenantId
         );
 
         // Act
@@ -49,8 +46,7 @@ public class UpdateUserCommandHandlerTests
         // Assert
         Assert.True(result.IsSuccess);
         Assert.NotNull(result.Value);
-        Assert.Equal("Pedro Luis", result.Value.FirstName);
-        Assert.Equal("pedro.actualizado@nalunpos.com", result.Value.Email);
+        Assert.Equal(newRoleId, result.Value.RoleId);
         Assert.Equal(1, _unitOfWork.SaveChangesCount);
     }
 
@@ -58,11 +54,10 @@ public class UpdateUserCommandHandlerTests
     public async Task HandleAsync_WhenUserDoesNotExist_ShouldReturnNotFoundResult()
     {
         // Arrange
-        var command = new UpdateUserCommand(
+        var command = new UpdateUserRoleCommand(
             Guid.NewGuid(),
-            "Inexistente",
-            "Usuario",
-            "noexiste@nalunpos.com"
+            Guid.NewGuid(),
+            null
         );
 
         // Act
@@ -91,25 +86,5 @@ public class UpdateUserCommandHandlerTests
     {
         public int SaveChangesCount { get; private set; }
         public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) { SaveChangesCount++; return Task.FromResult(1); }
-    }
-
-    private sealed class FakeAuthUserLookup : IAuthUserLookup
-    {
-        private readonly List<User> _users;
-
-        public FakeAuthUserLookup(List<User> users)
-        {
-            _users = users;
-        }
-
-        public Task<User?> FindByEmailAsync(string email, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(_users.FirstOrDefault(u => string.Equals(u.Email.Value, email, StringComparison.OrdinalIgnoreCase)));
-        }
-
-        public Task<bool> ExistsByEmailAsync(string email, Guid? excludeId = null, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(_users.Any(u => string.Equals(u.Email.Value, email, StringComparison.OrdinalIgnoreCase) && u.Id != excludeId));
-        }
     }
 }

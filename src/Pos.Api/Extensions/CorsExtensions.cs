@@ -23,7 +23,7 @@ public static class CorsExtensions
                 policy.WithOrigins(settings.AllowedOrigins.ToArray())
                       // ELIMINADO: .SetIsOriginAllowed(_ => true) por vulnerabilidad
                       .AllowAnyHeader()
-                      .AllowAnyMethod()
+                      .WithMethods("GET", "POST", "PATCH", "OPTIONS")
                       .AllowCredentials();
             });
         });
