@@ -75,8 +75,13 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-app.UseMiddleware<ExceptionHandlingMiddleware>();
+// Pipeline de middlewares (orden crítico):
+// 1. ForwardedHeaders: PRIMERO, para que la IP real esté disponible desde el inicio
+app.UseCustomForwardedHeaders();
+
+// 2. CorrelationId: envuelve a ExceptionHandling para que los errores se logueen con el CorrelationId ya establecido
 app.UseMiddleware<CorrelationIdMiddleware>();
+app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 if (app.Environment.IsDevelopment())
 {
