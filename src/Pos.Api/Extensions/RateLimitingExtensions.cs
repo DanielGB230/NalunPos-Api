@@ -1,6 +1,8 @@
 using System.Threading.RateLimiting;
-using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Pos.Api.Options;
 
 namespace Pos.Api.Extensions;
@@ -9,6 +11,8 @@ public static class RateLimitingExtensions
 {
     public static IServiceCollection AddCustomRateLimiting(this IServiceCollection services, IConfiguration configuration)
     {
+        services.AddProblemDetails();
+
         services.AddOptions<RateLimitingOptions>()
             .Bind(configuration.GetSection(RateLimitingOptions.SectionName))
             .ValidateDataAnnotations()
@@ -21,16 +25,26 @@ public static class RateLimitingExtensions
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
             options.OnRejected = async (context, cancellationToken) =>
             {
-                context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
-                context.HttpContext.Response.Headers.RetryAfter = "60";
-                var problemDetails = new ProblemDetails
+                var httpContext = context.HttpContext;
+                httpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+
+                if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out TimeSpan retryAfter) && retryAfter > TimeSpan.Zero)
                 {
-                    Status = StatusCodes.Status429TooManyRequests,
-                    Title = "Demasiadas peticiones",
-                    Detail = "Se ha superado el límite de peticiones permitido. Intente nuevamente en unos momentos.",
-                    Instance = context.HttpContext.Request.Path
-                };
-                await context.HttpContext.Response.WriteAsJsonAsync(problemDetails, cancellationToken);
+                    var seconds = (int)Math.Ceiling(retryAfter.TotalSeconds);
+                    httpContext.Response.Headers.RetryAfter = seconds.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                }
+                else
+                {
+                    httpContext.Response.Headers.RetryAfter = (rateLimitingOptions.GlobalApiPolicy.WindowMinutes * 60).ToString(System.Globalization.CultureInfo.InvariantCulture);
+                }
+
+                var problemDetailsService = httpContext.RequestServices.GetRequiredService<IProblemDetailsService>();
+                await problemDetailsService.WriteProblemDetailsAsync(
+                    httpContext,
+                    StatusCodes.Status429TooManyRequests,
+                    "https://tools.ietf.org/html/rfc9110#section-15.5.20",
+                    "Demasiadas peticiones",
+                    "Se ha superado el límite de peticiones permitido. Intente nuevamente en unos momentos.");
             };
 
             // AuthPolicy: 10/min por IP para login/refresh

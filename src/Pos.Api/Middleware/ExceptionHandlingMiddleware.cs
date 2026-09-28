@@ -1,6 +1,6 @@
 using System.Net;
-using System.Text.Json;
 using FluentValidation;
+using Pos.Api.Extensions;
 using Pos.Domain.Exceptions;
 
 namespace Pos.Api.Middleware;
@@ -16,7 +16,7 @@ public partial class ExceptionHandlingMiddleware
         _logger = logger;
     }
 
-    public async Task InvokeAsync(HttpContext context)
+    public async Task InvokeAsync(HttpContext context, IProblemDetailsService problemDetailsService)
     {
         try
         {
@@ -25,61 +25,66 @@ public partial class ExceptionHandlingMiddleware
         catch (Exception ex)
         {
             LogUnhandledException(_logger, ex, ex.Message);
-            await HandleExceptionAsync(context, ex);
+            await HandleExceptionAsync(context, problemDetailsService, ex);
         }
     }
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Ocurrió una excepción no controlada: {Message}")]
     private static partial void LogUnhandledException(ILogger logger, Exception exception, string message);
 
-    private static async Task HandleExceptionAsync(HttpContext context, Exception exception)
+    private static async Task HandleExceptionAsync(HttpContext context, IProblemDetailsService problemDetailsService, Exception exception)
     {
-        context.Response.ContentType = "application/json";
-
-        var (statusCode, title, errors) = exception switch
+        var (statusCode, type, title, detail, errors) = exception switch
         {
             UnauthorizedDomainException unauthEx => (
-                HttpStatusCode.Unauthorized,
+                StatusCodes.Status401Unauthorized,
+                "https://tools.ietf.org/html/rfc9110#section-15.5.2",
                 "No autorizado",
-                new List<string> { unauthEx.Message }),
+                unauthEx.Message,
+                (IReadOnlyList<string>?)null),
 
             ForbiddenDomainException forbEx => (
-                HttpStatusCode.Forbidden,
+                StatusCodes.Status403Forbidden,
+                "https://tools.ietf.org/html/rfc9110#section-15.5.4",
                 "Acceso denegado",
-                new List<string> { forbEx.Message }),
+                forbEx.Message,
+                null),
 
             ProductNotFoundException or CategoryNotFoundException => (
-                HttpStatusCode.NotFound,
+                StatusCodes.Status404NotFound,
+                "https://tools.ietf.org/html/rfc9110#section-15.5.5",
                 "Recurso no encontrado",
-                new List<string> { exception.Message }),
+                exception.Message,
+                null),
 
             ValidationException valEx => (
-                HttpStatusCode.BadRequest,
+                StatusCodes.Status400BadRequest,
+                "https://tools.ietf.org/html/rfc9110#section-15.5.1",
                 "Error de validación",
+                "Uno o más errores de validación ocurrieron.",
                 valEx.Errors.Select(e => e.ErrorMessage).ToList()),
 
             DomainException domEx => (
-                HttpStatusCode.BadRequest,
+                StatusCodes.Status400BadRequest,
+                "https://tools.ietf.org/html/rfc9110#section-15.5.1",
                 "Violación de regla de negocio",
-                new List<string> { domEx.Message }),
+                domEx.Message,
+                null),
 
             _ => (
-                HttpStatusCode.InternalServerError,
+                StatusCodes.Status500InternalServerError,
+                "https://tools.ietf.org/html/rfc9110#section-15.6.1",
                 "Error interno del servidor",
-                new List<string> { "Ocurrió un error inesperado al procesar la solicitud." })
+                "Ocurrió un error inesperado al procesar la solicitud.",
+                null)
         };
 
-        context.Response.StatusCode = (int)statusCode;
-
-        var response = new
-        {
-            status = context.Response.StatusCode,
+        await problemDetailsService.WriteProblemDetailsAsync(
+            context,
+            statusCode,
+            type,
             title,
-            errors,
-            timestamp = DateTime.UtcNow
-        };
-
-        var json = JsonSerializer.Serialize(response);
-        await context.Response.WriteAsync(json);
+            detail,
+            errors);
     }
 }

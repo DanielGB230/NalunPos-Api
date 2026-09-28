@@ -419,5 +419,59 @@ public class ArchitectureTests
 
         Assert.DoesNotContain(referencedAssemblies, a => a.Name?.Contains("Microsoft.CSharp") == true);
     }
+
+    [Fact]
+    public void All_Controllers_And_Actions_Must_Have_ApiVersion_And_Explicit_RateLimitingPolicy()
+    {
+        var apiAssembly = typeof(Program).Assembly;
+        var controllerTypes = apiAssembly.GetTypes()
+            .Where(t => t.IsClass && !t.IsAbstract && typeof(Microsoft.AspNetCore.Mvc.ControllerBase).IsAssignableFrom(t))
+            .ToList();
+
+        Assert.NotEmpty(controllerTypes);
+
+        var missingApiVersionControllers = new List<string>();
+        var unhandledRateLimitingActions = new List<string>();
+
+        foreach (var controller in controllerTypes)
+        {
+            // Check [ApiVersion]
+            var hasApiVersion = controller.GetCustomAttributes(typeof(Asp.Versioning.ApiVersionAttribute), true).Length > 0;
+            if (!hasApiVersion)
+            {
+                missingApiVersionControllers.Add(controller.Name);
+            }
+
+            var controllerHasEnable = controller.GetCustomAttributes(typeof(Microsoft.AspNetCore.RateLimiting.EnableRateLimitingAttribute), true).Length > 0;
+            var controllerHasDisable = controller.GetCustomAttributes(typeof(Microsoft.AspNetCore.RateLimiting.DisableRateLimitingAttribute), true).Length > 0;
+
+            var actions = controller.GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.DeclaredOnly)
+                .Where(m => m.GetCustomAttributes(typeof(Microsoft.AspNetCore.Mvc.Routing.HttpMethodAttribute), true).Length > 0)
+                .ToList();
+
+            foreach (var action in actions)
+            {
+                var actionHasEnable = action.GetCustomAttributes(typeof(Microsoft.AspNetCore.RateLimiting.EnableRateLimitingAttribute), true).Length > 0;
+                var actionHasDisable = action.GetCustomAttributes(typeof(Microsoft.AspNetCore.RateLimiting.DisableRateLimitingAttribute), true).Length > 0;
+
+                bool isRateLimitingResolved = controllerHasEnable || controllerHasDisable || actionHasEnable || actionHasDisable;
+
+                if (!isRateLimitingResolved)
+                {
+                    unhandledRateLimitingActions.Add($"{controller.Name}.{action.Name}");
+                }
+            }
+        }
+
+        Assert.True(
+            missingApiVersionControllers.Count == 0,
+            $"Los siguientes controladores no definen el atributo [ApiVersion]: {string.Join(", ", missingApiVersionControllers)}"
+        );
+
+        Assert.True(
+            unhandledRateLimitingActions.Count == 0,
+            $"Las siguientes acciones/controladores no definen una política de rate limiting explícita ([EnableRateLimiting] o [DisableRateLimiting]): {string.Join(", ", unhandledRateLimitingActions)}"
+        );
+    }
 }
 

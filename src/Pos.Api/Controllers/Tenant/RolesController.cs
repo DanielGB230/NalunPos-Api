@@ -13,7 +13,7 @@ namespace Pos.Api.Controllers.Tenant;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/roles")]
-[EnableRateLimiting("SensitiveOperationsPolicy")]
+[EnableRateLimiting("GlobalApiPolicy")]
 public class RolesController : ControllerBase
 {
     private readonly IDispatcher _dispatcher;
@@ -33,6 +33,7 @@ public class RolesController : ControllerBase
     }
 
     [HttpPost]
+    [EnableRateLimiting("SensitiveOperationsPolicy")]
     [ProducesResponseType(typeof(RoleDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> CreateRole(

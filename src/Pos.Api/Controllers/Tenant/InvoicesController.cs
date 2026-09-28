@@ -13,7 +13,7 @@ namespace Pos.Api.Controllers.Tenant;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/invoices")]
-[EnableRateLimiting("SensitiveOperationsPolicy")]
+[EnableRateLimiting("GlobalApiPolicy")]
 public class InvoicesController : ControllerBase
 {
     private readonly IDispatcher _dispatcher;
@@ -24,6 +24,7 @@ public class InvoicesController : ControllerBase
     }
 
     [HttpPost]
+    [EnableRateLimiting("SensitiveOperationsPolicy")]
     [ProducesResponseType(typeof(InvoiceDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> IssueInvoice(

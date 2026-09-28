@@ -14,7 +14,7 @@ namespace Pos.Api.Controllers.Tenant;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/stock-transfers")]
-[EnableRateLimiting("SensitiveOperationsPolicy")]
+[EnableRateLimiting("GlobalApiPolicy")]
 public class StockTransfersController : ControllerBase
 {
     private readonly IDispatcher _dispatcher;

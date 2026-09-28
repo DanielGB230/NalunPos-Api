@@ -13,7 +13,7 @@ namespace Pos.Api.Controllers.Tenant;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/payments")]
-[EnableRateLimiting("SensitiveOperationsPolicy")]
+[EnableRateLimiting("GlobalApiPolicy")]
 public class PaymentsController : ControllerBase
 {
     private readonly IDispatcher _dispatcher;

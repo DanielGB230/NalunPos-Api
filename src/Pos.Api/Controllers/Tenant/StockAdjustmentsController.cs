@@ -12,7 +12,7 @@ namespace Pos.Api.Controllers.Tenant;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/stock-adjustments")]
-[EnableRateLimiting("SensitiveOperationsPolicy")]
+[EnableRateLimiting("GlobalApiPolicy")]
 public class StockAdjustmentsController : ControllerBase
 {
     private readonly IDispatcher _dispatcher;

@@ -14,7 +14,7 @@ namespace Pos.Api.Controllers.Tenant;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/users")]
-[EnableRateLimiting("SensitiveOperationsPolicy")]
+[EnableRateLimiting("GlobalApiPolicy")]
 public class UsersController : ControllerBase
 {
     private readonly IDispatcher _dispatcher;
@@ -51,6 +51,7 @@ public class UsersController : ControllerBase
     }
 
     [HttpPost]
+    [EnableRateLimiting("SensitiveOperationsPolicy")]
     [ProducesResponseType(typeof(UserDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> CreateUser(

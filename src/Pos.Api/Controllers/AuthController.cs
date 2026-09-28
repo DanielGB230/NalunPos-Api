@@ -15,7 +15,7 @@ namespace Pos.Api.Controllers;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/auth")]
-[EnableRateLimiting("AuthPolicy")]
+[EnableRateLimiting("GlobalApiPolicy")]
 public class AuthController : ControllerBase
 {
     private readonly IDispatcher _dispatcher;
@@ -33,6 +33,7 @@ public class AuthController : ControllerBase
     /// <returns>Respuesta con Token JWT y datos de perfil</returns>
     [AllowAnonymous]
     [HttpPost("login")]
+    [EnableRateLimiting("AuthPolicy")]
     [ProducesResponseType(typeof(LoginResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
