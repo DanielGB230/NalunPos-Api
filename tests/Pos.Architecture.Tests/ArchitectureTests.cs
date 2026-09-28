@@ -477,29 +477,57 @@ public class ArchitectureTests
     [Fact]
     public void Controllers_Must_Use_ToActionResult_And_Not_Access_Result_Value_Directly()
     {
-        var apiAssembly = typeof(Program).Assembly;
-        var controllerTypes = apiAssembly.GetTypes()
-            .Where(t => t.IsClass && !t.IsAbstract && typeof(Microsoft.AspNetCore.Mvc.ControllerBase).IsAssignableFrom(t))
-            .ToList();
+        var baseDir = AppContext.BaseDirectory;
+        var dirInfo = new DirectoryInfo(baseDir);
 
-        Assert.NotEmpty(controllerTypes);
-
-        // Confirm ResultExtensions exists and is the central mapper
-        var resultExtensionsType = typeof(Pos.Api.Extensions.ResultExtensions);
-        Assert.NotNull(resultExtensionsType);
-
-        // Verify that no controller exposes direct Result<T>.Value fields or properties
-        foreach (var controller in controllerTypes)
+        while (dirInfo != null && !File.Exists(Path.Combine(dirInfo.FullName, "Pos.slnx")) && !File.Exists(Path.Combine(dirInfo.FullName, "NalunPos-Api.sln")))
         {
-            var properties = controller.GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
-            foreach (var prop in properties)
+            dirInfo = dirInfo.Parent;
+        }
+
+        Assert.NotNull(dirInfo);
+
+        var apiDir = Path.Combine(dirInfo.FullName, "src", "Pos.Api");
+        var controllersDir = Path.Combine(apiDir, "Controllers");
+        var resultExtensionsFile = Path.Combine(apiDir, "Extensions", "ResultExtensions.cs");
+
+        Assert.True(Directory.Exists(controllersDir), $"El directorio de controladores '{controllersDir}' no existe.");
+        Assert.True(File.Exists(resultExtensionsFile), $"El archivo de extensiones '{resultExtensionsFile}' no existe.");
+
+        // Confirm ResultExtensions.cs IS the authorized place accessing .Value
+        var resultExtensionsContent = File.ReadAllText(resultExtensionsFile);
+        Assert.Contains(".Value", resultExtensionsContent);
+
+        var controllerFiles = Directory.GetFiles(controllersDir, "*.cs", SearchOption.AllDirectories);
+        Assert.NotEmpty(controllerFiles);
+
+        var resultValueRegex = new System.Text.RegularExpressions.Regex(@"\b(result|res|commandResult|queryResult)\.Value\b", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        var violations = new List<string>();
+
+        foreach (var file in controllerFiles)
+        {
+            var lines = File.ReadAllLines(file);
+            for (int i = 0; i < lines.Length; i++)
             {
-                Assert.False(
-                    prop.PropertyType.IsGenericType && prop.PropertyType.GetGenericTypeDefinition() == typeof(Pos.Domain.Common.Result<>),
-                    $"El controlador '{controller.Name}' declara la propiedad '{prop.Name}' de tipo Result<T>. Los controladores deben usar ToActionResult(result)."
-                );
+                var line = lines[i];
+                var trimmed = line.Trim();
+                if (trimmed.StartsWith("//", StringComparison.Ordinal) ||
+                    trimmed.StartsWith("/*", StringComparison.Ordinal) ||
+                    trimmed.StartsWith('*'))
+                    continue;
+
+                if (resultValueRegex.IsMatch(line))
+                {
+                    var relativePath = Path.GetRelativePath(dirInfo.FullName, file);
+                    violations.Add($"{relativePath} (Línea {i + 1}): {trimmed}");
+                }
             }
         }
+
+        Assert.True(
+            violations.Count == 0,
+            $"Se detectaron accesos directos prohibidos a '.Value' de Result en controladores. Se debe usar 'this.ToActionResult(result)':\n{string.Join("\n", violations)}"
+        );
     }
 }
 
