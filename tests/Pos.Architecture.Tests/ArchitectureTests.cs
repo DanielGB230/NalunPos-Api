@@ -473,5 +473,33 @@ public class ArchitectureTests
             $"Las siguientes acciones/controladores no definen una política de rate limiting explícita ([EnableRateLimiting] o [DisableRateLimiting]): {string.Join(", ", unhandledRateLimitingActions)}"
         );
     }
+
+    [Fact]
+    public void Controllers_Must_Use_ToActionResult_And_Not_Access_Result_Value_Directly()
+    {
+        var apiAssembly = typeof(Program).Assembly;
+        var controllerTypes = apiAssembly.GetTypes()
+            .Where(t => t.IsClass && !t.IsAbstract && typeof(Microsoft.AspNetCore.Mvc.ControllerBase).IsAssignableFrom(t))
+            .ToList();
+
+        Assert.NotEmpty(controllerTypes);
+
+        // Confirm ResultExtensions exists and is the central mapper
+        var resultExtensionsType = typeof(Pos.Api.Extensions.ResultExtensions);
+        Assert.NotNull(resultExtensionsType);
+
+        // Verify that no controller exposes direct Result<T>.Value fields or properties
+        foreach (var controller in controllerTypes)
+        {
+            var properties = controller.GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+            foreach (var prop in properties)
+            {
+                Assert.False(
+                    prop.PropertyType.IsGenericType && prop.PropertyType.GetGenericTypeDefinition() == typeof(Pos.Domain.Common.Result<>),
+                    $"El controlador '{controller.Name}' declara la propiedad '{prop.Name}' de tipo Result<T>. Los controladores deben usar ToActionResult(result)."
+                );
+            }
+        }
+    }
 }
 

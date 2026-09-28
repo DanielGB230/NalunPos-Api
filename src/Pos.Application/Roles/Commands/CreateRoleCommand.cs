@@ -48,11 +48,15 @@ public class CreateRoleCommandHandler : ICommandHandler<CreateRoleCommand, Resul
             return Result.Fail<RoleDto>(DomainError.Conflict("Role.AlreadyExists", $"Ya existe un rol con el nombre '{request.Name}'."));
         }
 
+        if (!_currentTenantContext.TenantId.HasValue)
+        {
+            return Result.Fail<RoleDto>(DomainError.Validation("Role.TenantIdRequired", "TenantId es requerido para crear un rol."));
+        }
+
         Role role;
         try
         {
-            var tenantId = _currentTenantContext.TenantId ?? throw new DomainException("TenantId is required.");
-            role = Role.Create(tenantId, request.Name, request.Description, request.Permissions);
+            role = Role.Create(_currentTenantContext.TenantId.Value, request.Name, request.Description, request.Permissions);
         }
         catch (DomainException ex)
         {
