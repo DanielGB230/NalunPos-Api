@@ -8,6 +8,9 @@ public static class CorsExtensions
     {
         var settings = configuration.GetSection(CorsSettings.SectionName).Get<CorsSettings>() ?? new CorsSettings();
 
+        // Filtrar vacíos o nulos
+        settings.AllowedOrigins = settings.AllowedOrigins.Where(o => !string.IsNullOrWhiteSpace(o)).ToList();
+
         if (settings.AllowedOrigins.Count == 0)
         {
             throw new InvalidOperationException("CorsSettings:AllowedOrigins debe estar configurado con al menos un origen. No se permite SetIsOriginAllowed(_ => true).");

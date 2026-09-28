@@ -45,4 +45,8 @@ public class AuthController : ControllerBase
         var result = await _dispatcher.SendAsync(command, cancellationToken);
         return this.ToActionResult(result);
     }
+
+    [AllowAnonymous]
+    [HttpGet("ping")]
+    public IActionResult Ping() => Ok("pong");
 }

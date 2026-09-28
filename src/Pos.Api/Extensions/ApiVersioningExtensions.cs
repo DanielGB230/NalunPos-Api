@@ -11,7 +11,8 @@ public static class ApiVersioningExtensions
             options.DefaultApiVersion = new ApiVersion(1, 0);
             options.AssumeDefaultVersionWhenUnspecified = true;
             options.ReportApiVersions = true;
-        }).AddApiExplorer(options =>
+        }).AddMvc()
+          .AddApiExplorer(options =>
         {
             options.GroupNameFormat = "'v'VVV";
             options.SubstituteApiVersionInUrl = true;
