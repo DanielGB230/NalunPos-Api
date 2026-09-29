@@ -46,11 +46,6 @@ public static class DependencyInjection
         // (y por ende de IHttpContextAccessor), mejorando la testabilidad.
         services.AddDbContext<PosDbContext>((provider, options) =>
         {
-            var auditInterceptor = provider.GetRequiredService<AuditSaveChangesInterceptor>();
-            var outboxInterceptor = provider.GetRequiredService<InsertOutboxMessagesInterceptor>();
-            var tenantInterceptor = provider.GetRequiredService<TenantSaveChangesInterceptor>();
-            var sessionContextInterceptor = provider.GetRequiredService<TenantSessionContextInterceptor>();
-
             if (!string.IsNullOrWhiteSpace(connectionString))
             {
                 options.UseSqlServer(connectionString,

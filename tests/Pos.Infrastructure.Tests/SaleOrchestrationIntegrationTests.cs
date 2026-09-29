@@ -55,7 +55,7 @@ public class SaleOrchestrationIntegrationTests : IDisposable
         services.AddDbContext<PosDbContext>((sp, options) =>
         {
             options.UseSqlite(_connection);
-            options.AddInterceptors(sp.GetRequiredService<TenantSaveChangesInterceptor>());
+
         });
         services.AddScoped<PosDbContext>(sp =>
         {
