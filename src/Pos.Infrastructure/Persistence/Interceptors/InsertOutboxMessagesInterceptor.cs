@@ -6,6 +6,7 @@ using Pos.Application.IntegrationEvents.Contracts;
 using Pos.Application.IntegrationEvents.Contracts.V1;
 using Pos.Domain.Common;
 using Pos.Domain.DomainEvents;
+using Pos.Domain.Entities;
 using Pos.Infrastructure.Persistence.Outbox;
 
 namespace Pos.Infrastructure.Persistence.Interceptors;
@@ -68,10 +69,15 @@ public class InsertOutboxMessagesInterceptor : SaveChangesInterceptor
                     var integrationEvent = MapDomainEventToIntegrationEvent(domainEvent);
                     if (integrationEvent != null)
                     {
+                        var effectiveTenantId = currentTenantId
+                            ?? (domainEvent as UserRoleChangedDomainEvent)?.NewTenantId
+                            ?? (aggregate as ITenantOwnedEntity)?.TenantId
+                            ?? (aggregate as User)?.TenantId;
+
                         string jsonContent = JsonSerializer.Serialize(integrationEvent, integrationEvent.GetType());
                         var message = OutboxMessage.Create(
                             integrationEvent.Id,
-                            currentTenantId,
+                            effectiveTenantId,
                             integrationEvent.GetType().AssemblyQualifiedName ?? integrationEvent.GetType().Name,
                             jsonContent,
                             integrationEvent.OccurredOnUtc
@@ -101,6 +107,15 @@ public class InsertOutboxMessagesInterceptor : SaveChangesInterceptor
                 saleEvent.TotalAmount,
                 saleEvent.Currency,
                 saleEvent.OccurredOnUtc
+            ),
+            UserRoleChangedDomainEvent userRoleEvent => new UserRoleChangedIntegrationEventV1(
+                Guid.NewGuid(),
+                userRoleEvent.UserId,
+                userRoleEvent.OldRoleId,
+                userRoleEvent.NewRoleId,
+                userRoleEvent.OldTenantId,
+                userRoleEvent.NewTenantId,
+                userRoleEvent.OccurredOnUtc
             ),
             _ => null
         };

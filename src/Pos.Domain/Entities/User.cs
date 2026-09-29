@@ -95,9 +95,26 @@ public class User : AggregateRoot<Guid>
     public void ChangeRole(Guid newRoleId, Guid? newTenantId)
     {
         if (newRoleId == Guid.Empty) throw new DomainException("El RoleId no puede estar vacío.");
+
+        if (RoleId == newRoleId && TenantId == newTenantId)
+        {
+            return;
+        }
+
+        var oldRoleId = RoleId;
+        var oldTenantId = TenantId;
+
         RoleId = newRoleId;
         TenantId = newTenantId;
         UpdatedAtUtc = DateTime.UtcNow;
+
+        RaiseDomainEvent(new UserRoleChangedDomainEvent(
+            Id,
+            oldRoleId,
+            newRoleId,
+            oldTenantId,
+            newTenantId,
+            UpdatedAtUtc.Value));
     }
 
     public void Activate()
