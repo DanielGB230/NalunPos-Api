@@ -149,6 +149,7 @@ public class Product : AggregateRoot<Guid>, ITenantOwnedEntity
         if (IsActive) return;
         IsActive = true;
         UpdatedAtUtc = DateTime.UtcNow;
+        RaiseDomainEvent(new ProductStatusChangedDomainEvent(Id, TenantId, IsActive, UpdatedAtUtc.Value));
     }
 
     public void Deactivate()
@@ -156,6 +157,7 @@ public class Product : AggregateRoot<Guid>, ITenantOwnedEntity
         if (!IsActive) return;
         IsActive = false;
         UpdatedAtUtc = DateTime.UtcNow;
+        RaiseDomainEvent(new ProductStatusChangedDomainEvent(Id, TenantId, IsActive, UpdatedAtUtc.Value));
     }
 
     private void SetName(string name)

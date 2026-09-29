@@ -131,6 +131,13 @@ public class InsertOutboxMessagesInterceptor : SaveChangesInterceptor
                 tenantStatusEvent.NewStatus.ToString(),
                 tenantStatusEvent.OccurredOnUtc
             ),
+            ProductStatusChangedDomainEvent productStatusEvent => new ProductStatusChangedIntegrationEventV1(
+                Guid.NewGuid(),
+                productStatusEvent.ProductId,
+                productStatusEvent.TenantId,
+                productStatusEvent.IsActive,
+                productStatusEvent.OccurredOnUtc
+            ),
             _ => null
         };
     }

@@ -399,4 +399,97 @@ public class OutboxInterceptorIntegrationTests
             Assert.NotEqual(wrongContextTenantId, outboxMessage.TenantId);
         }
     }
+
+    [Fact]
+    public async Task DeactivateProduct_WithTenantContext_ShouldGenerateOutboxMessageWithThatTenantId()
+    {
+        Guid tenantId = Guid.NewGuid();
+        Product product;
+
+        // 1. Arrange
+        using (var dbSetup = _fixture.CreateDbContext(tenantId))
+        {
+            var category = Category.Create(tenantId, "Electrónica", "Desc");
+            dbSetup.Categories.Add(category);
+            
+            product = Product.Create("Producto", Sku.Create("SKU-1"), Money.Create(10, "USD"), category.Id);
+            dbSetup.Products.Add(product);
+            
+            await dbSetup.SaveChangesAsync();
+        }
+
+        // 2. Act
+        using (var dbTenantContext = _fixture.CreateDbContext(tenantId))
+        {
+            var fetchedProduct = await dbTenantContext.Products.FirstAsync(p => p.Id == product.Id);
+            fetchedProduct.Deactivate();
+            await dbTenantContext.SaveChangesAsync();
+        }
+
+        // 3. Assert
+        using (var dbVerify = _fixture.CreateDbContext(tenantId))
+        {
+            var messages = await dbVerify.OutboxMessages
+                .Where(o => o.Type.Contains(nameof(ProductStatusChangedIntegrationEventV1)))
+                .ToListAsync();
+
+            var outboxMessage = Assert.Single(messages);
+            Assert.Equal(tenantId, outboxMessage.TenantId);
+
+            var integrationEvent = JsonSerializer.Deserialize<ProductStatusChangedIntegrationEventV1>(outboxMessage.Content, _jsonOptions);
+            Assert.NotNull(integrationEvent);
+            Assert.Equal(product.Id, integrationEvent.ProductId);
+            Assert.Equal(tenantId, integrationEvent.TenantId);
+            Assert.False(integrationEvent.IsActive);
+        }
+    }
+
+    [Fact]
+    public async Task DeactivateProduct_WithSuperAdminContext_ShouldGenerateOutboxMessageWithProductTenantId()
+    {
+        Guid tenantId = Guid.NewGuid();
+        Product product;
+
+        // 1. Arrange
+        using (var dbSetup = _fixture.CreateDbContext(tenantId))
+        {
+            var category = Category.Create(tenantId, "Electrónica", "Desc");
+            dbSetup.Categories.Add(category);
+            
+            product = Product.Create("Producto Admin", Sku.Create("SKU-ADM"), Money.Create(10, "USD"), category.Id);
+            dbSetup.Products.Add(product);
+            
+            await dbSetup.SaveChangesAsync();
+        }
+
+        // 2. Act
+        using (var dbTenantContext = _fixture.CreateDbContext(tenantId))
+        {
+            product = await dbTenantContext.Products.FirstAsync(p => p.Id == product.Id);
+        }
+
+        using (var dbSuperAdmin = _fixture.CreateDbContext(tenantId: null, isSuperAdmin: true))
+        {
+            dbSuperAdmin.Products.Attach(product);
+            product.Deactivate();
+            await dbSuperAdmin.SaveChangesAsync();
+        }
+
+        // 3. Assert
+        using (var dbVerify = _fixture.CreateDbContext(tenantId))
+        {
+            var messages = await dbVerify.OutboxMessages
+                .Where(o => o.Type.Contains(nameof(ProductStatusChangedIntegrationEventV1)))
+                .ToListAsync();
+
+            var outboxMessage = Assert.Single(messages);
+            Assert.Equal(tenantId, outboxMessage.TenantId);
+
+            var integrationEvent = JsonSerializer.Deserialize<ProductStatusChangedIntegrationEventV1>(outboxMessage.Content, _jsonOptions);
+            Assert.NotNull(integrationEvent);
+            Assert.Equal(product.Id, integrationEvent.ProductId);
+            Assert.Equal(tenantId, integrationEvent.TenantId);
+            Assert.False(integrationEvent.IsActive);
+        }
+    }
 }

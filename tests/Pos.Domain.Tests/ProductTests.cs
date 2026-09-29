@@ -51,4 +51,76 @@ public class ProductTests
         Assert.Throws<DomainException>(() =>
             Product.Create("", Sku.Create("SKU-123"), Money.Create(10m, "USD"), Guid.NewGuid()));
     }
+
+    [Fact]
+    public void Activate_WhenNotActive_ShouldActivateAndEmitProductStatusChangedDomainEvent()
+    {
+        // Arrange
+        var product = Product.Create("Mouse Gamer", Sku.Create("MSE-01"), Money.Create(50m, "USD"), Guid.NewGuid());
+        product.Deactivate(); // Set to inactive first
+        product.ClearDomainEvents();
+
+        // Act
+        product.Activate();
+
+        // Assert
+        Assert.True(product.IsActive);
+        var statusEvent = product.DomainEvents.OfType<DomainEvents.ProductStatusChangedDomainEvent>().SingleOrDefault();
+        Assert.NotNull(statusEvent);
+        Assert.Equal(product.Id, statusEvent.ProductId);
+        Assert.Equal(product.TenantId, statusEvent.TenantId);
+        Assert.True(statusEvent.IsActive);
+        Assert.True(statusEvent.OccurredOnUtc <= DateTime.UtcNow);
+    }
+
+    [Fact]
+    public void Activate_WhenAlreadyActive_ShouldNotEmitEvent()
+    {
+        // Arrange
+        var product = Product.Create("Mouse Gamer", Sku.Create("MSE-01"), Money.Create(50m, "USD"), Guid.NewGuid());
+        product.ClearDomainEvents();
+
+        // Act
+        product.Activate();
+
+        // Assert
+        Assert.True(product.IsActive);
+        Assert.Empty(product.DomainEvents.OfType<DomainEvents.ProductStatusChangedDomainEvent>());
+    }
+
+    [Fact]
+    public void Deactivate_WhenActive_ShouldDeactivateAndEmitProductStatusChangedDomainEvent()
+    {
+        // Arrange
+        var product = Product.Create("Mouse Gamer", Sku.Create("MSE-01"), Money.Create(50m, "USD"), Guid.NewGuid());
+        product.ClearDomainEvents();
+
+        // Act
+        product.Deactivate();
+
+        // Assert
+        Assert.False(product.IsActive);
+        var statusEvent = product.DomainEvents.OfType<DomainEvents.ProductStatusChangedDomainEvent>().SingleOrDefault();
+        Assert.NotNull(statusEvent);
+        Assert.Equal(product.Id, statusEvent.ProductId);
+        Assert.Equal(product.TenantId, statusEvent.TenantId);
+        Assert.False(statusEvent.IsActive);
+        Assert.True(statusEvent.OccurredOnUtc <= DateTime.UtcNow);
+    }
+
+    [Fact]
+    public void Deactivate_WhenAlreadyInactive_ShouldNotEmitEvent()
+    {
+        // Arrange
+        var product = Product.Create("Mouse Gamer", Sku.Create("MSE-01"), Money.Create(50m, "USD"), Guid.NewGuid());
+        product.Deactivate();
+        product.ClearDomainEvents();
+
+        // Act
+        product.Deactivate();
+
+        // Assert
+        Assert.False(product.IsActive);
+        Assert.Empty(product.DomainEvents.OfType<DomainEvents.ProductStatusChangedDomainEvent>());
+    }
 }
