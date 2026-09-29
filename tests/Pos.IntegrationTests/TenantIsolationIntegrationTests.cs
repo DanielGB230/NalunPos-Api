@@ -286,6 +286,8 @@ public class TenantIsolationIntegrationTests
 
         using (var db = _fixture.CreateDbContext(tenantId))
         {
+            await db.Database.ExecuteSqlRawAsync("DELETE FROM OutboxMessages");
+            
             var cat = Pos.Domain.Entities.Category.Create("Test Cat", "Desc");
             db.Categories.Add(cat);
 

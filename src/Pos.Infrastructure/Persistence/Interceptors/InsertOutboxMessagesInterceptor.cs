@@ -19,6 +19,8 @@ namespace Pos.Infrastructure.Persistence.Interceptors;
 public class InsertOutboxMessagesInterceptor : SaveChangesInterceptor
 {
     private readonly Pos.Application.Common.Interfaces.ICurrentTenantContext _tenantContext;
+    private readonly HashSet<IDomainEvent> _processedEvents = new(ReferenceEqualityComparer.Instance);
+    private readonly List<IDomainEvent> _currentAttemptEvents = new();
 
     public InsertOutboxMessagesInterceptor(Pos.Application.Common.Interfaces.ICurrentTenantContext tenantContext)
     {
@@ -50,8 +52,23 @@ public class InsertOutboxMessagesInterceptor : SaveChangesInterceptor
         return base.SavingChanges(eventData, result);
     }
 
-    private static void ConvertDomainEventsToOutboxMessages(DbContext context, Guid? currentTenantId)
+    public override Task SaveChangesFailedAsync(DbContextErrorEventData eventData, CancellationToken cancellationToken = default)
     {
+        _processedEvents.ExceptWith(_currentAttemptEvents);
+        _currentAttemptEvents.Clear();
+        return base.SaveChangesFailedAsync(eventData, cancellationToken);
+    }
+
+    public override void SaveChangesFailed(DbContextErrorEventData eventData)
+    {
+        _processedEvents.ExceptWith(_currentAttemptEvents);
+        _currentAttemptEvents.Clear();
+        base.SaveChangesFailed(eventData);
+    }
+
+    private void ConvertDomainEventsToOutboxMessages(DbContext context, Guid? currentTenantId)
+    {
+        _currentAttemptEvents.Clear();
         var outboxMessages = new List<OutboxMessage>();
 
         // Obtener todos los agregados que tengan eventos de dominio pendientes
@@ -66,6 +83,11 @@ public class InsertOutboxMessagesInterceptor : SaveChangesInterceptor
             {
                 foreach (var domainEvent in aggregate.DomainEvents)
                 {
+                    if (_processedEvents.Contains(domainEvent))
+                    {
+                        continue;
+                    }
+
                     var integrationEvent = MapDomainEventToIntegrationEvent(domainEvent);
                     if (integrationEvent != null)
                     {
@@ -84,6 +106,8 @@ public class InsertOutboxMessagesInterceptor : SaveChangesInterceptor
                         );
 
                         outboxMessages.Add(message);
+                        _processedEvents.Add(domainEvent);
+                        _currentAttemptEvents.Add(domainEvent);
                     }
                 }
             }
