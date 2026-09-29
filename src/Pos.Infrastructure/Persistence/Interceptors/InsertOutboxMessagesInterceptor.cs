@@ -69,7 +69,8 @@ public class InsertOutboxMessagesInterceptor : SaveChangesInterceptor
                     var integrationEvent = MapDomainEventToIntegrationEvent(domainEvent);
                     if (integrationEvent != null)
                     {
-                        var effectiveTenantId = currentTenantId
+                        var effectiveTenantId = (domainEvent as ITenantTargetedDomainEvent)?.TenantId
+                            ?? currentTenantId
                             ?? (aggregate as ITenantOwnedEntity)?.TenantId
                             ?? (aggregate as IOptionalTenantOwnedEntity)?.TenantId;
 
@@ -122,6 +123,13 @@ public class InsertOutboxMessagesInterceptor : SaveChangesInterceptor
                 userStatusEvent.TenantId,
                 userStatusEvent.IsActive,
                 userStatusEvent.OccurredOnUtc
+            ),
+            TenantStatusChangedDomainEvent tenantStatusEvent => new TenantStatusChangedIntegrationEventV1(
+                Guid.NewGuid(),
+                tenantStatusEvent.TenantId,
+                tenantStatusEvent.OldStatus.ToString(),
+                tenantStatusEvent.NewStatus.ToString(),
+                tenantStatusEvent.OccurredOnUtc
             ),
             _ => null
         };

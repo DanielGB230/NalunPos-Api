@@ -306,4 +306,97 @@ public class OutboxInterceptorIntegrationTests
             Assert.False(integrationEvent.IsActive);
         }
     }
+
+    [Fact]
+    public async Task SuperAdminContext_ActivatingAndSuspendingTenants_ShouldGenerateOutboxMessagesWithRespectiveTenantIds()
+    {
+        // 1. Arrange
+        var tenant1 = Tenant.Create("Tenant 1", "TAX1");
+        var tenant2 = Tenant.Create("Tenant 2", "TAX2");
+        tenant2.Activate(); // For suspending later
+        tenant1.ClearDomainEvents();
+        tenant2.ClearDomainEvents();
+
+        using (var dbSetup = _fixture.CreateDbContext(tenantId: null, isSuperAdmin: true))
+        {
+            dbSetup.Tenants.Add(tenant1);
+            dbSetup.Tenants.Add(tenant2);
+            await dbSetup.SaveChangesAsync();
+        }
+
+        // 2. Act
+        using (var dbSuperAdmin = _fixture.CreateDbContext(tenantId: null, isSuperAdmin: true))
+        {
+            tenant1 = await dbSuperAdmin.Tenants.FirstAsync(t => t.Id == tenant1.Id);
+            tenant2 = await dbSuperAdmin.Tenants.FirstAsync(t => t.Id == tenant2.Id);
+
+            tenant1.Activate();
+            tenant2.Suspend();
+
+            await dbSuperAdmin.SaveChangesAsync();
+        }
+
+        // 3. Assert
+        using (var dbVerify = _fixture.CreateDbContext(tenantId: null, isSuperAdmin: true))
+        {
+            var messagesT1 = await dbVerify.OutboxMessages
+                .Where(o => o.TenantId == tenant1.Id && o.Type.Contains(nameof(TenantStatusChangedIntegrationEventV1)))
+                .ToListAsync();
+            
+            var outboxT1 = Assert.Single(messagesT1);
+            var eventT1 = JsonSerializer.Deserialize<TenantStatusChangedIntegrationEventV1>(outboxT1.Content, _jsonOptions);
+            Assert.NotNull(eventT1);
+            Assert.Equal("PendingProvisioning", eventT1.OldStatus);
+            Assert.Equal("Active", eventT1.NewStatus);
+            Assert.Equal(tenant1.Id, eventT1.TenantId);
+
+            var messagesT2 = await dbVerify.OutboxMessages
+                .Where(o => o.TenantId == tenant2.Id && o.Type.Contains(nameof(TenantStatusChangedIntegrationEventV1)))
+                .ToListAsync();
+            
+            var outboxT2 = Assert.Single(messagesT2);
+            var eventT2 = JsonSerializer.Deserialize<TenantStatusChangedIntegrationEventV1>(outboxT2.Content, _jsonOptions);
+            Assert.NotNull(eventT2);
+            Assert.Equal("Active", eventT2.OldStatus);
+            Assert.Equal("Suspended", eventT2.NewStatus);
+            Assert.Equal(tenant2.Id, eventT2.TenantId);
+        }
+    }
+
+    [Fact]
+    public async Task EventTenantId_ShouldWinOverContextTenantId_WhenActivatingTenant()
+    {
+        // 1. Arrange
+        Guid wrongContextTenantId = Guid.NewGuid();
+        var targetTenant = Tenant.Create("Target Tenant", "TAX-TARGET");
+        targetTenant.ClearDomainEvents();
+
+        using (var dbSetup = _fixture.CreateDbContext(tenantId: null, isSuperAdmin: true))
+        {
+            dbSetup.Tenants.Add(targetTenant);
+            await dbSetup.SaveChangesAsync();
+        }
+
+        // 2. Act
+        // Use a context with a different TenantId, but IsSuperAdmin = true so it can read/write the Tenant
+        using (var dbAdmin = _fixture.CreateDbContext(tenantId: wrongContextTenantId, isSuperAdmin: true))
+        {
+            targetTenant = await dbAdmin.Tenants.FirstAsync(t => t.Id == targetTenant.Id);
+            targetTenant.Activate();
+            await dbAdmin.SaveChangesAsync();
+        }
+
+        // 3. Assert
+        using (var dbVerify = _fixture.CreateDbContext(tenantId: null, isSuperAdmin: true))
+        {
+            // Verify message has targetTenant.Id, NOT wrongContextTenantId
+            var messages = await dbVerify.OutboxMessages
+                .Where(o => o.Type.Contains(nameof(TenantStatusChangedIntegrationEventV1)) && o.TenantId == targetTenant.Id)
+                .ToListAsync();
+            
+            var outboxMessage = Assert.Single(messages);
+            Assert.Equal(targetTenant.Id, outboxMessage.TenantId);
+            Assert.NotEqual(wrongContextTenantId, outboxMessage.TenantId);
+        }
+    }
 }

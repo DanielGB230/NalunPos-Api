@@ -50,8 +50,11 @@ public class Tenant : AggregateRoot<Guid>
             return;
         }
 
+        var oldStatus = Status;
         Status = TenantStatus.Active;
         UpdatedAtUtc = DateTime.UtcNow;
+        
+        RaiseDomainEvent(new TenantStatusChangedDomainEvent(Id, oldStatus, Status, UpdatedAtUtc.Value));
     }
 
     public void Suspend()
@@ -61,8 +64,11 @@ public class Tenant : AggregateRoot<Guid>
             return;
         }
 
+        var oldStatus = Status;
         Status = TenantStatus.Suspended;
         UpdatedAtUtc = DateTime.UtcNow;
+        
+        RaiseDomainEvent(new TenantStatusChangedDomainEvent(Id, oldStatus, Status, UpdatedAtUtc.Value));
     }
 
     public void UpdateName(string name)
