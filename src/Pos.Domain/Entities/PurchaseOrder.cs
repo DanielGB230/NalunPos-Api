@@ -108,6 +108,8 @@ public class PurchaseOrder : AggregateRoot<Guid>, ITenantOwnedEntity
 
         Status = PurchaseOrderStatus.Sent;
         UpdatedAtUtc = DateTime.UtcNow;
+
+        RaiseDomainEvent(new PurchaseOrderSentDomainEvent(Id, TenantId, SupplierId, WarehouseId, OrderNumber, UpdatedAtUtc.Value));
     }
 
     /// <summary>

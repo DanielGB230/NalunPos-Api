@@ -492,4 +492,134 @@ public class OutboxInterceptorIntegrationTests
             Assert.False(integrationEvent.IsActive);
         }
     }
+
+    [Fact]
+    public async Task SendPurchaseOrder_WithTenantContext_ShouldGenerateOutboxMessageWithThatTenantId()
+    {
+        Guid tenantId = Guid.NewGuid();
+        PurchaseOrder order;
+        Guid supplierId;
+        Guid warehouseId;
+
+        // 1. Arrange
+        using (var dbSetup = _fixture.CreateDbContext(tenantId))
+        {
+            var category = Category.Create(tenantId, "Categoria", "Desc");
+            dbSetup.Categories.Add(category);
+            var product = Product.Create("Product", Sku.Create("SKU-1"), Money.Create(10, "USD"), category.Id);
+            dbSetup.Products.Add(product);
+            
+            var supplier = Supplier.Create("Supplier", TaxId.Create("TAX-001"), Address.Create("Street", "City", "Zip", "Country"), "Contact", "email@sup.com", "123456");
+            dbSetup.Suppliers.Add(supplier);
+            supplierId = supplier.Id;
+
+            var branch = Branch.Create(tenantId, "Branch", Address.Create("Street", "City", "Zip", "Country"));
+            dbSetup.Branches.Add(branch);
+
+            var warehouse = Warehouse.Create(tenantId, branch.Id, "Warehouse");
+            dbSetup.Warehouses.Add(warehouse);
+            warehouseId = warehouse.Id;
+            
+            var lines = new List<(Guid, decimal, Money)> { (product.Id, 5m, Money.Create(10, "USD")) };
+            order = PurchaseOrder.Create(tenantId, supplierId, warehouseId, "PO-001", lines);
+            dbSetup.PurchaseOrders.Add(order);
+            
+            await dbSetup.SaveChangesAsync();
+        }
+
+        // 2. Act
+        using (var dbTenantContext = _fixture.CreateDbContext(tenantId))
+        {
+            var fetchedOrder = await dbTenantContext.PurchaseOrders.FirstAsync(p => p.Id == order.Id);
+            fetchedOrder.Send();
+            await dbTenantContext.SaveChangesAsync();
+        }
+
+        // 3. Assert
+        using (var dbVerify = _fixture.CreateDbContext(tenantId))
+        {
+            var messages = await dbVerify.OutboxMessages
+                .Where(o => o.Type.Contains(nameof(PurchaseOrderSentIntegrationEventV1)))
+                .ToListAsync();
+
+            var outboxMessage = Assert.Single(messages);
+            Assert.Equal(tenantId, outboxMessage.TenantId);
+
+            var integrationEvent = JsonSerializer.Deserialize<PurchaseOrderSentIntegrationEventV1>(outboxMessage.Content, _jsonOptions);
+            Assert.NotNull(integrationEvent);
+            Assert.Equal(order.Id, integrationEvent.PurchaseOrderId);
+            Assert.Equal(tenantId, integrationEvent.TenantId);
+            Assert.Equal(supplierId, integrationEvent.SupplierId);
+            Assert.Equal(warehouseId, integrationEvent.WarehouseId);
+            Assert.Equal("PO-001", integrationEvent.OrderNumber);
+        }
+    }
+
+    [Fact]
+    public async Task SendPurchaseOrder_WithSuperAdminContext_ShouldGenerateOutboxMessageWithOrderTenantId()
+    {
+        Guid tenantId = Guid.NewGuid();
+        PurchaseOrder order;
+        Guid supplierId;
+        Guid warehouseId;
+
+        // 1. Arrange
+        using (var dbSetup = _fixture.CreateDbContext(tenantId))
+        {
+            var category = Category.Create(tenantId, "Categoria Admin", "Desc");
+            dbSetup.Categories.Add(category);
+            var product = Product.Create("Product Admin PO", Sku.Create("SKU-ADM-PO"), Money.Create(10, "USD"), category.Id);
+            dbSetup.Products.Add(product);
+            
+            var supplier = Supplier.Create("Supplier Admin", TaxId.Create("TAX-002"), Address.Create("Street", "City", "Zip", "Country"), "Contact", "email2@sup.com", "123456");
+            dbSetup.Suppliers.Add(supplier);
+            supplierId = supplier.Id;
+
+            var branch = Branch.Create(tenantId, "Branch Admin", Address.Create("Street", "City", "Zip", "Country"));
+            dbSetup.Branches.Add(branch);
+
+            var warehouse = Warehouse.Create(tenantId, branch.Id, "Warehouse Admin");
+            dbSetup.Warehouses.Add(warehouse);
+            warehouseId = warehouse.Id;
+            
+            var lines = new List<(Guid, decimal, Money)> { (product.Id, 5m, Money.Create(10, "USD")) };
+            order = PurchaseOrder.Create(tenantId, supplierId, warehouseId, "PO-ADM", lines);
+            dbSetup.PurchaseOrders.Add(order);
+            
+            await dbSetup.SaveChangesAsync();
+        }
+
+        // 2. Act
+        using (var dbTenantContext = _fixture.CreateDbContext(tenantId))
+        {
+            order = await dbTenantContext.PurchaseOrders.FirstAsync(p => p.Id == order.Id);
+        }
+
+        // Use superadmin context
+        using (var dbSuperAdmin = _fixture.CreateDbContext(tenantId: null, isSuperAdmin: true))
+        {
+            dbSuperAdmin.PurchaseOrders.Attach(order);
+            order.Send();
+            await dbSuperAdmin.SaveChangesAsync();
+        }
+
+        // 3. Assert
+        using (var dbVerify = _fixture.CreateDbContext(tenantId))
+        {
+            var messages = await dbVerify.OutboxMessages
+                .Where(o => o.Type.Contains(nameof(PurchaseOrderSentIntegrationEventV1)))
+                .ToListAsync();
+
+            var outboxMessage = Assert.Single(messages);
+            Assert.Equal(tenantId, outboxMessage.TenantId);
+
+            var integrationEvent = JsonSerializer.Deserialize<PurchaseOrderSentIntegrationEventV1>(outboxMessage.Content, _jsonOptions);
+            Assert.NotNull(integrationEvent);
+            Assert.Equal(order.Id, integrationEvent.PurchaseOrderId);
+            Assert.Equal(tenantId, integrationEvent.TenantId);
+            Assert.Equal(supplierId, integrationEvent.SupplierId);
+            Assert.Equal(warehouseId, integrationEvent.WarehouseId);
+            Assert.Equal("PO-ADM", integrationEvent.OrderNumber);
+        }
+    }
 }

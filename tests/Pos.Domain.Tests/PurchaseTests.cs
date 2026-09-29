@@ -35,7 +35,7 @@ public class PurchaseOrderTests
     }
 
     [Fact]
-    public void SendOrderShouldTransitionFromDraftToSent()
+    public void Send_FromDraft_ShouldTransitionToSentAndEmitPurchaseOrderSentDomainEvent()
     {
         // Arrange
         var lines = new List<(Guid ProductId, decimal QuantityOrdered, Money UnitCost)>
@@ -43,12 +43,75 @@ public class PurchaseOrderTests
             (Guid.NewGuid(), 10m, Money.Create(40m, "USD"))
         };
         var order = PurchaseOrder.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "PO-002", lines);
+        order.ClearDomainEvents();
 
         // Act
         order.Send();
 
         // Assert
         Assert.Equal(PurchaseOrderStatus.Sent, order.Status);
+        
+        var sentEvent = order.DomainEvents.OfType<DomainEvents.PurchaseOrderSentDomainEvent>().SingleOrDefault();
+        Assert.NotNull(sentEvent);
+        Assert.Equal(order.Id, sentEvent.PurchaseOrderId);
+        Assert.Equal(order.TenantId, sentEvent.TenantId);
+        Assert.Equal(order.SupplierId, sentEvent.SupplierId);
+        Assert.Equal(order.WarehouseId, sentEvent.WarehouseId);
+        Assert.Equal(order.OrderNumber, sentEvent.OrderNumber);
+        Assert.True(sentEvent.OccurredOnUtc <= DateTime.UtcNow);
+    }
+
+    [Fact]
+    public void Send_FromSent_ShouldThrowDomainExceptionAndNotEmitEvent()
+    {
+        // Arrange
+        var lines = new List<(Guid ProductId, decimal QuantityOrdered, Money UnitCost)>
+        {
+            (Guid.NewGuid(), 10m, Money.Create(40m, "USD"))
+        };
+        var order = PurchaseOrder.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "PO-002", lines);
+        order.Send();
+        order.ClearDomainEvents();
+
+        // Act & Assert
+        Assert.Throws<DomainException>(() => order.Send());
+        Assert.Empty(order.DomainEvents.OfType<DomainEvents.PurchaseOrderSentDomainEvent>());
+    }
+
+    [Fact]
+    public void Send_FromReceived_ShouldThrowDomainExceptionAndNotEmitEvent()
+    {
+        // Arrange
+        Guid productId = Guid.NewGuid();
+        var lines = new List<(Guid ProductId, decimal QuantityOrdered, Money UnitCost)>
+        {
+            (productId, 10m, Money.Create(40m, "USD"))
+        };
+        var order = PurchaseOrder.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "PO-002", lines);
+        order.Send();
+        order.ReceiveLines(new[] { (productId, 10m) });
+        order.ClearDomainEvents();
+
+        // Act & Assert
+        Assert.Throws<DomainException>(() => order.Send());
+        Assert.Empty(order.DomainEvents.OfType<DomainEvents.PurchaseOrderSentDomainEvent>());
+    }
+
+    [Fact]
+    public void Send_FromCancelled_ShouldThrowDomainExceptionAndNotEmitEvent()
+    {
+        // Arrange
+        var lines = new List<(Guid ProductId, decimal QuantityOrdered, Money UnitCost)>
+        {
+            (Guid.NewGuid(), 10m, Money.Create(40m, "USD"))
+        };
+        var order = PurchaseOrder.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "PO-002", lines);
+        order.Cancel();
+        order.ClearDomainEvents();
+
+        // Act & Assert
+        Assert.Throws<DomainException>(() => order.Send());
+        Assert.Empty(order.DomainEvents.OfType<DomainEvents.PurchaseOrderSentDomainEvent>());
     }
 
     [Fact]
