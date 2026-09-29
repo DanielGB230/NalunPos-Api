@@ -10,7 +10,7 @@ namespace Pos.Domain.Entities;
 /// Agregado Raíz para Usuario del Sistema POS SaaS Multi-Tenant.
 /// Encapsulamiento estricto. TenantId es nullable (null ÚNICAMENTE para SuperAdmin).
 /// </summary>
-public class User : AggregateRoot<Guid>
+public class User : AggregateRoot<Guid>, IOptionalTenantOwnedEntity
 {
     public Email Email { get; private set; } = null!;
     public PasswordHash PasswordHash { get; private set; } = null!;

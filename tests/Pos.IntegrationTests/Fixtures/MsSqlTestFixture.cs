@@ -130,7 +130,8 @@ public class MsSqlTestFixture : IAsyncLifetime, IDisposable
         bool superAdminFlag = isSuperAdmin ?? false;
         var tenantContext = new TestTenantContext(tenantId, superAdminFlag);
         var sessionContextInterceptor = new TenantSessionContextInterceptor(tenantContext);
-        optionsBuilder.AddInterceptors(new TenantSaveChangesInterceptor(tenantContext), sessionContextInterceptor);
+        var outboxInterceptor = new InsertOutboxMessagesInterceptor(tenantContext);
+        optionsBuilder.AddInterceptors(new TenantSaveChangesInterceptor(tenantContext), sessionContextInterceptor, outboxInterceptor);
 
         return new PosDbContext(optionsBuilder.Options, sessionContextInterceptor: sessionContextInterceptor, currentTenantId: tenantId);
     }
@@ -152,6 +153,7 @@ public class MsSqlTestFixture : IAsyncLifetime, IDisposable
 
         services.AddScoped<TenantSaveChangesInterceptor>();
         services.AddScoped<TenantSessionContextInterceptor>();
+        services.AddScoped<InsertOutboxMessagesInterceptor>();
 
         services.AddScoped<PosDbContext>(sp =>
         {
@@ -160,10 +162,11 @@ public class MsSqlTestFixture : IAsyncLifetime, IDisposable
 
             var tenantInterceptor = sp.GetRequiredService<TenantSaveChangesInterceptor>();
             var sessionContextInterceptor = sp.GetRequiredService<TenantSessionContextInterceptor>();
-            optionsBuilder.AddInterceptors(tenantInterceptor, sessionContextInterceptor);
+            var outboxInterceptor = sp.GetRequiredService<InsertOutboxMessagesInterceptor>();
+            optionsBuilder.AddInterceptors(tenantInterceptor, sessionContextInterceptor, outboxInterceptor);
 
             var tenantContext = sp.GetRequiredService<ICurrentTenantContext>();
-            return new PosDbContext(optionsBuilder.Options, sessionContextInterceptor: sessionContextInterceptor, currentTenantId: tenantContext.TenantId);
+            return new PosDbContext(optionsBuilder.Options, outboxInterceptor: outboxInterceptor, sessionContextInterceptor: sessionContextInterceptor, currentTenantId: tenantContext.TenantId);
         });
 
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<PosDbContext>());

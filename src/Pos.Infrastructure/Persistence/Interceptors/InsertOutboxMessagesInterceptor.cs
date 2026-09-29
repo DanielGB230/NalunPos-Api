@@ -70,9 +70,8 @@ public class InsertOutboxMessagesInterceptor : SaveChangesInterceptor
                     if (integrationEvent != null)
                     {
                         var effectiveTenantId = currentTenantId
-                            ?? (domainEvent as UserRoleChangedDomainEvent)?.NewTenantId
                             ?? (aggregate as ITenantOwnedEntity)?.TenantId
-                            ?? (aggregate as User)?.TenantId;
+                            ?? (aggregate as IOptionalTenantOwnedEntity)?.TenantId;
 
                         string jsonContent = JsonSerializer.Serialize(integrationEvent, integrationEvent.GetType());
                         var message = OutboxMessage.Create(
