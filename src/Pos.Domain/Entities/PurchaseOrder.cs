@@ -166,7 +166,18 @@ public class PurchaseOrder : AggregateRoot<Guid>, ITenantOwnedEntity
         if (Status == PurchaseOrderStatus.Cancelled)
             throw new DomainException("La orden ya se encuentra cancelada.");
 
+        var previousStatus = Status;
         Status = PurchaseOrderStatus.Cancelled;
         UpdatedAtUtc = DateTime.UtcNow;
+
+        RaiseDomainEvent(new PurchaseOrderCancelledDomainEvent(
+            Id,
+            TenantId,
+            SupplierId,
+            WarehouseId,
+            OrderNumber,
+            previousStatus,
+            UpdatedAtUtc.Value
+        ));
     }
 }

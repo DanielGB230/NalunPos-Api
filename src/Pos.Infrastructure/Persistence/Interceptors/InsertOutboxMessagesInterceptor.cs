@@ -147,6 +147,16 @@ public class InsertOutboxMessagesInterceptor : SaveChangesInterceptor
                 poSentEvent.OrderNumber,
                 poSentEvent.OccurredOnUtc
             ),
+            PurchaseOrderCancelledDomainEvent poCancelledEvent => new PurchaseOrderCancelledIntegrationEventV1(
+                Guid.NewGuid(),
+                poCancelledEvent.PurchaseOrderId,
+                poCancelledEvent.TenantId,
+                poCancelledEvent.SupplierId,
+                poCancelledEvent.WarehouseId,
+                poCancelledEvent.OrderNumber,
+                poCancelledEvent.PreviousStatus.ToString(),
+                poCancelledEvent.OccurredOnUtc
+            ),
             _ => null
         };
     }

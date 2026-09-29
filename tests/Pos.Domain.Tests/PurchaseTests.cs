@@ -150,4 +150,113 @@ public class PurchaseOrderTests
         // Act & Assert
         Assert.Throws<DomainException>(() => order.ReceiveLines(new[] { (productId, 10m) }));
     }
+
+    [Fact]
+    public void Cancel_FromDraft_ShouldTransitionToCancelledAndEmitDomainEvent()
+    {
+        // Arrange
+        var lines = new List<(Guid ProductId, decimal QuantityOrdered, Money UnitCost)>
+        {
+            (Guid.NewGuid(), 10m, Money.Create(40m, "USD"))
+        };
+        var order = PurchaseOrder.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "PO-005", lines);
+        order.ClearDomainEvents();
+
+        // Act
+        order.Cancel();
+
+        // Assert
+        Assert.Equal(PurchaseOrderStatus.Cancelled, order.Status);
+        
+        var cancelledEvent = order.DomainEvents.OfType<DomainEvents.PurchaseOrderCancelledDomainEvent>().SingleOrDefault();
+        Assert.NotNull(cancelledEvent);
+        Assert.Equal(order.Id, cancelledEvent.PurchaseOrderId);
+        Assert.Equal(PurchaseOrderStatus.Draft, cancelledEvent.PreviousStatus);
+    }
+
+    [Fact]
+    public void Cancel_FromSent_ShouldTransitionToCancelledAndEmitDomainEvent()
+    {
+        // Arrange
+        var lines = new List<(Guid ProductId, decimal QuantityOrdered, Money UnitCost)>
+        {
+            (Guid.NewGuid(), 10m, Money.Create(40m, "USD"))
+        };
+        var order = PurchaseOrder.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "PO-006", lines);
+        order.Send();
+        order.ClearDomainEvents();
+
+        // Act
+        order.Cancel();
+
+        // Assert
+        Assert.Equal(PurchaseOrderStatus.Cancelled, order.Status);
+        
+        var cancelledEvent = order.DomainEvents.OfType<DomainEvents.PurchaseOrderCancelledDomainEvent>().SingleOrDefault();
+        Assert.NotNull(cancelledEvent);
+        Assert.Equal(order.Id, cancelledEvent.PurchaseOrderId);
+        Assert.Equal(PurchaseOrderStatus.Sent, cancelledEvent.PreviousStatus);
+    }
+
+    [Fact]
+    public void Cancel_FromPartiallyReceived_ShouldTransitionToCancelledAndEmitDomainEvent()
+    {
+        // Arrange
+        Guid productId = Guid.NewGuid();
+        var lines = new List<(Guid ProductId, decimal QuantityOrdered, Money UnitCost)>
+        {
+            (productId, 10m, Money.Create(40m, "USD"))
+        };
+        var order = PurchaseOrder.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "PO-007", lines);
+        order.Send();
+        order.ReceiveLines(new[] { (productId, 5m) });
+        order.ClearDomainEvents();
+
+        // Act
+        order.Cancel();
+
+        // Assert
+        Assert.Equal(PurchaseOrderStatus.Cancelled, order.Status);
+        
+        var cancelledEvent = order.DomainEvents.OfType<DomainEvents.PurchaseOrderCancelledDomainEvent>().SingleOrDefault();
+        Assert.NotNull(cancelledEvent);
+        Assert.Equal(order.Id, cancelledEvent.PurchaseOrderId);
+        Assert.Equal(PurchaseOrderStatus.PartiallyReceived, cancelledEvent.PreviousStatus);
+    }
+
+    [Fact]
+    public void Cancel_FromReceived_ShouldThrowDomainExceptionAndNotEmitEvent()
+    {
+        // Arrange
+        Guid productId = Guid.NewGuid();
+        var lines = new List<(Guid ProductId, decimal QuantityOrdered, Money UnitCost)>
+        {
+            (productId, 10m, Money.Create(40m, "USD"))
+        };
+        var order = PurchaseOrder.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "PO-008", lines);
+        order.Send();
+        order.ReceiveLines(new[] { (productId, 10m) });
+        order.ClearDomainEvents();
+
+        // Act & Assert
+        Assert.Throws<DomainException>(() => order.Cancel());
+        Assert.Empty(order.DomainEvents.OfType<DomainEvents.PurchaseOrderCancelledDomainEvent>());
+    }
+
+    [Fact]
+    public void Cancel_FromCancelled_ShouldThrowDomainExceptionAndNotEmitEvent()
+    {
+        // Arrange
+        var lines = new List<(Guid ProductId, decimal QuantityOrdered, Money UnitCost)>
+        {
+            (Guid.NewGuid(), 10m, Money.Create(40m, "USD"))
+        };
+        var order = PurchaseOrder.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "PO-009", lines);
+        order.Cancel();
+        order.ClearDomainEvents();
+
+        // Act & Assert
+        Assert.Throws<DomainException>(() => order.Cancel());
+        Assert.Empty(order.DomainEvents.OfType<DomainEvents.PurchaseOrderCancelledDomainEvent>());
+    }
 }
