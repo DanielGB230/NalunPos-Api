@@ -215,4 +215,95 @@ public class OutboxInterceptorIntegrationTests
             Assert.Equal(tenantB, integrationEvent.NewTenantId);
         }
     }
+
+    [Fact]
+    public async Task Deactivate_WithTenantContext_ShouldGenerateOutboxMessageWithThatTenantId()
+    {
+        Guid tenantId = Guid.NewGuid();
+        User user;
+
+        // 1. Arrange
+        using (var dbSetup = _fixture.CreateDbContext(tenantId))
+        {
+            var role = Role.Create(tenantId, "Role", "Desc");
+            dbSetup.Roles.Add(role);
+            user = User.Create(new Email("status@tenant.com"), new PasswordHash("hash"), role.Id, tenantId, "Test", "User");
+            dbSetup.Users.Add(user);
+            await dbSetup.SaveChangesAsync();
+        }
+
+        // 2. Act
+        var sp = _fixture.CreateServiceProvider(tenantId);
+        using (var scope = sp.CreateScope())
+        {
+            var dbTenantContext = scope.ServiceProvider.GetRequiredService<PosDbContext>();
+            var fetchedUser = await dbTenantContext.Users.FirstAsync(u => u.Id == user.Id);
+            fetchedUser.Deactivate();
+            await dbTenantContext.SaveChangesAsync();
+        }
+
+        // 3. Assert
+        using (var dbVerify = _fixture.CreateDbContext(tenantId))
+        {
+            var messages = await dbVerify.OutboxMessages
+                .Where(o => o.Type.Contains(nameof(UserStatusChangedIntegrationEventV1)))
+                .ToListAsync();
+
+            var outboxMessage = Assert.Single(messages);
+            Assert.Equal(tenantId, outboxMessage.TenantId);
+
+            var integrationEvent = JsonSerializer.Deserialize<UserStatusChangedIntegrationEventV1>(outboxMessage.Content, _jsonOptions);
+            Assert.NotNull(integrationEvent);
+            Assert.Equal(user.Id, integrationEvent.UserId);
+            Assert.Equal(tenantId, integrationEvent.TenantId);
+            Assert.False(integrationEvent.IsActive);
+        }
+    }
+
+    [Fact]
+    public async Task Deactivate_WithSuperAdminContext_ShouldGenerateOutboxMessageWithUserTenantId()
+    {
+        Guid tenantId = Guid.NewGuid();
+        User user;
+
+        // 1. Arrange
+        using (var dbSetup = _fixture.CreateDbContext(tenantId))
+        {
+            var role = Role.Create(tenantId, "Role", "Desc");
+            dbSetup.Roles.Add(role);
+            user = User.Create(new Email("superstatus@tenant.com"), new PasswordHash("hash"), role.Id, tenantId, "Test", "User");
+            dbSetup.Users.Add(user);
+            await dbSetup.SaveChangesAsync();
+        }
+
+        // 2. Act
+        using (var dbTenantContext = _fixture.CreateDbContext(tenantId))
+        {
+            user = await dbTenantContext.Users.FirstAsync(u => u.Id == user.Id);
+        }
+
+        using (var dbSuperAdmin = _fixture.CreateDbContext(tenantId: null, isSuperAdmin: true))
+        {
+            dbSuperAdmin.Users.Attach(user);
+            user.Deactivate();
+            await dbSuperAdmin.SaveChangesAsync();
+        }
+
+        // 3. Assert
+        using (var dbVerify = _fixture.CreateDbContext(tenantId))
+        {
+            var messages = await dbVerify.OutboxMessages
+                .Where(o => o.Type.Contains(nameof(UserStatusChangedIntegrationEventV1)))
+                .ToListAsync();
+
+            var outboxMessage = Assert.Single(messages);
+            Assert.Equal(tenantId, outboxMessage.TenantId);
+
+            var integrationEvent = JsonSerializer.Deserialize<UserStatusChangedIntegrationEventV1>(outboxMessage.Content, _jsonOptions);
+            Assert.NotNull(integrationEvent);
+            Assert.Equal(user.Id, integrationEvent.UserId);
+            Assert.Equal(tenantId, integrationEvent.TenantId);
+            Assert.False(integrationEvent.IsActive);
+        }
+    }
 }

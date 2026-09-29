@@ -113,4 +113,76 @@ public class UserTests
         var ex = Assert.Throws<DomainException>(() => user.ChangeRole(Guid.Empty, Guid.NewGuid()));
         Assert.Contains("RoleId", ex.Message);
     }
+
+    [Fact]
+    public void Activate_WhenNotActive_ShouldActivateAndEmitUserStatusChangedDomainEvent()
+    {
+        // Arrange
+        var user = User.Create("user@tenant.com", "HASH", Guid.NewGuid(), Guid.NewGuid(), "Juan", "Pérez");
+        user.Deactivate(); // Set to inactive first
+        user.ClearDomainEvents();
+
+        // Act
+        user.Activate();
+
+        // Assert
+        Assert.True(user.IsActive);
+        var statusEvent = user.DomainEvents.OfType<DomainEvents.UserStatusChangedDomainEvent>().SingleOrDefault();
+        Assert.NotNull(statusEvent);
+        Assert.Equal(user.Id, statusEvent.UserId);
+        Assert.Equal(user.TenantId, statusEvent.TenantId);
+        Assert.True(statusEvent.IsActive);
+        Assert.True(statusEvent.OccurredOnUtc <= DateTime.UtcNow);
+    }
+
+    [Fact]
+    public void Activate_WhenAlreadyActive_ShouldNotEmitEvent()
+    {
+        // Arrange
+        var user = User.Create("user@tenant.com", "HASH", Guid.NewGuid(), Guid.NewGuid(), "Juan", "Pérez");
+        user.ClearDomainEvents();
+
+        // Act
+        user.Activate();
+
+        // Assert
+        Assert.True(user.IsActive);
+        Assert.Empty(user.DomainEvents.OfType<DomainEvents.UserStatusChangedDomainEvent>());
+    }
+
+    [Fact]
+    public void Deactivate_WhenActive_ShouldDeactivateAndEmitUserStatusChangedDomainEvent()
+    {
+        // Arrange
+        var user = User.Create("user@tenant.com", "HASH", Guid.NewGuid(), Guid.NewGuid(), "Juan", "Pérez");
+        user.ClearDomainEvents();
+
+        // Act
+        user.Deactivate();
+
+        // Assert
+        Assert.False(user.IsActive);
+        var statusEvent = user.DomainEvents.OfType<DomainEvents.UserStatusChangedDomainEvent>().SingleOrDefault();
+        Assert.NotNull(statusEvent);
+        Assert.Equal(user.Id, statusEvent.UserId);
+        Assert.Equal(user.TenantId, statusEvent.TenantId);
+        Assert.False(statusEvent.IsActive);
+        Assert.True(statusEvent.OccurredOnUtc <= DateTime.UtcNow);
+    }
+
+    [Fact]
+    public void Deactivate_WhenAlreadyInactive_ShouldNotEmitEvent()
+    {
+        // Arrange
+        var user = User.Create("user@tenant.com", "HASH", Guid.NewGuid(), Guid.NewGuid(), "Juan", "Pérez");
+        user.Deactivate();
+        user.ClearDomainEvents();
+
+        // Act
+        user.Deactivate();
+
+        // Assert
+        Assert.False(user.IsActive);
+        Assert.Empty(user.DomainEvents.OfType<DomainEvents.UserStatusChangedDomainEvent>());
+    }
 }

@@ -119,13 +119,19 @@ public class User : AggregateRoot<Guid>, IOptionalTenantOwnedEntity
 
     public void Activate()
     {
+        if (IsActive) return;
+
         IsActive = true;
         UpdatedAtUtc = DateTime.UtcNow;
+        RaiseDomainEvent(new UserStatusChangedDomainEvent(Id, TenantId, IsActive, UpdatedAtUtc.Value));
     }
 
     public void Deactivate()
     {
+        if (!IsActive) return;
+
         IsActive = false;
         UpdatedAtUtc = DateTime.UtcNow;
+        RaiseDomainEvent(new UserStatusChangedDomainEvent(Id, TenantId, IsActive, UpdatedAtUtc.Value));
     }
 }
