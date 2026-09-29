@@ -65,7 +65,6 @@ public static class DependencyInjection
                 options.UseInMemoryDatabase("NalunPosDb_Test");
             }
 
-            options.AddInterceptors(auditInterceptor, outboxInterceptor, tenantInterceptor, sessionContextInterceptor);
         });
 
         // Factory override para inyectar el currentTenantId en cada instancia de PosDbContext.

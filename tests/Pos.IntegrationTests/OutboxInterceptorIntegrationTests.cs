@@ -61,11 +61,11 @@ public class OutboxInterceptorIntegrationTests
         // 3. Assert: Verify the outbox message is generated with the user's tenantId
         using (var dbVerify = _fixture.CreateDbContext(tenantId))
         {
-            var outboxMessage = await dbVerify.OutboxMessages
-                .OrderByDescending(o => o.OccurredOnUtc)
-                .FirstOrDefaultAsync(o => o.Type.Contains(nameof(UserRoleChangedIntegrationEventV1)));
+            var messages = await dbVerify.OutboxMessages
+                .Where(o => o.Type.Contains(nameof(UserRoleChangedIntegrationEventV1)))
+                .ToListAsync();
 
-            Assert.NotNull(outboxMessage);
+            var outboxMessage = Assert.Single(messages);
             Assert.Equal(tenantId, outboxMessage.TenantId);
 
             var integrationEvent = JsonSerializer.Deserialize<UserRoleChangedIntegrationEventV1>(outboxMessage.Content, _jsonOptions);
@@ -97,9 +97,11 @@ public class OutboxInterceptorIntegrationTests
             await dbSetup.SaveChangesAsync();
         }
 
-        // 2. Act: Same tenant modifies the user's role
-        using (var dbTenantContext = _fixture.CreateDbContext(tenantId))
+        // 2. Act: Same tenant modifies the user's role using DI constructed DbContext
+        var sp = _fixture.CreateServiceProvider(tenantId);
+        using (var scope = sp.CreateScope())
         {
+            var dbTenantContext = scope.ServiceProvider.GetRequiredService<PosDbContext>();
             var fetchedUser = await dbTenantContext.Users.FirstAsync(u => u.Id == user.Id);
             fetchedUser.ChangeRole(newRole.Id, tenantId);
             await dbTenantContext.SaveChangesAsync();
@@ -108,11 +110,11 @@ public class OutboxInterceptorIntegrationTests
         // 3. Assert
         using (var dbVerify = _fixture.CreateDbContext(tenantId))
         {
-            var outboxMessage = await dbVerify.OutboxMessages
-                .OrderByDescending(o => o.OccurredOnUtc)
-                .FirstOrDefaultAsync(o => o.Type.Contains(nameof(UserRoleChangedIntegrationEventV1)));
+            var messages = await dbVerify.OutboxMessages
+                .Where(o => o.Type.Contains(nameof(UserRoleChangedIntegrationEventV1)))
+                .ToListAsync();
 
-            Assert.NotNull(outboxMessage);
+            var outboxMessage = Assert.Single(messages);
             Assert.Equal(tenantId, outboxMessage.TenantId);
         }
     }
@@ -152,6 +154,65 @@ public class OutboxInterceptorIntegrationTests
         {
             var messages = await dbVerify.OutboxMessages.ToListAsync();
             Assert.Empty(messages);
+        }
+    }
+
+    [Fact]
+    public async Task ChangeRole_MoveUserToAnotherTenant_ShouldGenerateOutboxMessageWithNewTenantId()
+    {
+        Guid tenantA = Guid.NewGuid();
+        Guid tenantB = Guid.NewGuid();
+        User user;
+        Role roleA;
+        Role roleB;
+
+        // 1. Arrange: Insert roles in Tenant A and Tenant B, and user in Tenant A
+        using (var dbSetupA = _fixture.CreateDbContext(tenantA))
+        {
+            roleA = Role.Create(tenantA, "RoleA", "Desc");
+            dbSetupA.Roles.Add(roleA);
+            user = User.Create(new Email("move@tenant.com"), new PasswordHash("hash"), roleA.Id, tenantA, "Test", "User");
+            dbSetupA.Users.Add(user);
+            await dbSetupA.SaveChangesAsync();
+        }
+
+        using (var dbSetupB = _fixture.CreateDbContext(tenantB))
+        {
+            roleB = Role.Create(tenantB, "RoleB", "Desc");
+            dbSetupB.Roles.Add(roleB);
+            await dbSetupB.SaveChangesAsync();
+        }
+
+        // 2. Act: SuperAdmin moves user from Tenant A to Tenant B
+        using (var dbTenantA = _fixture.CreateDbContext(tenantA))
+        {
+            user = await dbTenantA.Users.FirstAsync(u => u.Id == user.Id);
+        }
+
+        using (var dbSuperAdmin = _fixture.CreateDbContext(tenantId: null, isSuperAdmin: true))
+        {
+            dbSuperAdmin.Users.Attach(user);
+            user.ChangeRole(roleB.Id, tenantB);
+            await dbSuperAdmin.SaveChangesAsync();
+        }
+
+        // 3. Assert: Verify the outbox message is generated in Tenant B's outbox
+        using (var dbVerifyB = _fixture.CreateDbContext(tenantB))
+        {
+            var messages = await dbVerifyB.OutboxMessages
+                .Where(o => o.Type.Contains(nameof(UserRoleChangedIntegrationEventV1)))
+                .ToListAsync();
+
+            var outboxMessage = Assert.Single(messages);
+            Assert.Equal(tenantB, outboxMessage.TenantId);
+
+            var integrationEvent = JsonSerializer.Deserialize<UserRoleChangedIntegrationEventV1>(outboxMessage.Content, _jsonOptions);
+            Assert.NotNull(integrationEvent);
+            Assert.Equal(user.Id, integrationEvent.UserId);
+            Assert.Equal(roleA.Id, integrationEvent.OldRoleId);
+            Assert.Equal(roleB.Id, integrationEvent.NewRoleId);
+            Assert.Equal(tenantA, integrationEvent.OldTenantId);
+            Assert.Equal(tenantB, integrationEvent.NewTenantId);
         }
     }
 }

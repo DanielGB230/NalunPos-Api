@@ -131,9 +131,9 @@ public class MsSqlTestFixture : IAsyncLifetime, IDisposable
         var tenantContext = new TestTenantContext(tenantId, superAdminFlag);
         var sessionContextInterceptor = new TenantSessionContextInterceptor(tenantContext);
         var outboxInterceptor = new InsertOutboxMessagesInterceptor(tenantContext);
-        optionsBuilder.AddInterceptors(new TenantSaveChangesInterceptor(tenantContext), sessionContextInterceptor, outboxInterceptor);
+        var tenantInterceptor = new TenantSaveChangesInterceptor(tenantContext);
 
-        return new PosDbContext(optionsBuilder.Options, sessionContextInterceptor: sessionContextInterceptor, currentTenantId: tenantId);
+        return new PosDbContext(optionsBuilder.Options, outboxInterceptor: outboxInterceptor, tenantInterceptor: tenantInterceptor, sessionContextInterceptor: sessionContextInterceptor, currentTenantId: tenantId);
     }
 
     public IServiceProvider CreateServiceProvider(Guid? tenantId = null, bool? isSuperAdmin = null)
@@ -163,10 +163,9 @@ public class MsSqlTestFixture : IAsyncLifetime, IDisposable
             var tenantInterceptor = sp.GetRequiredService<TenantSaveChangesInterceptor>();
             var sessionContextInterceptor = sp.GetRequiredService<TenantSessionContextInterceptor>();
             var outboxInterceptor = sp.GetRequiredService<InsertOutboxMessagesInterceptor>();
-            optionsBuilder.AddInterceptors(tenantInterceptor, sessionContextInterceptor, outboxInterceptor);
 
             var tenantContext = sp.GetRequiredService<ICurrentTenantContext>();
-            return new PosDbContext(optionsBuilder.Options, outboxInterceptor: outboxInterceptor, sessionContextInterceptor: sessionContextInterceptor, currentTenantId: tenantContext.TenantId);
+            return new PosDbContext(optionsBuilder.Options, outboxInterceptor: outboxInterceptor, tenantInterceptor: tenantInterceptor, sessionContextInterceptor: sessionContextInterceptor, currentTenantId: tenantContext.TenantId);
         });
 
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<PosDbContext>());
