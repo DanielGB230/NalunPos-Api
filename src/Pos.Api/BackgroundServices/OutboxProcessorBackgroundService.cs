@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.IntegrationEvents.Contracts;
+using Pos.Infrastructure.Multitenancy;
 using Pos.Infrastructure.Persistence.Context;
 using Pos.Infrastructure.Persistence.Outbox;
 
@@ -34,7 +35,7 @@ public class OutboxProcessorBackgroundService : BackgroundService
         if (_logger.IsEnabled(LogLevel.Information))
         {
             _logger.LogInformation(
-                "Iniciando OutboxProcessorBackgroundService con intervalo de {IntervalSeconds} segundos...",
+                "OutboxProcessorBackgroundService iniciado. Intervalo de polling: {IntervalSeconds}s.",
                 _options.PollingIntervalSeconds);
         }
 
@@ -48,90 +49,88 @@ public class OutboxProcessorBackgroundService : BackgroundService
             }
             catch (Exception ex)
             {
-                if (_logger.IsEnabled(LogLevel.Error))
-                {
-                    _logger.LogError(ex, "Error no controlado al procesar mensajes del Outbox.");
-                }
+                _logger.LogError(ex, "Error no controlado al procesar mensajes del Outbox.");
             }
         }
     }
 
-    public static string DiagnosticLog { get; set; } = "";
-
-    private async Task ProcessOutboxMessagesAsync(CancellationToken cancellationToken)
+    internal async Task ProcessOutboxMessagesAsync(CancellationToken cancellationToken)
     {
-        List<OutboxMessage> pendingMessages;
+        using var scope = _scopeFactory.CreateScope();
+        var tenantSetter = scope.ServiceProvider.GetRequiredService<ITenantSetter>();
+        tenantSetter.SetSuperAdmin(true);
 
-        // Scope 1: Leer mensajes pendientes (sin tenant específico)
-        using (var scope = _scopeFactory.CreateScope())
-        {
-            var dbContext = scope.ServiceProvider.GetRequiredService<PosDbContext>();
-            DiagnosticLog += $"Conn: {dbContext.Database.GetConnectionString()}. ";
-            pendingMessages = await dbContext.OutboxMessages
-                .Where(m => m.ProcessedOnUtc == null)
-                .OrderBy(m => m.OccurredOnUtc)
-                .Take(20)
-                .ToListAsync(cancellationToken);
-        }
+        var dbContext = scope.ServiceProvider.GetRequiredService<PosDbContext>();
 
-        DiagnosticLog += $"Read {pendingMessages.Count} messages. ";
+        var pendingMessages = await dbContext.OutboxMessages
+            .Where(m => m.ProcessedOnUtc == null && m.Error == null)
+            .OrderBy(m => m.OccurredOnUtc)
+            .Take(20)
+            .ToListAsync(cancellationToken);
+
         if (pendingMessages.Count == 0)
         {
-            if (_logger.IsEnabled(LogLevel.Warning))
-                _logger.LogWarning("NO hay mensajes pendientes en la DB.");
+            if (_logger.IsEnabled(LogLevel.Debug))
+                _logger.LogDebug("No hay mensajes pendientes en el Outbox.");
             return;
         }
 
-        if (_logger.IsEnabled(LogLevel.Warning))
-            _logger.LogWarning("Encontrados {Count} mensajes pendientes.", pendingMessages.Count);
+        if (_logger.IsEnabled(LogLevel.Information))
+            _logger.LogInformation("Procesando {Count} mensajes del Outbox.", pendingMessages.Count);
 
         foreach (var message in pendingMessages)
         {
             try
             {
-                // Scope 2: Procesar cada mensaje de manera aislada con su TenantId
+                // Scope 2: Publicación del evento en el bus con su TenantId específico
                 using var messageScope = _scopeFactory.CreateScope();
-                
-                var tenantSetter = messageScope.ServiceProvider.GetRequiredService<Pos.Infrastructure.Multitenancy.ITenantSetter>();
-                tenantSetter.SetTenantId(message.TenantId);
+                var msgTenantSetter = messageScope.ServiceProvider.GetRequiredService<ITenantSetter>();
+                msgTenantSetter.SetTenantId(message.TenantId);
 
                 var eventBus = messageScope.ServiceProvider.GetRequiredService<IEventBus>();
-                var dispatcher = messageScope.ServiceProvider.GetRequiredService<IDispatcher>();
-
                 Type? eventType = Type.GetType(message.Type);
-                if (_logger.IsEnabled(LogLevel.Warning))
-                {
-                    _logger.LogWarning("Instancia OutboxProcessor {InstanceId} procesando mensaje {MessageId} de tipo {MessageType}", this.GetHashCode(), message.Id, message.Type);
-                }
 
                 if (eventType == null)
                 {
+                    _logger.LogWarning(
+                        "No se pudo resolver el tipo '{MessageType}' para el mensaje Outbox {MessageId}. Marcando como fallido.",
+                        message.Type, message.Id);
                     message.MarkAsFailed($"No se pudo resolver el tipo {message.Type}");
                 }
-                else if (typeof(IIntegrationEvent).IsAssignableFrom(eventType))
+                else if (!typeof(IIntegrationEvent).IsAssignableFrom(eventType))
                 {
-                    var integrationEvent = JsonSerializer.Deserialize(message.Content, eventType) as IIntegrationEvent;
-                    if (integrationEvent != null)
-                    {
-                        await eventBus.PublishAsync(integrationEvent, cancellationToken);
-                        
-                        // Reflection call to Dispatcher since we only know the generic type at runtime
-                        var method = dispatcher.GetType().GetMethod("PublishIntegrationEventAsync");
-                        var genericMethod = method?.MakeGenericMethod(integrationEvent.GetType());
-                        if (genericMethod != null)
-                        {
-                            var task = (Task)genericMethod.Invoke(dispatcher, new object[] { integrationEvent, cancellationToken })!;
-                            await task;
-                        }
-                    }
-                    else
-                    {
-                        message.MarkAsFailed($"Fallo al deserializar el evento {message.Type}");
-                    }
+                    _logger.LogWarning(
+                        "El tipo '{TypeName}' no implementa IIntegrationEvent para el mensaje Outbox {MessageId}. Marcando como fallido.",
+                        eventType.Name, message.Id);
+                    message.MarkAsFailed($"El tipo {eventType.Name} no implementa IIntegrationEvent");
                 }
                 else
                 {
-                    message.MarkAsFailed($"El tipo {eventType.Name} no implementa IIntegrationEvent");
+                    IIntegrationEvent? integrationEvent = null;
+                    try
+                    {
+                        integrationEvent = JsonSerializer.Deserialize(message.Content, eventType) as IIntegrationEvent;
+                    }
+                    catch (JsonException jex)
+                    {
+                        _logger.LogWarning(
+                            jex,
+                            "Error al deserializar el mensaje Outbox {MessageId} de tipo '{MessageType}'.",
+                            message.Id, message.Type);
+                        message.MarkAsFailed($"Error de deserialización: {jex.Message}");
+                    }
+
+                    if (message.Error == null && integrationEvent == null)
+                    {
+                        _logger.LogWarning(
+                            "Deserialización produjo null para el mensaje Outbox {MessageId} de tipo '{MessageType}'.",
+                            message.Id, message.Type);
+                        message.MarkAsFailed($"Fallo al deserializar el evento {message.Type}");
+                    }
+                    else if (message.Error == null && integrationEvent != null)
+                    {
+                        await eventBus.PublishAsync(integrationEvent, cancellationToken);
+                    }
                 }
 
                 if (message.Error == null)
@@ -141,23 +140,19 @@ public class OutboxProcessorBackgroundService : BackgroundService
             }
             catch (Exception ex)
             {
-                if (_logger.IsEnabled(LogLevel.Warning))
-                {
-                    _logger.LogWarning(ex, "Fallo al procesar el mensaje Outbox ID {MessageId}", message.Id);
-                }
-
+                _logger.LogError(ex, "Fallo al procesar el mensaje Outbox {MessageId}.", message.Id);
                 message.MarkAsFailed(ex.Message);
             }
         }
 
-        DiagnosticLog += "Saving. ";
-        // Scope 3: Guardar el estado de los mensajes procesados
-        using (var updateScope = _scopeFactory.CreateScope())
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        if (_logger.IsEnabled(LogLevel.Information))
         {
-            var updateDbContext = updateScope.ServiceProvider.GetRequiredService<PosDbContext>();
-            updateDbContext.OutboxMessages.UpdateRange(pendingMessages);
-            await updateDbContext.SaveChangesAsync(cancellationToken);
+            _logger.LogInformation(
+                "Outbox: {Processed} procesados, {Failed} fallidos.",
+                pendingMessages.Count(m => m.ProcessedOnUtc != null),
+                pendingMessages.Count(m => m.Error != null));
         }
-        DiagnosticLog += "Saved. ";
     }
 }

@@ -62,6 +62,18 @@ public class InsertOutboxMessagesInterceptor : SaveChangesInterceptor
         return base.SavedChangesAsync(eventData, result, cancellationToken);
     }
 
+    public override void SaveChangesFailed(DbContextErrorEventData eventData)
+    {
+        RemoveUnsavedOutboxMessages(eventData.Context);
+        base.SaveChangesFailed(eventData);
+    }
+
+    public override Task SaveChangesFailedAsync(DbContextErrorEventData eventData, CancellationToken cancellationToken = default)
+    {
+        RemoveUnsavedOutboxMessages(eventData.Context);
+        return base.SaveChangesFailedAsync(eventData, cancellationToken);
+    }
+
     private static void ClearDomainEvents(DbContext? context)
     {
         if (context == null) return;
@@ -77,6 +89,21 @@ public class InsertOutboxMessagesInterceptor : SaveChangesInterceptor
             {
                 aggregate.ClearDomainEvents();
             }
+        }
+    }
+
+    private static void RemoveUnsavedOutboxMessages(DbContext? context)
+    {
+        if (context == null) return;
+
+        var addedOutboxEntries = context.ChangeTracker
+            .Entries<OutboxMessage>()
+            .Where(e => e.State == EntityState.Added)
+            .ToList();
+
+        foreach (var entry in addedOutboxEntries)
+        {
+            entry.State = EntityState.Detached;
         }
     }
 
