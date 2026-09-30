@@ -287,19 +287,17 @@ public class TenantIsolationIntegrationTests
 
         using (var db = _fixture.CreateDbContext(tenantId))
         {
-            // Garantizar tabla vacía para este tenant: el processor leerá los mensajes de este tenant
-            await db.Database.ExecuteSqlAsync($"DELETE FROM OutboxMessages WHERE TenantId = {tenantId}");
-
             var cat = Pos.Domain.Entities.Category.Create("Test Cat", "Desc");
             db.Categories.Add(cat);
 
             string json = System.Text.Json.JsonSerializer.Serialize(dummyEvent);
+            // OccurredOnUtc con fecha anterior (-5 años) garantiza determinísticamente que el mensaje se procese primero en el batch
             var message = Pos.Infrastructure.Persistence.Outbox.OutboxMessage.Create(
                 dummyEvent.Id,
                 tenantId,
                 typeof(DummyTenantIntegrationEvent).AssemblyQualifiedName!,
                 json,
-                dummyEvent.OccurredOnUtc
+                dummyEvent.OccurredOnUtc.AddYears(-5)
             );
 
             db.OutboxMessages.Add(message);
@@ -314,7 +312,7 @@ public class TenantIsolationIntegrationTests
             Microsoft.Extensions.Options.Options.Create(new Pos.Api.BackgroundServices.OutboxSettings { PollingIntervalSeconds = 1 })
         );
 
-        // 2. Act — invocación única. El DELETE garantiza que el mensaje está en posición 1 del batch.
+        // 2. Act — invocación única. OccurredOnUtc anterior garantiza la ordenación en la consulta del Outbox.
         await outboxProcessor.ProcessOutboxMessagesAsync(CancellationToken.None);
 
         // 3. Assert

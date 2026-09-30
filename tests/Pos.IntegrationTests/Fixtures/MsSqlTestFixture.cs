@@ -60,25 +60,9 @@ public class TestCurrentUserService : ICurrentUserService
 
 public class DummyTestEventBus : IEventBus
 {
-    private readonly IServiceProvider _serviceProvider;
-
-    public DummyTestEventBus(IServiceProvider serviceProvider)
+    public Task PublishAsync(Pos.Application.IntegrationEvents.Contracts.IIntegrationEvent integrationEvent, CancellationToken cancellationToken = default)
     {
-        _serviceProvider = serviceProvider;
-    }
-
-    public async Task PublishAsync(Pos.Application.IntegrationEvents.Contracts.IIntegrationEvent integrationEvent, CancellationToken cancellationToken = default)
-    {
-        var handlerType = typeof(Pos.Application.Common.Interfaces.IIntegrationEventHandler<>).MakeGenericType(integrationEvent.GetType());
-        var handler = _serviceProvider.GetService(handlerType);
-        if (handler != null)
-        {
-            var method = handlerType.GetMethod("HandleAsync");
-            if (method != null)
-            {
-                await (Task)method.Invoke(handler, new object[] { integrationEvent, cancellationToken })!;
-            }
-        }
+        return Task.CompletedTask;
     }
 }
 

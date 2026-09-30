@@ -88,6 +88,7 @@ public class OutboxProcessorBackgroundService : BackgroundService
                 msgTenantSetter.SetTenantId(message.TenantId);
 
                 var eventBus = messageScope.ServiceProvider.GetRequiredService<IEventBus>();
+                var dispatcher = messageScope.ServiceProvider.GetRequiredService<IDispatcher>();
                 Type? eventType = Type.GetType(message.Type);
 
                 if (eventType == null)
@@ -130,6 +131,7 @@ public class OutboxProcessorBackgroundService : BackgroundService
                     else if (message.Error == null && integrationEvent != null)
                     {
                         await eventBus.PublishAsync(integrationEvent, cancellationToken);
+                        await dispatcher.PublishIntegrationEventAsync(integrationEvent, cancellationToken);
                     }
                 }
 

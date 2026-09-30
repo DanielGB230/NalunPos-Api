@@ -33,5 +33,15 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
                 ["CorsSettings:AllowedOrigins:0"] = "http://localhost:4200"
             });
         });
+
+        builder.ConfigureTestServices(services =>
+        {
+            var descriptor = services.FirstOrDefault(d =>
+                d.ImplementationType == typeof(Pos.Api.BackgroundServices.OutboxProcessorBackgroundService));
+            if (descriptor != null)
+            {
+                services.Remove(descriptor);
+            }
+        });
     }
 }
