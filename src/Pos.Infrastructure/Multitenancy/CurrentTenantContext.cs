@@ -6,6 +6,7 @@ namespace Pos.Infrastructure.Multitenancy;
 public interface ITenantSetter
 {
     void SetTenantId(Guid? tenantId);
+    void SetSuperAdmin(bool isSuperAdmin);
 }
 
 /// <summary>
@@ -16,6 +17,7 @@ public class CurrentTenantContext : ICurrentTenantContext, ITenantSetter
 {
     private readonly IHttpContextAccessor _httpContextAccessor;
     private Guid? _manualTenantId;
+    private bool? _manualIsSuperAdmin;
 
     public CurrentTenantContext(IHttpContextAccessor httpContextAccessor)
     {
@@ -25,6 +27,15 @@ public class CurrentTenantContext : ICurrentTenantContext, ITenantSetter
     public void SetTenantId(Guid? tenantId)
     {
         _manualTenantId = tenantId;
+        if (tenantId.HasValue)
+        {
+            _manualIsSuperAdmin = false;
+        }
+    }
+
+    public void SetSuperAdmin(bool isSuperAdmin)
+    {
+        _manualIsSuperAdmin = isSuperAdmin;
     }
 
     public Guid? TenantId
@@ -60,6 +71,8 @@ public class CurrentTenantContext : ICurrentTenantContext, ITenantSetter
     {
         get
         {
+            if (_manualIsSuperAdmin.HasValue) return _manualIsSuperAdmin.Value;
+
             var httpContext = _httpContextAccessor.HttpContext;
             return httpContext?.User.IsInRole("SuperAdmin") ?? false;
         }

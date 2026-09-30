@@ -585,5 +585,63 @@ public class ArchitectureTests
             $"Se detectaron llamadas prohibidas a 'ClearDomainEvents()'. Solo el InsertOutboxMessagesInterceptor tiene permiso para limpiar los eventos de dominio:\n{string.Join("\n", violations)}"
         );
     }
+
+    [Fact]
+    public void SetSuperAdmin_MustOnlyBeCalledFrom_OutboxProcessorBackgroundService()
+    {
+        var baseDir = AppContext.BaseDirectory;
+        var dirInfo = new DirectoryInfo(baseDir);
+
+        while (dirInfo != null && !File.Exists(Path.Combine(dirInfo.FullName, "Pos.slnx")) && !File.Exists(Path.Combine(dirInfo.FullName, "NalunPos-Api.sln")))
+        {
+            dirInfo = dirInfo.Parent;
+        }
+
+        Assert.NotNull(dirInfo);
+
+        var srcDir = Path.Combine(dirInfo.FullName, "src");
+        Assert.True(Directory.Exists(srcDir), $"El directorio de código fuente '{srcDir}' no existe.");
+
+        var csFiles = Directory.GetFiles(srcDir, "*.cs", SearchOption.AllDirectories);
+        Assert.NotEmpty(csFiles);
+
+        var setSuperAdminRegex = new System.Text.RegularExpressions.Regex(@"\.SetSuperAdmin\(", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        var violations = new List<string>();
+
+        foreach (var file in csFiles)
+        {
+            var fileName = Path.GetFileName(file);
+
+            // Permitido únicamente en ITenantSetter.cs, CurrentTenantContext.cs y OutboxProcessorBackgroundService.cs
+            if (fileName == "ITenantSetter.cs" ||
+                fileName == "CurrentTenantContext.cs" ||
+                fileName == "OutboxProcessorBackgroundService.cs")
+            {
+                continue;
+            }
+
+            var lines = File.ReadAllLines(file);
+            for (int i = 0; i < lines.Length; i++)
+            {
+                var line = lines[i];
+                var trimmed = line.Trim();
+                if (trimmed.StartsWith("//", StringComparison.Ordinal) ||
+                    trimmed.StartsWith("/*", StringComparison.Ordinal) ||
+                    trimmed.StartsWith('*'))
+                    continue;
+
+                if (setSuperAdminRegex.IsMatch(line))
+                {
+                    var relativePath = Path.GetRelativePath(dirInfo.FullName, file);
+                    violations.Add($"{relativePath} (Línea {i + 1}): {trimmed}");
+                }
+            }
+        }
+
+        Assert.True(
+            violations.Count == 0,
+            $"Se detectaron llamadas no autorizadas a 'SetSuperAdmin()'. Solo el OutboxProcessorBackgroundService tiene permiso para establecer el contexto de SuperAdmin en código de producción:\n{string.Join("\n", violations)}"
+        );
+    }
 }
 
