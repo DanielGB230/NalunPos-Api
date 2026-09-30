@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Pos.Application;
@@ -33,6 +34,15 @@ public class TestTenantContext : ICurrentTenantContext, ITenantSetter
     public void SetTenantId(Guid? tenantId)
     {
         _tenantId = tenantId;
+        if (tenantId.HasValue)
+        {
+            IsSuperAdmin = false;
+        }
+    }
+
+    public void SetSuperAdmin(bool isSuperAdmin)
+    {
+        IsSuperAdmin = isSuperAdmin;
     }
 }
 
@@ -112,7 +122,11 @@ public class MsSqlTestFixture : IAsyncLifetime, IDisposable
 
         if (!_useContainer)
         {
-            _connectionString = "Server=(localdb)\\mssqllocaldb;Database=NalunPos_IntegrationTestsDb;Trusted_Connection=True;TrustServerCertificate=True;MultipleActiveResultSets=true;";
+            var config = new ConfigurationBuilder()
+                .AddJsonFile("appsettings.IntegrationTests.json", optional: false)
+                .Build();
+            _connectionString = config["IntegrationTests:ConnectionString"]
+                ?? throw new InvalidOperationException("IntegrationTests:ConnectionString no está configurado en appsettings.IntegrationTests.json");
         }
 
         using var dbContext = CreateDbContext(tenantId: null, isSuperAdmin: true);

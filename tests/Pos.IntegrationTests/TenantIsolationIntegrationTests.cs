@@ -287,8 +287,9 @@ public class TenantIsolationIntegrationTests
 
         using (var db = _fixture.CreateDbContext(tenantId))
         {
-            await db.Database.ExecuteSqlRawAsync("DELETE FROM OutboxMessages"); // Evitar que procese mensajes residuales de otros tests
-            
+            // Garantizar tabla vacía para este tenant: el processor leerá los mensajes de este tenant
+            await db.Database.ExecuteSqlAsync($"DELETE FROM OutboxMessages WHERE TenantId = {tenantId}");
+
             var cat = Pos.Domain.Entities.Category.Create("Test Cat", "Desc");
             db.Categories.Add(cat);
 
@@ -300,12 +301,12 @@ public class TenantIsolationIntegrationTests
                 json,
                 dummyEvent.OccurredOnUtc
             );
-            
+
             db.OutboxMessages.Add(message);
             await db.SaveChangesAsync();
         }
 
-        var sp = _fixture.CreateServiceProvider(null); // BackgroundService context
+        var sp = _fixture.CreateServiceProvider(null); // BackgroundService context (sin tenant)
 
         var outboxProcessor = new Pos.Api.BackgroundServices.OutboxProcessorBackgroundService(
             sp.GetRequiredService<Microsoft.Extensions.DependencyInjection.IServiceScopeFactory>(),
@@ -313,24 +314,8 @@ public class TenantIsolationIntegrationTests
             Microsoft.Extensions.Options.Options.Create(new Pos.Api.BackgroundServices.OutboxSettings { PollingIntervalSeconds = 1 })
         );
 
-        var methodInfo = typeof(Pos.Api.BackgroundServices.OutboxProcessorBackgroundService)
-            .GetMethod("ProcessOutboxMessagesAsync", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-
-        // 2. Act
-        int maxRetries = 10;
-        while (maxRetries > 0)
-        {
-            await (Task)methodInfo!.Invoke(outboxProcessor, new object[] { CancellationToken.None })!;
-            using (var dbVerify = _fixture.CreateDbContext(tenantId))
-            {
-                var msg = await dbVerify.OutboxMessages.FirstOrDefaultAsync(m => m.Id == dummyEvent.Id);
-                if (msg != null && msg.ProcessedOnUtc != null)
-                {
-                    break;
-                }
-            }
-            maxRetries--;
-        }
+        // 2. Act — invocación única. El DELETE garantiza que el mensaje está en posición 1 del batch.
+        await outboxProcessor.ProcessOutboxMessagesAsync(CancellationToken.None);
 
         // 3. Assert
         using (var dbVerify = _fixture.CreateDbContext(tenantId))
@@ -343,6 +328,7 @@ public class TenantIsolationIntegrationTests
 
         Assert.True(DummyTenantIntegrationEventHandler.HitCount > 0, "El manejador nunca fue invocado.");
         Assert.Equal(tenantId, DummyTenantIntegrationEventHandler.LastResolvedTenantId);
+        Assert.False(DummyTenantIntegrationEventHandler.LastResolvedIsSuperAdmin);
     }
 }
 
@@ -356,6 +342,7 @@ public class DummyTenantIntegrationEvent : Pos.Application.IntegrationEvents.Con
 public class DummyTenantIntegrationEventHandler : Pos.Application.Common.Interfaces.IIntegrationEventHandler<DummyTenantIntegrationEvent>
 {
     public static Guid? LastResolvedTenantId { get; private set; }
+    public static bool LastResolvedIsSuperAdmin { get; private set; }
     public static int HitCount { get; private set; }
 
     private readonly Pos.Application.Common.Interfaces.ICurrentTenantContext _tenantContext;
@@ -372,14 +359,15 @@ public class DummyTenantIntegrationEventHandler : Pos.Application.Common.Interfa
     public async Task HandleAsync(DummyTenantIntegrationEvent integrationEvent, CancellationToken cancellationToken = default)
     {
         LastResolvedTenantId = _tenantContext.TenantId;
+        LastResolvedIsSuperAdmin = _tenantContext.IsSuperAdmin;
         HitCount++; // Increment immediately to prove it was invoked
         var (cats, _) = await _categoryRepository.GetPagedAsync(1, 10, null, null, cancellationToken);
-        // HitCount += cats.Count; // Don't rely on database query for invocation proof
     }
 
     public static void Reset()
     {
         LastResolvedTenantId = null;
+        LastResolvedIsSuperAdmin = false;
         HitCount = 0;
     }
 }

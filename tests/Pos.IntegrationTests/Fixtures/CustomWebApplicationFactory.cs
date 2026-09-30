@@ -12,9 +12,17 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
         builder.UseEnvironment("Testing");
         builder.ConfigureAppConfiguration((ctx, config) =>
         {
+            // Leer la connection string desde la fuente única de configuración de tests
+            var testConfig = new ConfigurationBuilder()
+                .AddJsonFile("appsettings.IntegrationTests.json", optional: false)
+                .Build();
+
+            var appConnString = testConfig["IntegrationTests:AppConnectionString"]
+                ?? throw new InvalidOperationException("IntegrationTests:AppConnectionString no está configurado en appsettings.IntegrationTests.json");
+
             config.AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["ConnectionStrings:DefaultConnection"] = "Server=(localdb)\\mssqllocaldb;Database=NalunPos_IntegrationTestsDb_App;Trusted_Connection=True;TrustServerCertificate=True;MultipleActiveResultSets=true;",
+                ["ConnectionStrings:DefaultConnection"] = appConnString,
                 ["SuperAdminSettings:Email"] = "superadmin@test.com",
                 ["SuperAdminSettings:Password"] = "TestPassword123!",
                 ["SuperAdminSettings:FirstName"] = "Super",
