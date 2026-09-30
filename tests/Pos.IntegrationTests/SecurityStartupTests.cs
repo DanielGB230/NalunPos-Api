@@ -6,7 +6,7 @@ using Xunit;
 
 namespace Pos.IntegrationTests;
 
-[Collection("Integration")]
+[Collection("IntegrationTests")]
 public class SecurityStartupTests
 {
     [Fact]

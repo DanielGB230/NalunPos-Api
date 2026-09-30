@@ -5,7 +5,7 @@ using Xunit;
 
 namespace Pos.IntegrationTests;
 
-[Collection("Integration")]
+[Collection("IntegrationTests")]
 public class CorrelationIdIntegrationTests : IClassFixture<CustomWebApplicationFactory>
 {
     private readonly CustomWebApplicationFactory _factory;

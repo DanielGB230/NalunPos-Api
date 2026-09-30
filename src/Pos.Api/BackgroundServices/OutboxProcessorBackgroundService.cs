@@ -56,6 +56,8 @@ public class OutboxProcessorBackgroundService : BackgroundService
         }
     }
 
+    public static string DiagnosticLog { get; set; } = "";
+
     private async Task ProcessOutboxMessagesAsync(CancellationToken cancellationToken)
     {
         List<OutboxMessage> pendingMessages;
@@ -64,6 +66,7 @@ public class OutboxProcessorBackgroundService : BackgroundService
         using (var scope = _scopeFactory.CreateScope())
         {
             var dbContext = scope.ServiceProvider.GetRequiredService<PosDbContext>();
+            DiagnosticLog += $"Conn: {dbContext.Database.GetConnectionString()}. ";
             pendingMessages = await dbContext.OutboxMessages
                 .Where(m => m.ProcessedOnUtc == null)
                 .OrderBy(m => m.OccurredOnUtc)
@@ -71,10 +74,16 @@ public class OutboxProcessorBackgroundService : BackgroundService
                 .ToListAsync(cancellationToken);
         }
 
+        DiagnosticLog += $"Read {pendingMessages.Count} messages. ";
         if (pendingMessages.Count == 0)
         {
+            if (_logger.IsEnabled(LogLevel.Warning))
+                _logger.LogWarning("NO hay mensajes pendientes en la DB.");
             return;
         }
+
+        if (_logger.IsEnabled(LogLevel.Warning))
+            _logger.LogWarning("Encontrados {Count} mensajes pendientes.", pendingMessages.Count);
 
         foreach (var message in pendingMessages)
         {
@@ -90,6 +99,11 @@ public class OutboxProcessorBackgroundService : BackgroundService
                 var dispatcher = messageScope.ServiceProvider.GetRequiredService<IDispatcher>();
 
                 Type? eventType = Type.GetType(message.Type);
+                if (_logger.IsEnabled(LogLevel.Warning))
+                {
+                    _logger.LogWarning("Instancia OutboxProcessor {InstanceId} procesando mensaje {MessageId} de tipo {MessageType}", this.GetHashCode(), message.Id, message.Type);
+                }
+
                 if (eventType == null)
                 {
                     message.MarkAsFailed($"No se pudo resolver el tipo {message.Type}");
@@ -136,6 +150,7 @@ public class OutboxProcessorBackgroundService : BackgroundService
             }
         }
 
+        DiagnosticLog += "Saving. ";
         // Scope 3: Guardar el estado de los mensajes procesados
         using (var updateScope = _scopeFactory.CreateScope())
         {
@@ -143,5 +158,6 @@ public class OutboxProcessorBackgroundService : BackgroundService
             updateDbContext.OutboxMessages.UpdateRange(pendingMessages);
             await updateDbContext.SaveChangesAsync(cancellationToken);
         }
+        DiagnosticLog += "Saved. ";
     }
 }

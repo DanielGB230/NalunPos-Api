@@ -14,6 +14,7 @@ using Pos.Domain.ValueObjects;
 
 namespace Pos.IntegrationTests;
 
+[Collection("IntegrationTests")]
 public class AuthenticationEndpointTests : IClassFixture<CustomWebApplicationFactory>
 {
     private readonly CustomWebApplicationFactory _factory;

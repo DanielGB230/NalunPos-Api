@@ -277,7 +277,7 @@ public class TenantIsolationIntegrationTests
         Assert.Equal(Pos.Domain.Common.ErrorType.Conflict, result.Error.Type);
     }
 
-    [Fact(Skip = "Inestable en la suite completa de xUnit por estado estático compartido/TestServer en paralelo")]
+    [Fact]
     public async Task OutboxProcessor_TenantContext_IsResolvedForEventHandler()
     {
         // 1. Arrange
@@ -287,7 +287,7 @@ public class TenantIsolationIntegrationTests
 
         using (var db = _fixture.CreateDbContext(tenantId))
         {
-            await db.OutboxMessages.ExecuteDeleteAsync(); // Evitar que procese mensajes residuales de otros tests
+            await db.Database.ExecuteSqlRawAsync("DELETE FROM OutboxMessages"); // Evitar que procese mensajes residuales de otros tests
             
             var cat = Pos.Domain.Entities.Category.Create("Test Cat", "Desc");
             db.Categories.Add(cat);
@@ -315,15 +315,29 @@ public class TenantIsolationIntegrationTests
 
         var methodInfo = typeof(Pos.Api.BackgroundServices.OutboxProcessorBackgroundService)
             .GetMethod("ProcessOutboxMessagesAsync", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        
+
         // 2. Act
-        await (Task)methodInfo!.Invoke(outboxProcessor, new object[] { CancellationToken.None })!;
+        int maxRetries = 10;
+        while (maxRetries > 0)
+        {
+            await (Task)methodInfo!.Invoke(outboxProcessor, new object[] { CancellationToken.None })!;
+            using (var dbVerify = _fixture.CreateDbContext(tenantId))
+            {
+                var msg = await dbVerify.OutboxMessages.FirstOrDefaultAsync(m => m.Id == dummyEvent.Id);
+                if (msg != null && msg.ProcessedOnUtc != null)
+                {
+                    break;
+                }
+            }
+            maxRetries--;
+        }
 
         // 3. Assert
         using (var dbVerify = _fixture.CreateDbContext(tenantId))
         {
             var processedMessage = await dbVerify.OutboxMessages.FirstOrDefaultAsync(m => m.Id == dummyEvent.Id);
             Assert.NotNull(processedMessage);
+            Assert.NotNull(processedMessage.ProcessedOnUtc);
             Assert.Null(processedMessage.Error);
         }
 

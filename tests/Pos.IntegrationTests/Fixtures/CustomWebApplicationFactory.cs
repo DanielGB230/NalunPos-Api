@@ -14,6 +14,7 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
         {
             config.AddInMemoryCollection(new Dictionary<string, string?>
             {
+                ["ConnectionStrings:DefaultConnection"] = "Server=(localdb)\\mssqllocaldb;Database=NalunPos_IntegrationTestsDb_App;Trusted_Connection=True;TrustServerCertificate=True;MultipleActiveResultSets=true;",
                 ["SuperAdminSettings:Email"] = "superadmin@test.com",
                 ["SuperAdminSettings:Password"] = "TestPassword123!",
                 ["SuperAdminSettings:FirstName"] = "Super",
@@ -23,18 +24,6 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
                 ["JwtSettings:Audience"] = "NalunPosClients",
                 ["CorsSettings:AllowedOrigins:0"] = "http://localhost:4200"
             });
-        });
-
-        builder.ConfigureTestServices(services =>
-        {
-            var hostedServices = services
-                .Where(s => s.ServiceType == typeof(Microsoft.Extensions.Hosting.IHostedService))
-                .ToList();
-                
-            foreach (var s in hostedServices)
-            {
-                services.Remove(s);
-            }
         });
     }
 }
