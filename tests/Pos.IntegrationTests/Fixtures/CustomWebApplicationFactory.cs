@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
+using Microsoft.AspNetCore.TestHost;
 
 namespace Pos.IntegrationTests.Fixtures;
 
@@ -22,6 +23,18 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
                 ["JwtSettings:Audience"] = "NalunPosClients",
                 ["CorsSettings:AllowedOrigins:0"] = "http://localhost:4200"
             });
+        });
+
+        builder.ConfigureTestServices(services =>
+        {
+            var hostedServices = services
+                .Where(s => s.ServiceType == typeof(Microsoft.Extensions.Hosting.IHostedService))
+                .ToList();
+                
+            foreach (var s in hostedServices)
+            {
+                services.Remove(s);
+            }
         });
     }
 }

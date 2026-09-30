@@ -96,14 +96,15 @@ public class ProcessPaymentCommandHandler : ICommandHandler<ProcessPaymentComman
         }
 
         await _paymentRepository.AddAsync(payment, cancellationToken);
+        
+        var domainEvents = payment.DomainEvents.ToList();
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         // Publicar eventos de dominio
-        foreach (var domainEvent in payment.DomainEvents)
+        foreach (var domainEvent in domainEvents)
         {
             await _dispatcher.PublishAsync(domainEvent, cancellationToken);
         }
-        payment.ClearDomainEvents();
 
         if (!gatewayResult.IsSuccess)
         {

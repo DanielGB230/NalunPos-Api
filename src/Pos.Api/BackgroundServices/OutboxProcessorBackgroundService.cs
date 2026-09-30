@@ -90,7 +90,11 @@ public class OutboxProcessorBackgroundService : BackgroundService
                 var dispatcher = messageScope.ServiceProvider.GetRequiredService<IDispatcher>();
 
                 Type? eventType = Type.GetType(message.Type);
-                if (eventType != null && typeof(IIntegrationEvent).IsAssignableFrom(eventType))
+                if (eventType == null)
+                {
+                    message.MarkAsFailed($"No se pudo resolver el tipo {message.Type}");
+                }
+                else if (typeof(IIntegrationEvent).IsAssignableFrom(eventType))
                 {
                     var integrationEvent = JsonSerializer.Deserialize(message.Content, eventType) as IIntegrationEvent;
                     if (integrationEvent != null)
@@ -106,9 +110,20 @@ public class OutboxProcessorBackgroundService : BackgroundService
                             await task;
                         }
                     }
+                    else
+                    {
+                        message.MarkAsFailed($"Fallo al deserializar el evento {message.Type}");
+                    }
+                }
+                else
+                {
+                    message.MarkAsFailed($"El tipo {eventType.Name} no implementa IIntegrationEvent");
                 }
 
-                message.MarkAsProcessed();
+                if (message.Error == null)
+                {
+                    message.MarkAsProcessed();
+                }
             }
             catch (Exception ex)
             {

@@ -107,13 +107,14 @@ public class IssueInvoiceCommandHandler : ICommandHandler<IssueInvoiceCommand, R
         }
 
         _invoiceRepository.Update(invoice);
+        
+        var domainEvents = invoice.DomainEvents.ToList();
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        foreach (var domainEvent in invoice.DomainEvents)
+        foreach (var domainEvent in domainEvents)
         {
             await _dispatcher.PublishAsync(domainEvent, cancellationToken);
         }
-        invoice.ClearDomainEvents();
 
         return Result.Ok(InvoiceDto.FromEntity(invoice));
     }

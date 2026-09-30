@@ -218,15 +218,17 @@ public class CreateSaleCommandHandler : ICommandHandler<CreateSaleCommand, Resul
             await _inventoryRepository.AddMovementAsync(movement, cancellationToken);
         }
 
+        // Extraer eventos en memoria antes de guardar, porque el interceptor los limpiará tras un guardado exitoso
+        var domainEvents = sale.DomainEvents.ToList();
+
         // 7. UNICO COMMIT ATÓMICO: Persistir Venta, StockLevels e InventoryMovements en una sola transacción
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         // Despachar eventos de dominio acumulados
-        foreach (var domainEvent in sale.DomainEvents)
+        foreach (var domainEvent in domainEvents)
         {
             await _dispatcher.PublishAsync(domainEvent, cancellationToken);
         }
-        sale.ClearDomainEvents();
 
         return Result.Ok(SaleDto.FromEntity(sale));
     }

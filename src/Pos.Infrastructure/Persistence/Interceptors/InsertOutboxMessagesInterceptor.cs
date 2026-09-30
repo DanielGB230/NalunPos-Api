@@ -19,8 +19,6 @@ namespace Pos.Infrastructure.Persistence.Interceptors;
 public class InsertOutboxMessagesInterceptor : SaveChangesInterceptor
 {
     private readonly Pos.Application.Common.Interfaces.ICurrentTenantContext _tenantContext;
-    private readonly HashSet<IDomainEvent> _processedEvents = new(ReferenceEqualityComparer.Instance);
-    private readonly List<IDomainEvent> _currentAttemptEvents = new();
 
     public InsertOutboxMessagesInterceptor(Pos.Application.Common.Interfaces.ICurrentTenantContext tenantContext)
     {
@@ -52,23 +50,38 @@ public class InsertOutboxMessagesInterceptor : SaveChangesInterceptor
         return base.SavingChanges(eventData, result);
     }
 
-    public override Task SaveChangesFailedAsync(DbContextErrorEventData eventData, CancellationToken cancellationToken = default)
+    public override int SavedChanges(SaveChangesCompletedEventData eventData, int result)
     {
-        _processedEvents.ExceptWith(_currentAttemptEvents);
-        _currentAttemptEvents.Clear();
-        return base.SaveChangesFailedAsync(eventData, cancellationToken);
+        ClearDomainEvents(eventData.Context);
+        return base.SavedChanges(eventData, result);
     }
 
-    public override void SaveChangesFailed(DbContextErrorEventData eventData)
+    public override ValueTask<int> SavedChangesAsync(SaveChangesCompletedEventData eventData, int result, CancellationToken cancellationToken = default)
     {
-        _processedEvents.ExceptWith(_currentAttemptEvents);
-        _currentAttemptEvents.Clear();
-        base.SaveChangesFailed(eventData);
+        ClearDomainEvents(eventData.Context);
+        return base.SavedChangesAsync(eventData, result, cancellationToken);
     }
 
-    private void ConvertDomainEventsToOutboxMessages(DbContext context, Guid? currentTenantId)
+    private static void ClearDomainEvents(DbContext? context)
     {
-        _currentAttemptEvents.Clear();
+        if (context == null) return;
+
+        var entries = context.ChangeTracker
+            .Entries()
+            .Where(entry => entry.Entity is AggregateRoot<Guid> agg && agg.DomainEvents.Count > 0)
+            .ToList();
+
+        foreach (var entry in entries)
+        {
+            if (entry.Entity is AggregateRoot<Guid> aggregate)
+            {
+                aggregate.ClearDomainEvents();
+            }
+        }
+    }
+
+    private static void ConvertDomainEventsToOutboxMessages(DbContext context, Guid? currentTenantId)
+    {
         var outboxMessages = new List<OutboxMessage>();
 
         // Obtener todos los agregados que tengan eventos de dominio pendientes
@@ -83,11 +96,6 @@ public class InsertOutboxMessagesInterceptor : SaveChangesInterceptor
             {
                 foreach (var domainEvent in aggregate.DomainEvents)
                 {
-                    if (_processedEvents.Contains(domainEvent))
-                    {
-                        continue;
-                    }
-
                     var integrationEvent = MapDomainEventToIntegrationEvent(domainEvent);
                     if (integrationEvent != null)
                     {
@@ -106,8 +114,6 @@ public class InsertOutboxMessagesInterceptor : SaveChangesInterceptor
                         );
 
                         outboxMessages.Add(message);
-                        _processedEvents.Add(domainEvent);
-                        _currentAttemptEvents.Add(domainEvent);
                     }
                 }
             }

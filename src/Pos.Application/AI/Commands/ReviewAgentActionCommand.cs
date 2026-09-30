@@ -75,13 +75,14 @@ public class ReviewAgentActionCommandHandler : ICommandHandler<ReviewAgentAction
         }
 
         _repository.Update(record);
+
+        var domainEvents = record.DomainEvents.ToList();
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        foreach (var domainEvent in record.DomainEvents)
+        foreach (var domainEvent in domainEvents)
         {
             await _dispatcher.PublishAsync(domainEvent, cancellationToken);
         }
-        record.ClearDomainEvents();
 
         return Result.Ok(AgentActionRecordDto.FromEntity(record));
     }

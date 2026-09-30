@@ -529,5 +529,61 @@ public class ArchitectureTests
             $"Se detectaron accesos directos prohibidos a '.Value' de Result en controladores. Se debe usar 'this.ToActionResult(result)':\n{string.Join("\n", violations)}"
         );
     }
+
+    [Fact]
+    public void ClearDomainEvents_MustOnlyBeCalledFrom_InsertOutboxMessagesInterceptor()
+    {
+        var baseDir = AppContext.BaseDirectory;
+        var dirInfo = new DirectoryInfo(baseDir);
+
+        while (dirInfo != null && !File.Exists(Path.Combine(dirInfo.FullName, "Pos.slnx")) && !File.Exists(Path.Combine(dirInfo.FullName, "NalunPos-Api.sln")))
+        {
+            dirInfo = dirInfo.Parent;
+        }
+
+        Assert.NotNull(dirInfo);
+
+        var srcDir = Path.Combine(dirInfo.FullName, "src");
+        Assert.True(Directory.Exists(srcDir), $"El directorio de código fuente '{srcDir}' no existe.");
+
+        var csFiles = Directory.GetFiles(srcDir, "*.cs", SearchOption.AllDirectories);
+        Assert.NotEmpty(csFiles);
+
+        var clearEventsRegex = new System.Text.RegularExpressions.Regex(@"\.ClearDomainEvents\(\)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        var violations = new List<string>();
+
+        foreach (var file in csFiles)
+        {
+            var fileName = Path.GetFileName(file);
+            
+            // Permitido en la definición del método base (AggregateRoot.cs) y en el interceptor
+            if (fileName == "AggregateRoot.cs" || fileName == "InsertOutboxMessagesInterceptor.cs")
+            {
+                continue;
+            }
+
+            var lines = File.ReadAllLines(file);
+            for (int i = 0; i < lines.Length; i++)
+            {
+                var line = lines[i];
+                var trimmed = line.Trim();
+                if (trimmed.StartsWith("//", StringComparison.Ordinal) ||
+                    trimmed.StartsWith("/*", StringComparison.Ordinal) ||
+                    trimmed.StartsWith('*'))
+                    continue;
+
+                if (clearEventsRegex.IsMatch(line))
+                {
+                    var relativePath = Path.GetRelativePath(dirInfo.FullName, file);
+                    violations.Add($"{relativePath} (Línea {i + 1}): {trimmed}");
+                }
+            }
+        }
+
+        Assert.True(
+            violations.Count == 0,
+            $"Se detectaron llamadas prohibidas a 'ClearDomainEvents()'. Solo el InsertOutboxMessagesInterceptor tiene permiso para limpiar los eventos de dominio:\n{string.Join("\n", violations)}"
+        );
+    }
 }
 

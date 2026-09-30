@@ -138,6 +138,8 @@ public class InvoiceReconciliationBackgroundService : BackgroundService
 
                 invoiceRepo.Update(invoice);
 
+                var domainEvents = invoice.DomainEvents.ToList();
+
                 try
                 {
                     await unitOfWork.SaveChangesAsync(cancellationToken);
@@ -153,11 +155,10 @@ public class InvoiceReconciliationBackgroundService : BackgroundService
                     continue;
                 }
 
-                foreach (var domainEvent in invoice.DomainEvents)
+                foreach (var domainEvent in domainEvents)
                 {
                     await dispatcher.PublishAsync(domainEvent, cancellationToken);
                 }
-                invoice.ClearDomainEvents();
             }
             catch (Exception ex)
             {

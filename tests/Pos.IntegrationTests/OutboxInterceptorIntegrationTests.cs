@@ -756,77 +756,166 @@ public class OutboxInterceptorIntegrationTests
     }
 
     [Fact]
-    public async Task SameDbContext_MultipleSaveChanges_WithoutClear_ShouldNotDuplicateOutboxMessage()
+    public async Task SameDbContext_TwoSaveChanges_WithoutChangingState_ShouldNotDuplicateOutboxMessage()
     {
         Guid tenantId = Guid.NewGuid();
         User user;
+        Role role;
 
         using (var dbSetup = _fixture.CreateDbContext(tenantId))
         {
-            var role = Role.Create(tenantId, "RoleIdempotency", "Desc");
+            role = Role.Create(tenantId, "Role Dup", "Desc");
             dbSetup.Roles.Add(role);
-            user = User.Create(new Email("idem1@test.com"), new PasswordHash("hash"), role.Id, tenantId, "User", "Idem1");
+            user = User.Create(new Email("dup@test.com"), new PasswordHash("hash"), role.Id, tenantId, "T", "T");
             dbSetup.Users.Add(user);
             await dbSetup.SaveChangesAsync();
         }
 
-        using (var dbContext = _fixture.CreateDbContext(tenantId))
+        using (var db = _fixture.CreateDbContext(tenantId))
         {
-            user = await dbContext.Users.FirstAsync(u => u.Id == user.Id);
+            user = await db.Users.FirstAsync(u => u.Id == user.Id);
             
             // Act
             user.Deactivate();
-            
-            await dbContext.SaveChangesAsync(); // First save
-            await dbContext.SaveChangesAsync(); // Second save without clearing domain events
+            await db.SaveChangesAsync(); // First save
+            await db.SaveChangesAsync(); // Second save (should be no-op, domain events cleared)
         }
 
         using (var dbVerify = _fixture.CreateDbContext(tenantId))
         {
             var messages = await dbVerify.OutboxMessages
-                .Where(o => o.Type.Contains(nameof(UserStatusChangedIntegrationEventV1)))
+                .Where(o => o.Type.Contains(nameof(UserStatusChangedIntegrationEventV1)) && o.TenantId == tenantId)
                 .ToListAsync();
 
-            // Assert
+            // Debe haber exactamente 1 mensaje, porque el segundo SaveChanges no encontró eventos.
             Assert.Single(messages);
         }
     }
 
     [Fact]
-    public async Task SameDbContext_MultipleDifferentEvents_WithoutClear_ShouldNotDeduplicateDifferentEvents()
+    public async Task SameDbContext_SuccessiveMutationsAndSaves_ShouldGenerateCorrectOutboxMessages()
     {
         Guid tenantId = Guid.NewGuid();
         User user;
+        Role role;
 
         using (var dbSetup = _fixture.CreateDbContext(tenantId))
         {
-            var role = Role.Create(tenantId, "RoleIdempotency2", "Desc");
+            role = Role.Create(tenantId, "Role Succ", "Desc");
             dbSetup.Roles.Add(role);
-            user = User.Create(new Email("idem2@test.com"), new PasswordHash("hash"), role.Id, tenantId, "User", "Idem2");
+            user = User.Create(new Email("succ@test.com"), new PasswordHash("hash"), role.Id, tenantId, "T", "T");
             dbSetup.Users.Add(user);
             await dbSetup.SaveChangesAsync();
         }
 
-        using (var dbContext = _fixture.CreateDbContext(tenantId))
+        using (var db = _fixture.CreateDbContext(tenantId))
         {
-            user = await dbContext.Users.FirstAsync(u => u.Id == user.Id);
+            user = await db.Users.FirstAsync(u => u.Id == user.Id);
             
-            // Act
+            // Act 1
             user.Deactivate();
-            await dbContext.SaveChangesAsync(); // First save (UserStatusChanged)
+            await db.SaveChangesAsync();
             
+            // Act 2
             user.Activate();
-            await dbContext.SaveChangesAsync(); // Second save (Another UserStatusChanged)
+            await db.SaveChangesAsync();
         }
 
         using (var dbVerify = _fixture.CreateDbContext(tenantId))
         {
             var messages = await dbVerify.OutboxMessages
-                .Where(o => o.Type.Contains(nameof(UserStatusChangedIntegrationEventV1)))
+                .Where(o => o.Type.Contains(nameof(UserStatusChangedIntegrationEventV1)) && o.TenantId == tenantId)
+                .OrderBy(o => o.OccurredOnUtc)
                 .ToListAsync();
 
-            // Assert
+            // Debe haber exactamente 2 mensajes.
             Assert.Equal(2, messages.Count);
+            
+            var ev1 = JsonSerializer.Deserialize<UserStatusChangedIntegrationEventV1>(messages[0].Content, _jsonOptions);
+            Assert.False(ev1!.IsActive);
+            
+            var ev2 = JsonSerializer.Deserialize<UserStatusChangedIntegrationEventV1>(messages[1].Content, _jsonOptions);
+            Assert.True(ev2!.IsActive);
+        }
+    }
+
+    [Fact]
+    public async Task TwoDbContexts_SameAggregate_ShouldNotCauseRegressions()
+    {
+        Guid tenantId = Guid.NewGuid();
+        User user;
+        Role role;
+
+        using (var dbSetup = _fixture.CreateDbContext(tenantId))
+        {
+            role = Role.Create(tenantId, "Role Ctx", "Desc");
+            dbSetup.Roles.Add(role);
+            user = User.Create(new Email("ctx@test.com"), new PasswordHash("hash"), role.Id, tenantId, "T", "T");
+            dbSetup.Users.Add(user);
+            await dbSetup.SaveChangesAsync();
+        }
+
+        using (var db1 = _fixture.CreateDbContext(tenantId))
+        {
+            var u1 = await db1.Users.FirstAsync(u => u.Id == user.Id);
+            u1.Deactivate();
+            await db1.SaveChangesAsync();
+        }
+
+        using (var db2 = _fixture.CreateDbContext(tenantId))
+        {
+            var u2 = await db2.Users.FirstAsync(u => u.Id == user.Id);
+            u2.Activate();
+            await db2.SaveChangesAsync();
+        }
+
+        using (var dbVerify = _fixture.CreateDbContext(tenantId))
+        {
+            var messages = await dbVerify.OutboxMessages
+                .Where(o => o.Type.Contains(nameof(UserStatusChangedIntegrationEventV1)) && o.TenantId == tenantId)
+                .ToListAsync();
+
+            Assert.Equal(2, messages.Count);
+        }
+    }
+
+    [Fact]
+    public async Task SaveChangesFailed_ShouldNotClearDomainEventsAndNotSaveOutbox()
+    {
+        Guid tenantId = Guid.NewGuid();
+        Role role;
+
+        using (var dbSetup = _fixture.CreateDbContext(tenantId))
+        {
+            role = Role.Create(tenantId, "Role Fail", "Desc");
+            dbSetup.Roles.Add(role);
+            var user1 = User.Create(new Email("fail@dup.com"), new PasswordHash("hash"), role.Id, tenantId, "U1", "L1");
+            dbSetup.Users.Add(user1);
+            await dbSetup.SaveChangesAsync();
+        }
+
+        using (var dbFail = _fixture.CreateDbContext(tenantId))
+        {
+            // Intentamos crear un usuario con el mismo email para forzar error de BD (Unique Index)
+            var user2 = User.Create(new Email("fail@dup.com"), new PasswordHash("hash"), role.Id, tenantId, "U2", "L2");
+            // Mutamos para generar un evento
+            user2.Deactivate();
+            dbFail.Users.Add(user2);
+
+            // Act
+            await Assert.ThrowsAsync<DbUpdateException>(() => dbFail.SaveChangesAsync());
+
+            // Assert
+            Assert.NotEmpty(user2.DomainEvents); // El evento no se borró porque falló
+        }
+
+        using (var dbVerify = _fixture.CreateDbContext(tenantId))
+        {
+            var messages = await dbVerify.OutboxMessages
+                .Where(o => o.Type.Contains(nameof(UserStatusChangedIntegrationEventV1)) && o.TenantId == tenantId)
+                .ToListAsync();
+
+            Assert.Empty(messages); // Nada en Outbox porque falló el commit completo
         }
     }
 }
