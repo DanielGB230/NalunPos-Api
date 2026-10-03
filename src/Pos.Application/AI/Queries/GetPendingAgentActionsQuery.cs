@@ -21,12 +21,9 @@ public class GetPendingAgentActionsQueryHandler : IQueryHandler<GetPendingAgentA
 
     public async Task<PagedResult<AgentActionRecordDto>> HandleAsync(GetPendingAgentActionsQuery request, CancellationToken cancellationToken)
     {
-        int pageNumber = request.PageNumber < 1 ? 1 : request.PageNumber;
-        int pageSize = Math.Min(request.PageSize < 1 ? 20 : request.PageSize, 100);
-
-        var (items, totalCount) = await _repository.GetPendingActionsPagedAsync(pageNumber, pageSize, cancellationToken);
+        var (items, totalCount) = await _repository.GetPendingActionsPagedAsync(request.PageNumber, request.PageSize, cancellationToken);
         var dtos = items.Select(AgentActionRecordDto.FromEntity).ToList();
 
-        return new PagedResult<AgentActionRecordDto>(dtos, pageNumber, pageSize, totalCount);
+        return new PagedResult<AgentActionRecordDto>(dtos, request.PageNumber, request.PageSize, totalCount);
     }
 }

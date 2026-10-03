@@ -30,12 +30,9 @@ public class GetUserNotificationsQueryHandler : IQueryHandler<GetUserNotificatio
             throw new Pos.Domain.Exceptions.ForbiddenDomainException("No tiene permisos para ver las notificaciones de otro usuario.");
         }
 
-        int pageNumber = request.PageNumber < 1 ? 1 : request.PageNumber;
-        int pageSize = Math.Min(request.PageSize < 1 ? 20 : request.PageSize, 100);
-
-        var (items, totalCount) = await _notificationRepository.GetPagedByUserIdAsync(request.UserId, request.UnreadOnly, pageNumber, pageSize, cancellationToken);
+        var (items, totalCount) = await _notificationRepository.GetPagedByUserIdAsync(request.UserId, request.UnreadOnly, request.PageNumber, request.PageSize, cancellationToken);
         var dtos = items.Select(SystemNotificationDto.FromEntity).ToList();
 
-        return new PagedResult<SystemNotificationDto>(dtos, pageNumber, pageSize, totalCount);
+        return new PagedResult<SystemNotificationDto>(dtos, request.PageNumber, request.PageSize, totalCount);
     }
 }

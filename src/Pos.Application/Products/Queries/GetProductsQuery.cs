@@ -31,12 +31,9 @@ public class GetProductsQueryHandler : IQueryHandler<GetProductsQuery, PagedResu
 
     public async Task<PagedResult<ProductDto>> HandleAsync(GetProductsQuery request, CancellationToken cancellationToken)
     {
-        int pageNumber = request.PageNumber < 1 ? 1 : request.PageNumber;
-        int pageSize = Math.Min(request.PageSize < 1 ? 20 : request.PageSize, 100);
-
         var (items, totalCount) = await _productRepository.GetPagedAsync(
-            pageNumber,
-            pageSize,
+            request.PageNumber,
+            request.PageSize,
             request.SearchTerm,
             request.CategoryId,
             request.IsActive,
@@ -44,6 +41,6 @@ public class GetProductsQueryHandler : IQueryHandler<GetProductsQuery, PagedResu
 
         var dtos = items.Select(ProductDto.FromEntity).ToList();
 
-        return new PagedResult<ProductDto>(dtos, pageNumber, pageSize, totalCount);
+        return new PagedResult<ProductDto>(dtos, request.PageNumber, request.PageSize, totalCount);
     }
 }

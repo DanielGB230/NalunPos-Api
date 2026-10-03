@@ -30,18 +30,15 @@ public class GetCategoriesQueryHandler : IQueryHandler<GetCategoriesQuery, Paged
 
     public async Task<PagedResult<CategoryDto>> HandleAsync(GetCategoriesQuery request, CancellationToken cancellationToken)
     {
-        int pageNumber = request.PageNumber < 1 ? 1 : request.PageNumber;
-        int pageSize = Math.Min(request.PageSize < 1 ? 20 : request.PageSize, 100);
-
         var (items, totalCount) = await _categoryRepository.GetPagedAsync(
-            pageNumber,
-            pageSize,
+            request.PageNumber,
+            request.PageSize,
             request.SearchTerm,
             request.IsActive,
             cancellationToken);
 
         var dtos = items.Select(CategoryDto.FromEntity).ToList();
 
-        return new PagedResult<CategoryDto>(dtos, pageNumber, pageSize, totalCount);
+        return new PagedResult<CategoryDto>(dtos, request.PageNumber, request.PageSize, totalCount);
     }
 }

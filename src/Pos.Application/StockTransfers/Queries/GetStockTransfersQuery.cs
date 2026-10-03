@@ -30,18 +30,15 @@ public class GetStockTransfersQueryHandler : IQueryHandler<GetStockTransfersQuer
     {
         ArgumentNullException.ThrowIfNull(query);
 
-        int page = query.PageNumber < 1 ? 1 : query.PageNumber;
-        int size = Math.Min(query.PageSize < 1 ? 20 : query.PageSize, 100);
-
         var (items, totalCount) = await _transferRepository.GetPagedAsync(
-            page,
-            size,
+            query.PageNumber,
+            query.PageSize,
             sourceWarehouseId: query.SourceWarehouseId,
             destinationWarehouseId: query.DestinationWarehouseId,
             cancellationToken: cancellationToken);
         var dtos = items.Select(StockTransferDto.FromEntity).ToList();
 
-        var result = new PagedResult<StockTransferDto>(dtos, page, size, totalCount);
+        var result = new PagedResult<StockTransferDto>(dtos, query.PageNumber, query.PageSize, totalCount);
         return Result.Ok(result);
     }
 }

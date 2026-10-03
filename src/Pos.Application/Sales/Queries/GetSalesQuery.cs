@@ -29,12 +29,9 @@ public class GetSalesQueryHandler : IQueryHandler<GetSalesQuery, PagedResult<Sal
 
     public async Task<PagedResult<SaleDto>> HandleAsync(GetSalesQuery request, CancellationToken cancellationToken)
     {
-        int pageNumber = request.PageNumber < 1 ? 1 : request.PageNumber;
-        int pageSize = Math.Min(request.PageSize < 1 ? 20 : request.PageSize, 100);
-
         var (items, totalCount) = await _saleRepository.GetPagedAsync(
-            pageNumber,
-            pageSize,
+            request.PageNumber,
+            request.PageSize,
             null, // SessionId
             request.CustomerId,
             request.StartDate,
@@ -43,6 +40,6 @@ public class GetSalesQueryHandler : IQueryHandler<GetSalesQuery, PagedResult<Sal
 
         var dtos = items.Select(SaleDto.FromEntity).ToList();
 
-        return new PagedResult<SaleDto>(dtos, pageNumber, pageSize, totalCount);
+        return new PagedResult<SaleDto>(dtos, request.PageNumber, request.PageSize, totalCount);
     }
 }

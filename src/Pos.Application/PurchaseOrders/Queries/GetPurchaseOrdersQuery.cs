@@ -28,12 +28,9 @@ public class GetPurchaseOrdersQueryHandler
     public async Task<Result<(IReadOnlyList<PurchaseOrderDto> Items, int TotalCount)>> HandleAsync(
         GetPurchaseOrdersQuery query, CancellationToken cancellationToken)
     {
-        int pageNumber = query.PageNumber < 1 ? 1 : query.PageNumber;
-        int pageSize = Math.Min(query.PageSize < 1 ? 20 : query.PageSize, 100);
-
         var (items, total) = await _orderRepository.GetPagedAsync(
-            pageNumber,
-            pageSize,
+            query.PageNumber,
+            query.PageSize,
             status: query.Status,
             supplierId: query.SupplierId,
             warehouseId: query.WarehouseId,

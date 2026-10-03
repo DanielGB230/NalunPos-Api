@@ -30,18 +30,15 @@ public class GetCustomersQueryHandler : IQueryHandler<GetCustomersQuery, PagedRe
 
     public async Task<PagedResult<CustomerDto>> HandleAsync(GetCustomersQuery request, CancellationToken cancellationToken)
     {
-        int pageNumber = request.PageNumber < 1 ? 1 : request.PageNumber;
-        int pageSize = Math.Min(request.PageSize < 1 ? 20 : request.PageSize, 100);
-
         var (items, totalCount) = await _customerRepository.GetPagedAsync(
-            pageNumber,
-            pageSize,
+            request.PageNumber,
+            request.PageSize,
             request.SearchTerm,
             request.IsActive,
             cancellationToken);
 
         var dtos = items.Select(CustomerDto.FromEntity).ToList();
 
-        return new PagedResult<CustomerDto>(dtos, pageNumber, pageSize, totalCount);
+        return new PagedResult<CustomerDto>(dtos, request.PageNumber, request.PageSize, totalCount);
     }
 }

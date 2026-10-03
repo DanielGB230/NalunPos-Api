@@ -31,15 +31,12 @@ public class GetTenantsQueryHandler : IQueryHandler<GetTenantsQuery, PagedResult
 
     public async Task<PagedResult<TenantDto>> HandleAsync(GetTenantsQuery request, CancellationToken cancellationToken)
     {
-        var pageNumber = request.PageNumber <= 0 ? 1 : request.PageNumber;
-        var pageSize = request.PageSize <= 0 ? 10 : Math.Min(request.PageSize, 100);
-
         var (items, totalCount) = await _tenantRepository.GetPagedAsync(
-            pageNumber,
-            pageSize,
+            request.PageNumber,
+            request.PageSize,
             request.SearchTerm,
             cancellationToken);
 
-        return new PagedResult<TenantDto>(items, pageNumber, pageSize, totalCount);
+        return new PagedResult<TenantDto>(items, request.PageNumber, request.PageSize, totalCount);
     }
 }
