@@ -24,19 +24,7 @@ public class ValidationDecorator<TCommand, TResponse> : ICommandHandler<TCommand
 
     public async Task<TResponse> HandleAsync(TCommand command, CancellationToken cancellationToken = default)
     {
-        if (!_validators.Any())
-        {
-            return await _inner.HandleAsync(command, cancellationToken);
-        }
-
-        var context = new ValidationContext<TCommand>(command);
-        var validationResults = await Task.WhenAll(
-            _validators.Select(v => v.ValidateAsync(context, cancellationToken)));
-
-        var failures = validationResults
-            .SelectMany(r => r.Errors)
-            .Where(f => f != null)
-            .ToList();
+        var failures = await ValidationRunner.ValidateAsync(command, _validators, cancellationToken);
 
         if (failures.Count != 0)
         {

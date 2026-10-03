@@ -98,6 +98,7 @@ public static class DependencyInjection
             var queryType = serviceType.GetGenericArguments()[0];
             var responseType = serviceType.GetGenericArguments()[1];
 
+            var validationDecoratorType = typeof(ValidationQueryDecorator<,>).MakeGenericType(queryType, responseType);
             var authorizationBehaviorType = typeof(AuthorizationQueryBehavior<,>).MakeGenericType(queryType, responseType);
 
             services.Remove(descriptor);
@@ -108,7 +109,8 @@ public static class DependencyInjection
                     ? ActivatorUtilities.CreateInstance(provider, descriptor.ImplementationType)
                     : descriptor.ImplementationFactory!(provider);
 
-                object authorizedHandler = ActivatorUtilities.CreateInstance(provider, authorizationBehaviorType, innerHandler);
+                object validatedHandler = ActivatorUtilities.CreateInstance(provider, validationDecoratorType, innerHandler);
+                object authorizedHandler = ActivatorUtilities.CreateInstance(provider, authorizationBehaviorType, validatedHandler);
 
                 return authorizedHandler;
             });
