@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
+using Pos.Api.Common;
+using Pos.Domain.Common;
 
 namespace Pos.Api.Extensions;
 
@@ -9,32 +10,20 @@ public static class ProblemDetailsExtensions
         this IProblemDetailsService problemDetailsService,
         HttpContext context,
         int statusCode,
-        string type,
-        string title,
-        string detail,
-        IReadOnlyList<string>? errors = null)
+        string? title = null,
+        string? detail = null,
+        FieldErrors? fieldErrors = null,
+        string? customType = null)
     {
-        var correlationId = context.Items["CorrelationId"]?.ToString()
-            ?? context.Response.Headers["X-Correlation-ID"].ToString()
-            ?? context.TraceIdentifier;
-
         context.Response.StatusCode = statusCode;
 
-        var problemDetails = new ProblemDetails
-        {
-            Type = type,
-            Status = statusCode,
-            Title = title,
-            Detail = detail,
-            Instance = context.Request.Path
-        };
-
-        problemDetails.Extensions["correlationId"] = correlationId;
-
-        if (errors != null && errors.Count > 0)
-        {
-            problemDetails.Extensions["errors"] = errors;
-        }
+        var problemDetails = PosProblemDetailsFactory.CreateProblemDetails(
+            context,
+            statusCode,
+            title,
+            detail,
+            fieldErrors,
+            customType);
 
         await problemDetailsService.WriteAsync(new ProblemDetailsContext
         {

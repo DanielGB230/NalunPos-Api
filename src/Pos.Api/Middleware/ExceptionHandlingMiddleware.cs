@@ -1,6 +1,8 @@
 using System.Net;
 using FluentValidation;
-using Pos.Api.Extensions;
+using Pos.Api.Common;
+using Pos.Application.Common.Validation;
+using Pos.Domain.Common;
 using Pos.Domain.Exceptions;
 
 namespace Pos.Api.Middleware;
@@ -34,57 +36,33 @@ public partial class ExceptionHandlingMiddleware
 
     private static async Task HandleExceptionAsync(HttpContext context, IProblemDetailsService problemDetailsService, Exception exception)
     {
-        var (statusCode, type, title, detail, errors) = exception switch
+        var problemDetails = exception switch
         {
-            UnauthorizedDomainException unauthEx => (
-                StatusCodes.Status401Unauthorized,
-                "https://tools.ietf.org/html/rfc9110#section-15.5.2",
-                "No autorizado",
-                unauthEx.Message,
-                (IReadOnlyList<string>?)null),
+            UnauthorizedDomainException unauthEx => PosProblemDetailsFactory.CreateProblemDetails(
+                context, StatusCodes.Status401Unauthorized, detail: unauthEx.Message),
 
-            ForbiddenDomainException forbEx => (
-                StatusCodes.Status403Forbidden,
-                "https://tools.ietf.org/html/rfc9110#section-15.5.4",
-                "Acceso denegado",
-                forbEx.Message,
-                null),
+            ForbiddenDomainException forbEx => PosProblemDetailsFactory.CreateProblemDetails(
+                context, StatusCodes.Status403Forbidden, detail: forbEx.Message),
 
-            ProductNotFoundException or CategoryNotFoundException => (
-                StatusCodes.Status404NotFound,
-                "https://tools.ietf.org/html/rfc9110#section-15.5.5",
-                "Recurso no encontrado",
-                exception.Message,
-                null),
+            ProductNotFoundException or CategoryNotFoundException => PosProblemDetailsFactory.CreateProblemDetails(
+                context, StatusCodes.Status404NotFound, detail: exception.Message),
 
-            ValidationException valEx => (
-                StatusCodes.Status400BadRequest,
-                "https://tools.ietf.org/html/rfc9110#section-15.5.1",
-                "Error de validación",
-                "Uno o más errores de validación ocurrieron.",
-                valEx.Errors.Select(e => e.ErrorMessage).ToList()),
+            ValidationException valEx => PosProblemDetailsFactory.CreateProblemDetails(
+                context, ValidationResultFactory.CreateError(valEx.Errors)),
 
-            DomainException domEx => (
-                StatusCodes.Status400BadRequest,
-                "https://tools.ietf.org/html/rfc9110#section-15.5.1",
-                "Violación de regla de negocio",
-                domEx.Message,
-                null),
+            DomainException domEx => PosProblemDetailsFactory.CreateProblemDetails(
+                context, StatusCodes.Status400BadRequest, title: "Violación de regla de negocio", detail: domEx.Message),
 
-            _ => (
-                StatusCodes.Status500InternalServerError,
-                "https://tools.ietf.org/html/rfc9110#section-15.6.1",
-                "Error interno del servidor",
-                "Ocurrió un error inesperado al procesar la solicitud.",
-                null)
+            _ => PosProblemDetailsFactory.CreateProblemDetails(
+                context, StatusCodes.Status500InternalServerError, detail: "Ocurrió un error inesperado al procesar la solicitud.")
         };
 
-        await problemDetailsService.WriteProblemDetailsAsync(
-            context,
-            statusCode,
-            type,
-            title,
-            detail,
-            errors);
+        context.Response.StatusCode = problemDetails.Status!.Value;
+
+        await problemDetailsService.WriteAsync(new ProblemDetailsContext
+        {
+            HttpContext = context,
+            ProblemDetails = problemDetails
+        });
     }
 }

@@ -1,6 +1,8 @@
 using System.Net;
 using System.Text.Json;
 using FluentAssertions;
+using FluentValidation;
+using FluentValidation.Results;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Pos.Api.Extensions;
 using Pos.Domain.Common;
@@ -12,7 +14,7 @@ namespace Pos.IntegrationTests;
 // ── Controller temporal solo para el test ──────────────────────────────────
 
 /// <summary>
-/// Controller mínimo de prueba que expone ToActionResult con FieldErrors.
+/// Controller mínimo de prueba que expone ToActionResult y lanza ValidationException.
 /// Solo existe en el contexto de test — no es parte del ensamblado de producción.
 /// </summary>
 [Microsoft.AspNetCore.Authorization.AllowAnonymous]
@@ -25,8 +27,8 @@ public sealed class FieldErrorsTestController : Microsoft.AspNetCore.Mvc.Control
     {
         var fieldErrors = new FieldErrors(new Dictionary<string, string[]>
         {
-            ["Email"]  = ["Email es requerido", "Email inválido"],
-            ["Nombre"] = ["Nombre es requerido"]
+            ["Email"] = ["Email es requerido", "Email inválido"],
+            ["Items[0].Quantity"] = ["Cantidad debe ser mayor a 0"]
         });
 
         var error = DomainError.Validation("VAL.MultiField", "Errores de validación.", fieldErrors);
@@ -41,13 +43,26 @@ public sealed class FieldErrorsTestController : Microsoft.AspNetCore.Mvc.Control
         Result<string> result = error;
         return this.ToActionResult(result);
     }
+
+    [Microsoft.AspNetCore.Authorization.AllowAnonymous]
+    [Microsoft.AspNetCore.Mvc.HttpGet("throw-validation-exception")]
+    public Microsoft.AspNetCore.Mvc.IActionResult ThrowValidationException()
+    {
+        _ = this.HttpContext;
+        throw new ValidationException(new[]
+        {
+            new ValidationFailure("UserEmail", "Email de usuario es requerido")
+        });
+    }
 }
 
 // ── Tests ──────────────────────────────────────────────────────────────────
 
 /// <summary>
-/// Verifica que MapErrorToActionResult serializa FieldErrors correctamente en el cuerpo RFC 9457.
-/// Usa un controller temporal registrado solo en el contexto de test via AddApplicationPart.
+/// Verifica el contrato JSON unificado de ProblemDetails (RFC 9110 / RFC 9457) desde los tres orígenes:
+/// 1. Result fallido con FieldErrors vía controller
+/// 2. ValidationException vía middleware
+/// 3. Rate limiting (429)
 /// </summary>
 public class FieldErrorsMappingIntegrationTests
 {
@@ -55,16 +70,11 @@ public class FieldErrorsMappingIntegrationTests
 
     public FieldErrorsMappingIntegrationTests()
     {
-        // Derivar de CustomWebApplicationFactory para heredar toda la configuración de infra/DB.
-        // Añadir solo el ApplicationPart extra que contiene el controller temporal de test.
         _factory = new CustomWebApplicationFactory()
             .WithWebHostBuilder(builder =>
             {
                 builder.ConfigureServices(services =>
                 {
-                    // Program.cs ya llamó AddControllers(), lo que registra ApplicationPartManager.
-                    // Recuperamos el ApplicationPartManager del IServiceCollection para agregar
-                    // el ensamblado de test como ApplicationPart sin necesitar AddControllers() aquí.
                     var partManagerDescriptor = services.FirstOrDefault(
                         sd => sd.ServiceType == typeof(Microsoft.AspNetCore.Mvc.ApplicationParts.ApplicationPartManager));
 
@@ -83,8 +93,23 @@ public class FieldErrorsMappingIntegrationTests
             });
     }
 
+    private static void VerifyBaseProblemDetailsShape(JsonElement root, int expectedStatus)
+    {
+        root.TryGetProperty("type", out var typeEl).Should().BeTrue();
+        typeEl.GetString().Should().NotBeNullOrEmpty();
+
+        root.TryGetProperty("title", out var titleEl).Should().BeTrue();
+        titleEl.GetString().Should().NotBeNullOrEmpty();
+
+        root.TryGetProperty("status", out var statusEl).Should().BeTrue();
+        statusEl.GetInt32().Should().Be(expectedStatus);
+
+        root.TryGetProperty("correlationId", out var correlationEl).Should().BeTrue();
+        correlationEl.GetString().Should().NotBeNullOrEmpty();
+    }
+
     [Fact]
-    public async Task ValidationWithFieldErrors_Returns400_WithErrorsAsObjectInProblemDetails()
+    public async Task Origin1_ResultWithFieldErrors_Returns400_WithCamelCaseErrorsKeyInProblemDetails()
     {
         var client = _factory.CreateClient();
 
@@ -96,20 +121,67 @@ public class FieldErrorsMappingIntegrationTests
         using var doc = JsonDocument.Parse(json);
         var root = doc.RootElement;
 
-        root.TryGetProperty("errors", out var errorsEl).Should().BeTrue("debe incluir la clave 'errors'");
-        errorsEl.ValueKind.Should().Be(JsonValueKind.Object, "errors debe ser un objeto, no un array");
+        VerifyBaseProblemDetailsShape(root, 400);
 
-        errorsEl.TryGetProperty("Email", out var emailErrors).Should().BeTrue();
-        emailErrors.ValueKind.Should().Be(JsonValueKind.Array);
+        root.TryGetProperty("errors", out var errorsEl).Should().BeTrue("debe incluir la clave 'errors'");
+        errorsEl.ValueKind.Should().Be(JsonValueKind.Object);
+
+        errorsEl.TryGetProperty("email", out var emailErrors).Should().BeTrue("Email debe estar en camelCase ('email')");
         emailErrors.GetArrayLength().Should().Be(2);
 
-        errorsEl.TryGetProperty("Nombre", out var nombreErrors).Should().BeTrue();
-        nombreErrors.ValueKind.Should().Be(JsonValueKind.Array);
-        nombreErrors.GetArrayLength().Should().Be(1);
+        errorsEl.TryGetProperty("items[0].quantity", out var itemQuantityErrors).Should().BeTrue("Items[0].Quantity debe ser 'items[0].quantity'");
+        itemQuantityErrors.GetArrayLength().Should().Be(1);
     }
 
     [Fact]
-    public async Task ValidationWithoutFieldErrors_Returns400_WithoutErrorsKeyInProblemDetails()
+    public async Task Origin2_ValidationExceptionViaMiddleware_Returns400_WithCamelCaseErrorsRecord()
+    {
+        var client = _factory.CreateClient();
+
+        var response = await client.GetAsync("/_test/throw-validation-exception");
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        var json = await response.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+
+        VerifyBaseProblemDetailsShape(root, 400);
+
+        root.TryGetProperty("errors", out var errorsEl).Should().BeTrue("middleware debe incluir la clave 'errors'");
+        errorsEl.ValueKind.Should().Be(JsonValueKind.Object, "errors debe ser un objeto Record, no un array");
+
+        errorsEl.TryGetProperty("userEmail", out var emailErrors).Should().BeTrue("UserEmail debe formatearse como userEmail");
+        emailErrors.ValueKind.Should().Be(JsonValueKind.Array);
+        emailErrors.GetArrayLength().Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Origin3_RateLimiting429_ReturnsUnifiedProblemDetailsShape_WithoutErrorsKey()
+    {
+        var client = _factory.CreateClient();
+
+        HttpResponseMessage response = null!;
+        for (int i = 0; i < 15; i++)
+        {
+            response = await client.PostAsync("/api/v1/auth/login", new StringContent("{}", System.Text.Encoding.UTF8, "application/json"));
+            if (response.StatusCode == HttpStatusCode.TooManyRequests)
+                break;
+        }
+
+        response.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
+
+        var json = await response.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+
+        VerifyBaseProblemDetailsShape(root, 429);
+
+        root.TryGetProperty("errors", out _).Should().BeFalse("respuesta 429 no debe incluir la clave 'errors'");
+    }
+
+    [Fact]
+    public async Task ResultWithoutFieldErrors_Returns400_WithoutErrorsKeyInProblemDetails()
     {
         var client = _factory.CreateClient();
 
@@ -121,8 +193,9 @@ public class FieldErrorsMappingIntegrationTests
         using var doc = JsonDocument.Parse(json);
         var root = doc.RootElement;
 
-        // Sin FieldErrors, no debe existir la clave "errors"
+        VerifyBaseProblemDetailsShape(root, 400);
+
         root.TryGetProperty("errors", out _).Should().BeFalse(
-            "el ProblemDetails no debe contener 'errors' cuando DomainError no tiene FieldErrors");
+            "el ProblemDetails no debe contener 'errors' cuando no hay FieldErrors");
     }
 }

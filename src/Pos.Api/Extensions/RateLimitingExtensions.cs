@@ -42,9 +42,8 @@ public static class RateLimitingExtensions
                 await problemDetailsService.WriteProblemDetailsAsync(
                     httpContext,
                     StatusCodes.Status429TooManyRequests,
-                    "https://tools.ietf.org/html/rfc9110#section-15.5.20",
-                    "Demasiadas peticiones",
-                    "Se ha superado el límite de peticiones permitido. Intente nuevamente en unos momentos.");
+                    title: "Demasiadas solicitudes",
+                    detail: "Se ha superado el límite de peticiones permitido. Intente nuevamente en unos momentos.");
             };
 
             // AuthPolicy: 10/min por IP para login/refresh
