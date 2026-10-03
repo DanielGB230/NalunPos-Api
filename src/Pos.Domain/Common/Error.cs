@@ -39,6 +39,9 @@ public sealed record DomainError(string Code, string Message, ErrorType Type)
     public static DomainError Validation(string code, string message)
         => new(code, message, ErrorType.Validation);
 
+    public static DomainError Validation(string code, string message, FieldErrors errors)
+        => new(code, message, ErrorType.Validation) { Errors = errors };
+
     public static DomainError NotFound(string code, string message)
         => new(code, message, ErrorType.NotFound);
 
@@ -50,4 +53,9 @@ public sealed record DomainError(string Code, string Message, ErrorType Type)
 
     public static DomainError Failure(string code, string message)
         => new(code, message, ErrorType.Failure);
+
+    /// <summary>
+    /// Errores estructurados por campo para errores de validación (opcional).
+    /// </summary>
+    public FieldErrors? Errors { get; init; }
 }

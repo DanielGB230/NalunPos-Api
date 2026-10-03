@@ -12,7 +12,8 @@ public static class ProblemDetailsExtensions
         string type,
         string title,
         string detail,
-        IReadOnlyList<string>? errors = null)
+        IReadOnlyList<string>? errors = null,
+        IReadOnlyDictionary<string, string[]>? fieldErrors = null)
     {
         var correlationId = context.Items["CorrelationId"]?.ToString()
             ?? context.Response.Headers["X-Correlation-ID"].ToString()
@@ -31,7 +32,11 @@ public static class ProblemDetailsExtensions
 
         problemDetails.Extensions["correlationId"] = correlationId;
 
-        if (errors != null && errors.Count > 0)
+        if (fieldErrors != null && fieldErrors.Count > 0)
+        {
+            problemDetails.Extensions["errors"] = fieldErrors;
+        }
+        else if (errors != null && errors.Count > 0)
         {
             problemDetails.Extensions["errors"] = errors;
         }

@@ -31,47 +31,64 @@ public static class ResultExtensions
 
     private static ObjectResult MapErrorToActionResult(ControllerBase controller, DomainError error)
     {
-        return error.Type switch
+        var problemDetails = error.Type switch
         {
-            ErrorType.Unauthorized => controller.Unauthorized(new ProblemDetails
+            ErrorType.Unauthorized => new ProblemDetails
             {
                 Title = "No Autorizado",
                 Status = StatusCodes.Status401Unauthorized,
                 Detail = error.Message,
                 Instance = controller.HttpContext.Request.Path
-            }),
+            },
 
-            ErrorType.Validation => controller.BadRequest(new ProblemDetails
+            ErrorType.Validation => new ProblemDetails
             {
                 Title = "Error de Validación",
                 Status = StatusCodes.Status400BadRequest,
                 Detail = error.Message,
                 Instance = controller.HttpContext.Request.Path
-            }),
+            },
 
-            ErrorType.NotFound => controller.NotFound(new ProblemDetails
+            ErrorType.NotFound => new ProblemDetails
             {
                 Title = "Recurso no Encontrado",
                 Status = StatusCodes.Status404NotFound,
                 Detail = error.Message,
                 Instance = controller.HttpContext.Request.Path
-            }),
+            },
 
-            ErrorType.Conflict => controller.Conflict(new ProblemDetails
+            ErrorType.Conflict => new ProblemDetails
             {
                 Title = "Conflicto de Estado",
                 Status = StatusCodes.Status409Conflict,
                 Detail = error.Message,
                 Instance = controller.HttpContext.Request.Path
-            }),
+            },
 
-            _ => controller.StatusCode(StatusCodes.Status500InternalServerError, new ProblemDetails
+            _ => new ProblemDetails
             {
                 Title = "Error Interno del Servidor",
                 Status = StatusCodes.Status500InternalServerError,
                 Detail = "Ha ocurrido un error inesperado en el servidor. Por favor, consulte los registros del sistema.",
                 Instance = controller.HttpContext.Request.Path
-            })
+            }
+        };
+
+        if (error.Errors != null)
+        {
+            problemDetails.Extensions["errors"] = error.Errors.Values.ToDictionary(
+                kvp => kvp.Key,
+                kvp => kvp.Value.ToArray(),
+                StringComparer.Ordinal);
+        }
+
+        return error.Type switch
+        {
+            ErrorType.Unauthorized => controller.Unauthorized(problemDetails),
+            ErrorType.Validation => controller.BadRequest(problemDetails),
+            ErrorType.NotFound => controller.NotFound(problemDetails),
+            ErrorType.Conflict => controller.Conflict(problemDetails),
+            _ => controller.StatusCode(StatusCodes.Status500InternalServerError, problemDetails)
         };
     }
 }
