@@ -50,39 +50,7 @@ public class ValidationResultFactoryTests
     }
 
     [Fact]
-    public void CreateResult_GenericT_ReturnsFailedResultWithFieldErrors()
-    {
-        var failures = new[]
-        {
-            new ValidationFailure("Precio", "Precio debe ser mayor a cero")
-        };
-
-        var result = ValidationResultFactory.CreateResult<int>(failures);
-
-        Assert.True(result.IsFailure);
-        Assert.Equal("Validation.Error", result.Error.Code);
-        Assert.NotNull(result.Error.Errors);
-        Assert.Equal("Precio debe ser mayor a cero", result.Error.Errors.Values["Precio"][0]);
-    }
-
-    [Fact]
-    public void CreateResult_NonGeneric_ReturnsFailedResultWithFieldErrors()
-    {
-        var failures = new[]
-        {
-            new ValidationFailure("Codigo", "Código es requerido")
-        };
-
-        var result = ValidationResultFactory.CreateResult(failures);
-
-        Assert.True(result.IsFailure);
-        Assert.Equal("Validation.Error", result.Error.Code);
-        Assert.NotNull(result.Error.Errors);
-        Assert.Equal("Código es requerido", result.Error.Errors.Values["Codigo"][0]);
-    }
-
-    [Fact]
-    public void CreateResultForResponse_WithGenericResult_ReturnsGenericResult()
+    public void CreateResultForResponse_WithGenericResult_ReturnsGenericResultWithFieldErrors()
     {
         var failures = new[]
         {
@@ -98,18 +66,41 @@ public class ValidationResultFactoryTests
     }
 
     [Fact]
-    public void CreateResult_RepeatedCallsWithSameType_UsesCachedDelegateSuccessfully()
+    public void CreateResultForResponse_WithNonGenericResult_ReturnsNonGenericResultWithFieldErrors()
+    {
+        var failures = new[]
+        {
+            new ValidationFailure("Codigo", "Código es requerido")
+        };
+
+        var result = ValidationResultFactory.CreateResultForResponse<Result>(failures);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal("Validation.Error", result.Error.Code);
+        Assert.NotNull(result.Error.Errors);
+        Assert.Equal("Código es requerido", result.Error.Errors.Values["Codigo"][0]);
+    }
+
+    [Fact]
+    public void CreateResultForResponse_UnsupportedType_ThrowsInvalidOperationException()
     {
         var failures = new[] { new ValidationFailure("Campo", "Error de prueba") };
 
-        for (int i = 0; i < 10; i++)
-        {
-            var resGeneric = ValidationResultFactory.CreateResult<string>(failures);
-            var resResponse = ValidationResultFactory.CreateResultForResponse<Result<double>>(failures);
+        var ex = Assert.Throws<InvalidOperationException>(() =>
+            ValidationResultFactory.CreateResultForResponse<Guid>(failures));
 
-            Assert.True(resGeneric.IsFailure);
-            Assert.True(resResponse.IsFailure);
-        }
+        Assert.Contains("Guid", ex.Message);
+        Assert.Contains("no es un Result ni Result<T>", ex.Message);
+    }
+
+    [Fact]
+    public void IsResultResponse_IdentifiesResultAndGenericResultTypesCorrectly()
+    {
+        Assert.True(ValidationResultFactory.IsResultResponse<Result>());
+        Assert.True(ValidationResultFactory.IsResultResponse<Result<string>>());
+        Assert.True(ValidationResultFactory.IsResultResponse<Result<int>>());
+        Assert.False(ValidationResultFactory.IsResultResponse<Guid>());
+        Assert.False(ValidationResultFactory.IsResultResponse<string>());
     }
 
     [Fact]

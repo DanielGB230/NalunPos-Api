@@ -40,8 +40,7 @@ public class ValidationDecorator<TCommand, TResponse> : ICommandHandler<TCommand
 
         if (failures.Count != 0)
         {
-            if (typeof(TResponse) == typeof(Result) ||
-                (typeof(TResponse).IsGenericType && typeof(TResponse).GetGenericTypeDefinition() == typeof(Result<>)))
+            if (ValidationResultFactory.IsResultResponse<TResponse>())
             {
                 return ValidationResultFactory.CreateResultForResponse<TResponse>(failures);
             }

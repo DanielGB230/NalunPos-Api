@@ -35,45 +35,28 @@ public static class ValidationResultFactory
     }
 
     /// <summary>
-    /// Crea un <see cref="Result"/> no genérico fallido a partir de los fallos de validación.
+    /// Indica si el tipo <typeparamref name="TResponse"/> representa un <see cref="Result"/> o <see cref="Result{T}"/>.
     /// </summary>
-    public static Result CreateResult(IEnumerable<ValidationFailure> failures)
+    public static bool IsResultResponse<TResponse>()
     {
-        var error = CreateError(failures);
-        return Result.Failure(error);
-    }
-
-    /// <summary>
-    /// Crea un <see cref="Result{T}"/> fallido a partir de los fallos de validación, usando un delegado cacheado por <typeparamref name="T"/>.
-    /// </summary>
-    public static Result<T> CreateResult<T>(IEnumerable<ValidationFailure> failures)
-    {
-        var error = CreateError(failures);
-        return ResultFailCache<T>.Value(error);
+        var type = typeof(TResponse);
+        return type == typeof(Result) || (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Result<>));
     }
 
     /// <summary>
     /// Crea una instancia del tipo de respuesta <typeparamref name="TResponse"/> (que debe ser <see cref="Result"/> o <see cref="Result{T}"/>)
     /// utilizando un delegado cacheado por tipo de respuesta.
     /// </summary>
+    /// <exception cref="InvalidOperationException">Si <typeparamref name="TResponse"/> no es <see cref="Result"/> ni <see cref="Result{T}"/>.</exception>
     public static TResponse CreateResultForResponse<TResponse>(IEnumerable<ValidationFailure> failures)
     {
+        if (!IsResultResponse<TResponse>())
+        {
+            throw new InvalidOperationException($"El tipo de respuesta '{typeof(TResponse).Name}' no es un Result ni Result<T>.");
+        }
+
         var error = CreateError(failures);
         return ResponseFailCache<TResponse>.Value(error);
-    }
-
-    private static class ResultFailCache<T>
-    {
-        public static readonly Func<DomainError, Result<T>> Value = CreateDelegate();
-
-        private static Func<DomainError, Result<T>> CreateDelegate()
-        {
-            var method = typeof(Result)
-                .GetMethod(nameof(Result.Fail), System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static, [typeof(DomainError)])!
-                .MakeGenericMethod(typeof(T));
-
-            return (Func<DomainError, Result<T>>)Delegate.CreateDelegate(typeof(Func<DomainError, Result<T>>), method);
-        }
     }
 
     private static class ResponseFailCache<TResponse>
@@ -99,7 +82,7 @@ public static class ValidationResultFactory
                 return (Func<DomainError, TResponse>)Delegate.CreateDelegate(typeof(Func<DomainError, TResponse>), method);
             }
 
-            throw new InvalidOperationException($"El tipo de respuesta {responseType.Name} no es un Result ni Result<T>.");
+            throw new InvalidOperationException($"El tipo de respuesta '{responseType.Name}' no es un Result ni Result<T>.");
         }
     }
 }
