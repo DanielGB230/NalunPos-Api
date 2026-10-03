@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Pos.Domain.Common;
@@ -15,17 +16,13 @@ public static class PosProblemDetailsFactory
     {
         ArgumentNullException.ThrowIfNull(context);
 
-        var headerValue = context.Response.Headers["X-Correlation-ID"].ToString();
-        if (!string.IsNullOrEmpty(headerValue))
-            return headerValue;
-
-        var requestHeaderValue = context.Request.Headers["X-Correlation-ID"].ToString();
-        if (!string.IsNullOrEmpty(requestHeaderValue))
-            return requestHeaderValue;
-
         var itemValue = context.Items["CorrelationId"]?.ToString();
         if (!string.IsNullOrEmpty(itemValue))
             return itemValue;
+
+        var responseHeaderValue = context.Response.Headers["X-Correlation-ID"].ToString();
+        if (!string.IsNullOrEmpty(responseHeaderValue))
+            return responseHeaderValue;
 
         return context.TraceIdentifier;
     }
@@ -35,8 +32,7 @@ public static class PosProblemDetailsFactory
         int statusCode,
         string? title = null,
         string? detail = null,
-        FieldErrors? fieldErrors = null,
-        string? customType = null)
+        FieldErrors? fieldErrors = null)
     {
         ArgumentNullException.ThrowIfNull(context);
 
@@ -44,7 +40,7 @@ public static class PosProblemDetailsFactory
 
         var problemDetails = new ProblemDetails
         {
-            Type = customType ?? defaultType,
+            Type = defaultType,
             Title = title ?? defaultTitle,
             Status = statusCode,
             Detail = detail,
@@ -59,7 +55,14 @@ public static class PosProblemDetailsFactory
             foreach (var (key, value) in fieldErrors.Values)
             {
                 var camelKey = ToCamelCasePropertyPath(key);
-                formattedErrors[camelKey] = value.ToArray();
+                if (formattedErrors.TryGetValue(camelKey, out var existing))
+                {
+                    formattedErrors[camelKey] = existing.Concat(value).ToArray();
+                }
+                else
+                {
+                    formattedErrors[camelKey] = value.ToArray();
+                }
             }
             problemDetails.Extensions["errors"] = formattedErrors;
         }
@@ -111,7 +114,7 @@ public static class PosProblemDetailsFactory
             {
                 var prop = segment[..bracketIndex];
                 var bracketPart = segment[bracketIndex..];
-                segments[i] = ToCamelCaseSegment(prop) + bracketPart;
+                segments[i] = JsonNamingPolicy.CamelCase.ConvertName(prop) + bracketPart;
             }
             else if (bracketIndex == 0)
             {
@@ -119,19 +122,11 @@ public static class PosProblemDetailsFactory
             }
             else
             {
-                segments[i] = ToCamelCaseSegment(segment);
+                segments[i] = JsonNamingPolicy.CamelCase.ConvertName(segment);
             }
         }
 
         return string.Join('.', segments);
-    }
-
-    private static string ToCamelCaseSegment(string str)
-    {
-        if (string.IsNullOrEmpty(str) || char.IsLower(str[0]))
-            return str;
-
-        return char.ToLowerInvariant(str[0]) + str[1..];
     }
 
     private static (string Type, string Title) GetDefaultsForStatus(int statusCode) => statusCode switch

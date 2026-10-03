@@ -1,6 +1,7 @@
 using System.Net;
 using FluentValidation;
 using Pos.Api.Common;
+using Pos.Api.Extensions;
 using Pos.Application.Common.Validation;
 using Pos.Domain.Common;
 using Pos.Domain.Exceptions;
@@ -57,12 +58,6 @@ public partial class ExceptionHandlingMiddleware
                 context, StatusCodes.Status500InternalServerError, detail: "Ocurrió un error inesperado al procesar la solicitud.")
         };
 
-        context.Response.StatusCode = problemDetails.Status!.Value;
-
-        await problemDetailsService.WriteAsync(new ProblemDetailsContext
-        {
-            HttpContext = context,
-            ProblemDetails = problemDetails
-        });
+        await problemDetailsService.WriteProblemDetailsAsync(context, problemDetails);
     }
 }

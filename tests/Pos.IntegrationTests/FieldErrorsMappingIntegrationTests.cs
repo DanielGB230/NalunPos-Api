@@ -4,6 +4,7 @@ using FluentAssertions;
 using FluentValidation;
 using FluentValidation.Results;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Pos.Api.Common;
 using Pos.Api.Extensions;
 using Pos.Domain.Common;
 using Pos.IntegrationTests.Fixtures;
@@ -53,6 +54,21 @@ public sealed class FieldErrorsTestController : Microsoft.AspNetCore.Mvc.Control
         {
             new ValidationFailure("UserEmail", "Email de usuario es requerido")
         });
+    }
+
+    [Microsoft.AspNetCore.Authorization.AllowAnonymous]
+    [Microsoft.AspNetCore.Mvc.HttpGet("key-collision")]
+    public Microsoft.AspNetCore.Mvc.IActionResult KeyCollision()
+    {
+        var fieldErrors = new FieldErrors(new Dictionary<string, string[]>
+        {
+            ["Email"] = ["Error Mayúscula"],
+            ["email"] = ["Error Minúscula"]
+        });
+
+        var error = DomainError.Validation("VAL.Collision", "Colisión de claves.", fieldErrors);
+        Result<string> result = error;
+        return this.ToActionResult(result);
     }
 }
 
@@ -106,6 +122,39 @@ public class FieldErrorsMappingIntegrationTests
 
         root.TryGetProperty("correlationId", out var correlationEl).Should().BeTrue();
         correlationEl.GetString().Should().NotBeNullOrEmpty();
+    }
+
+    [Theory]
+    [InlineData("ID", "id")]
+    [InlineData("URL", "url")]
+    [InlineData("UserId", "userId")]
+    [InlineData("Items[0].Quantity", "items[0].quantity")]
+    [InlineData("", "")]
+    public void ToCamelCasePropertyPath_FormatsKeysMatchingSystemTextJsonPolicy(string input, string expected)
+    {
+        var result = PosProblemDetailsFactory.ToCamelCasePropertyPath(input);
+        result.Should().Be(expected);
+    }
+
+    [Fact]
+    public async Task KeyCollision_MergesMessageArraysInOrderWithoutOverwriting()
+    {
+        var client = _factory.CreateClient();
+
+        var response = await client.GetAsync("/_test/key-collision");
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        var json = await response.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+
+        root.TryGetProperty("errors", out var errorsEl).Should().BeTrue();
+        errorsEl.TryGetProperty("email", out var emailArray).Should().BeTrue();
+
+        emailArray.GetArrayLength().Should().Be(2);
+        emailArray[0].GetString().Should().Be("Error Mayúscula");
+        emailArray[1].GetString().Should().Be("Error Minúscula");
     }
 
     [Fact]
