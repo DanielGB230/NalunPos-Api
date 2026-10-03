@@ -1,5 +1,6 @@
 using FluentValidation;
 using Pos.Application.Common.Interfaces;
+using Pos.Application.Common.Validation;
 using Pos.Domain.Common;
 
 namespace Pos.Application.Common.Behaviors;
@@ -39,23 +40,10 @@ public class ValidationDecorator<TCommand, TResponse> : ICommandHandler<TCommand
 
         if (failures.Count != 0)
         {
-            var errorMessage = string.Join("; ", failures.Select(f => f.ErrorMessage));
-            var error = DomainError.Validation("Validation.Error", errorMessage);
-
-            if (typeof(TResponse).IsGenericType && typeof(TResponse).GetGenericTypeDefinition() == typeof(Result<>))
+            if (typeof(TResponse) == typeof(Result) ||
+                (typeof(TResponse).IsGenericType && typeof(TResponse).GetGenericTypeDefinition() == typeof(Result<>)))
             {
-                var resultType = typeof(TResponse);
-                var valueType = resultType.GetGenericArguments()[0];
-                var failMethod = typeof(Result)
-                    .GetMethod(nameof(Result.Fail), System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)!
-                    .MakeGenericMethod(valueType);
-
-                return (TResponse)failMethod.Invoke(null, [error])!;
-            }
-
-            if (typeof(TResponse) == typeof(Result))
-            {
-                return (TResponse)(object)Result.Failure(error);
+                return ValidationResultFactory.CreateResultForResponse<TResponse>(failures);
             }
 
             throw new ValidationException(failures);
