@@ -4,7 +4,7 @@ using Pos.Domain.Common;
 namespace Pos.Api.Extensions;
 
 /// <summary>
-/// Métodos de extensión para convertir objetos Result / Result<T> a ActionResult de ASP.NET Core MVC.
+/// Métodos de extensión para convertir objetos Result / Result&lt;T&gt; a ActionResult de ASP.NET Core MVC.
 /// Mapea de forma transparente los tipos de ErrorType a códigos de estado HTTP semánticos.
 /// </summary>
 public static class ResultExtensions
@@ -31,64 +31,30 @@ public static class ResultExtensions
 
     private static ObjectResult MapErrorToActionResult(ControllerBase controller, DomainError error)
     {
-        var problemDetails = error.Type switch
+        var (title, statusCode) = error.Type switch
         {
-            ErrorType.Unauthorized => new ProblemDetails
-            {
-                Title = "No Autorizado",
-                Status = StatusCodes.Status401Unauthorized,
-                Detail = error.Message,
-                Instance = controller.HttpContext.Request.Path
-            },
-
-            ErrorType.Validation => new ProblemDetails
-            {
-                Title = "Error de Validación",
-                Status = StatusCodes.Status400BadRequest,
-                Detail = error.Message,
-                Instance = controller.HttpContext.Request.Path
-            },
-
-            ErrorType.NotFound => new ProblemDetails
-            {
-                Title = "Recurso no Encontrado",
-                Status = StatusCodes.Status404NotFound,
-                Detail = error.Message,
-                Instance = controller.HttpContext.Request.Path
-            },
-
-            ErrorType.Conflict => new ProblemDetails
-            {
-                Title = "Conflicto de Estado",
-                Status = StatusCodes.Status409Conflict,
-                Detail = error.Message,
-                Instance = controller.HttpContext.Request.Path
-            },
-
-            _ => new ProblemDetails
-            {
-                Title = "Error Interno del Servidor",
-                Status = StatusCodes.Status500InternalServerError,
-                Detail = "Ha ocurrido un error inesperado en el servidor. Por favor, consulte los registros del sistema.",
-                Instance = controller.HttpContext.Request.Path
-            }
+            ErrorType.Unauthorized  => ("No Autorizado",           StatusCodes.Status401Unauthorized),
+            ErrorType.Validation    => ("Error de Validación",     StatusCodes.Status400BadRequest),
+            ErrorType.NotFound      => ("Recurso no Encontrado",   StatusCodes.Status404NotFound),
+            ErrorType.Conflict      => ("Conflicto de Estado",     StatusCodes.Status409Conflict),
+            _                       => ("Error Interno del Servidor", StatusCodes.Status500InternalServerError)
         };
 
-        if (error.Errors != null)
+        var problemDetails = new ProblemDetails
         {
-            problemDetails.Extensions["errors"] = error.Errors.Values.ToDictionary(
-                kvp => kvp.Key,
-                kvp => kvp.Value.ToArray(),
-                StringComparer.Ordinal);
+            Title    = title,
+            Status   = statusCode,
+            Detail   = error.Type is ErrorType.Failure
+                ? "Ha ocurrido un error inesperado en el servidor. Por favor, consulte los registros del sistema."
+                : error.Message,
+            Instance = controller.HttpContext.Request.Path
+        };
+
+        if (error.Errors is not null)
+        {
+            problemDetails.Extensions["errors"] = error.Errors.Values;
         }
 
-        return error.Type switch
-        {
-            ErrorType.Unauthorized => controller.Unauthorized(problemDetails),
-            ErrorType.Validation => controller.BadRequest(problemDetails),
-            ErrorType.NotFound => controller.NotFound(problemDetails),
-            ErrorType.Conflict => controller.Conflict(problemDetails),
-            _ => controller.StatusCode(StatusCodes.Status500InternalServerError, problemDetails)
-        };
+        return new ObjectResult(problemDetails) { StatusCode = statusCode };
     }
 }
