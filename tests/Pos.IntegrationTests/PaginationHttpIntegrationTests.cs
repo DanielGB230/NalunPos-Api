@@ -1,97 +1,102 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Text.Json;
 using FluentAssertions;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Pos.Api.Contracts.Requests;
-using Pos.Application.Common.Authorization;
-using Pos.Application.Common.Interfaces;
-using Pos.Application.Common.Models;
-using Pos.Application.Users.DTOs;
-using Pos.Application.Users.Queries;
 using Pos.Domain.Common;
 using Pos.Domain.Entities;
-using Pos.Domain.Interfaces;
+using Pos.Domain.ValueObjects;
+using Pos.Infrastructure.Authentication;
+using Pos.Infrastructure.Persistence.Context;
 using Pos.IntegrationTests.Fixtures;
 using Xunit;
 
 namespace Pos.IntegrationTests;
 
-// ── Controller de Prueba HTTP para Paginación ───────────────────────────────
-
-[AllowAnonymous]
-[ApiController]
-[Route("_test_pagination")]
-public sealed class PaginationHttpTestController : ControllerBase
+[Collection("IntegrationTests")]
+public class PaginationHttpIntegrationTests : IClassFixture<CustomWebApplicationFactory>
 {
-    private readonly IDispatcher _dispatcher;
+    private readonly CustomWebApplicationFactory _factory;
 
-    public PaginationHttpTestController(IDispatcher dispatcher)
+    public PaginationHttpIntegrationTests(CustomWebApplicationFactory factory)
     {
-        _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
+        _factory = factory;
     }
 
-    [HttpGet]
-    public async Task<IActionResult> GetUsers(
-        [FromQuery] GetUsersRequest request,
-        CancellationToken cancellationToken)
+    private (HttpClient Client, Guid UserId) CreateAuthenticatedClient(Guid? tenantId = null)
     {
-        var query = new GetUsersQuery(
-            request.PageNumber,
-            request.PageSize,
-            request.SearchTerm,
-            request.IsActive);
+        var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false
+        });
 
-        var result = await _dispatcher.SendAsync(query, cancellationToken);
-        return Ok(result);
-    }
-}
+        client.DefaultRequestHeaders.Add("X-Forwarded-For", $"10.0.{Random.Shared.Next(1, 250)}.{Random.Shared.Next(1, 250)}");
 
-// ── Tests de Integración HTTP de Paginación ──────────────────────────────────
+        var config = _factory.Services.GetRequiredService<IConfiguration>();
+        var generator = new JwtTokenGenerator(config);
 
-public class PaginationHttpIntegrationTests
-{
-    private readonly WebApplicationFactory<Program> _factory;
-    private static readonly Guid TestUserId = Guid.NewGuid();
-    private static readonly User TestUser = User.Create("pagtest@example.com", "hash", Guid.NewGuid(), Guid.NewGuid(), "Admin", "User");
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<PosDbContext>();
 
-    public PaginationHttpIntegrationTests()
-    {
-        _factory = new CustomWebApplicationFactory()
-            .WithWebHostBuilder(builder =>
+        var roleId = tenantId.HasValue ? Guid.NewGuid() : Role.SuperAdminRoleId;
+        var role = db.Roles.IgnoreQueryFilters().FirstOrDefault(r => r.Id == roleId);
+
+        var permissions = new[]
+        {
+            Pos.Application.Common.Authorization.Permissions.Tenants.Create,
+            Pos.Application.Common.Authorization.Permissions.Tenants.View,
+            Pos.Application.Common.Authorization.Permissions.Users.Create,
+            Pos.Application.Common.Authorization.Permissions.Users.View,
+            Pos.Application.Common.Authorization.Permissions.Notifications.View
+        };
+
+        if (role == null)
+        {
+            var constructor = typeof(Role).GetConstructor(
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance,
+                null,
+                new[] { typeof(Guid), typeof(Guid), typeof(string), typeof(string), typeof(IEnumerable<string>) },
+                null);
+
+            role = (Role)constructor!.Invoke(new object[] { roleId, tenantId ?? Guid.Empty, "TestRole_" + Guid.NewGuid().ToString()[..6], "Test Role", permissions });
+            db.Roles.Add(role);
+        }
+        else
+        {
+            foreach (var p in permissions)
             {
-                builder.ConfigureServices(services =>
-                {
-                    // Registrar el controller de prueba en ASP.NET Core MVC ApplicationParts
-                    var partManagerDescriptor = services.FirstOrDefault(
-                        sd => sd.ServiceType == typeof(ApplicationPartManager));
+                role.AddPermission(p);
+            }
+        }
 
-                    if (partManagerDescriptor?.ImplementationInstance is ApplicationPartManager partManager)
-                    {
-                        if (!partManager.ApplicationParts.OfType<AssemblyPart>()
-                                .Any(p => p.Assembly == typeof(PaginationHttpTestController).Assembly))
-                        {
-                            partManager.ApplicationParts.Add(new AssemblyPart(typeof(PaginationHttpTestController).Assembly));
-                        }
-                    }
+        var user = User.Create(
+            new Email($"pagtest_{Guid.NewGuid().ToString()[..8]}@test.com"),
+            new PasswordHash("hashedpassword"),
+            roleId,
+            tenantId,
+            "PagTest",
+            "User");
 
-                    // Registrar fakes de autorización para que GetUsersQuery pase AuthorizationQueryBehavior
-                    services.AddScoped<ICurrentUserService>(_ => new FakeTestCurrentUserService(TestUserId));
-                    services.AddScoped<IUserRepository>(_ => new FakeTestUserRepository(TestUser));
-                    services.AddScoped<ICurrentUserPermissions>(_ => new FakeTestCurrentUserPermissions());
-                });
-            });
+        db.Users.Add(user);
+        db.SaveChangesAsync().GetAwaiter().GetResult();
+
+        var token = generator.GenerateToken(user);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        return (client, user.Id);
     }
+
+    // ── 2a. Query sin Guid (api/v1/users) ────────────────────────────────────
 
     [Fact]
-    public async Task PageSize_GreaterThan100_Returns400_WithCamelCaseErrorsKeyAndCorrelationId()
+    public async Task QueryWithoutGuid_PageSize_GreaterThan100_Returns400_WithCamelCaseErrorsKeyAndCorrelationId()
     {
-        var client = _factory.CreateClient();
+        var (client, _) = CreateAuthenticatedClient();
 
-        var response = await client.GetAsync("/_test_pagination?pageSize=101");
+        var response = await client.GetAsync("/api/v1/users?pageSize=101");
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
 
@@ -112,11 +117,11 @@ public class PaginationHttpIntegrationTests
     }
 
     [Fact]
-    public async Task PageSize_Equals0_Returns400()
+    public async Task QueryWithoutGuid_PageSize_Equals0_Returns400()
     {
-        var client = _factory.CreateClient();
+        var (client, _) = CreateAuthenticatedClient();
 
-        var response = await client.GetAsync("/_test_pagination?pageSize=0");
+        var response = await client.GetAsync("/api/v1/users?pageSize=0");
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
 
@@ -129,11 +134,11 @@ public class PaginationHttpIntegrationTests
     }
 
     [Fact]
-    public async Task PageNumber_Equals0_Returns400()
+    public async Task QueryWithoutGuid_PageNumber_Equals0_Returns400()
     {
-        var client = _factory.CreateClient();
+        var (client, _) = CreateAuthenticatedClient();
 
-        var response = await client.GetAsync("/_test_pagination?pageNumber=0");
+        var response = await client.GetAsync("/api/v1/users?pageNumber=0");
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
 
@@ -146,68 +151,33 @@ public class PaginationHttpIntegrationTests
     }
 
     [Fact]
-    public async Task PageSize_Equals100_Returns200()
+    public async Task QueryWithoutGuid_PageSize_Equals100_Returns200()
     {
-        var client = _factory.CreateClient();
+        var (client, _) = CreateAuthenticatedClient();
 
-        var response = await client.GetAsync("/_test_pagination?pageSize=100");
+        var response = await client.GetAsync("/api/v1/users?pageSize=100");
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
-    // ── Fakes Internos para el Test ─────────────────────────────────────────
+    // ── 2b. Query con Guid (api/v1/notifications/user/{userId}) ─────────────
 
-    private sealed class FakeTestCurrentUserService : ICurrentUserService
+    [Fact]
+    public async Task QueryWithGuid_PageSize_GreaterThan100_Returns400_WithCamelCaseErrorsKey()
     {
-        public Guid? UserId { get; }
-        public string? UserEmail => "pagtest@example.com";
+        var (client, userId) = CreateAuthenticatedClient();
 
-        public FakeTestCurrentUserService(Guid userId)
-        {
-            UserId = userId;
-        }
-    }
+        var response = await client.GetAsync($"/api/v1/notifications/user/{userId}?pageSize=101");
 
-    private sealed class FakeTestUserRepository : IUserRepository
-    {
-        private readonly User _user;
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
 
-        public FakeTestUserRepository(User user)
-        {
-            _user = user;
-        }
+        var json = await response.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
 
-        public Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
-            => Task.FromResult<User?>(_user);
-
-        public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default)
-            => Task.FromResult<User?>(_user);
-
-        public Task<bool> ExistsByEmailAsync(string email, Guid? excludeId = null, CancellationToken cancellationToken = default)
-            => Task.FromResult(false);
-
-        public Task AddAsync(User user, CancellationToken cancellationToken = default) => Task.CompletedTask;
-
-        public void Update(User user) { }
-
-        public Task<(IReadOnlyList<User> Items, int TotalCount)> GetPagedAsync(
-            int pageNumber,
-            int pageSize,
-            string? searchTerm,
-            bool? isActive = null,
-            CancellationToken cancellationToken = default)
-        {
-            IReadOnlyList<User> emptyList = Array.Empty<User>();
-            return Task.FromResult((Items: emptyList, TotalCount: 0));
-        }
-    }
-
-    private sealed class FakeTestCurrentUserPermissions : ICurrentUserPermissions
-    {
-        public Task<IReadOnlySet<string>> GetPermissionsAsync(Guid? tenantId, Guid roleId, CancellationToken cancellationToken = default)
-            => Task.FromResult<IReadOnlySet<string>>(new HashSet<string> { Permissions.Users.View });
-
-        public Task<bool> HasPermissionAsync(Guid? tenantId, Guid roleId, string permission, CancellationToken cancellationToken = default)
-            => Task.FromResult(true);
+        root.TryGetProperty("errors", out var errorsEl).Should().BeTrue("el ProblemDetails debe incluir la clave 'errors'");
+        errorsEl.TryGetProperty("pageSize", out var pageSizeErrors).Should().BeTrue("PageSize debe reportarse en camelCase ('pageSize')");
+        pageSizeErrors.ValueKind.Should().Be(JsonValueKind.Array);
+        pageSizeErrors.GetArrayLength().Should().BeGreaterThan(0);
     }
 }
