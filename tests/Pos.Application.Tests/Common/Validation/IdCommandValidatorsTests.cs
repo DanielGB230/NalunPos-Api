@@ -1,6 +1,7 @@
 using FluentValidation;
 using Pos.Application.Branches.Commands;
 using Pos.Application.Categories.Commands;
+using Pos.Application.Common.Validation;
 using Pos.Application.Customers.Commands;
 using Pos.Application.Invoicing.Commands;
 using Pos.Application.Notifications.Commands;
@@ -56,7 +57,7 @@ public class IdCommandValidatorsTests
         Assert.False(resultInvalid.IsValid);
         var failure = Assert.Single(resultInvalid.Errors);
         Assert.Equal(expectedPropertyName, failure.PropertyName);
-        Assert.Equal("El identificador es obligatorio y no puede estar vacío.", failure.ErrorMessage);
+        Assert.Equal(IdValidationExtensions.RequiredIdErrorMessage, failure.ErrorMessage);
 
         // Act - Valid
         var contextValid = new ValidationContext<object>(validCommand);

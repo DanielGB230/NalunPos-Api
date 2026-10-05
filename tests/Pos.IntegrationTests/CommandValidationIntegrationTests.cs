@@ -3,8 +3,8 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using FluentAssertions;
 using Pos.Application.Common.Authorization;
+using Pos.Application.Common.Validation;
 using Pos.IntegrationTests.Fixtures;
-using Xunit;
 
 namespace Pos.IntegrationTests;
 
@@ -46,6 +46,6 @@ public class CommandValidationIntegrationTests : IClassFixture<CustomWebApplicat
         errorsEl.TryGetProperty("id", out var idErrors).Should().BeTrue("Id debe reportarse en camelCase ('id')");
         idErrors.ValueKind.Should().Be(JsonValueKind.Array);
         idErrors.GetArrayLength().Should().BeGreaterThan(0);
-        idErrors[0].GetString().Should().Be("El identificador es obligatorio y no puede estar vacío.");
+        idErrors[0].GetString().Should().Be(IdValidationExtensions.RequiredIdErrorMessage);
     }
 }

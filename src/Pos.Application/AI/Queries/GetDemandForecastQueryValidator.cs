@@ -8,6 +8,8 @@ public class GetDemandForecastQueryValidator : AbstractValidator<GetDemandForeca
     public GetDemandForecastQueryValidator()
     {
         RuleFor(x => x.ProductId).ApplyRequiredIdRule();
-        RuleFor(x => x.DaysAhead).GreaterThanOrEqualTo(1);
+        RuleFor(x => x.DaysAhead)
+            .InclusiveBetween(DemandForecastRules.MinDaysAhead, DemandForecastRules.MaxDaysAhead)
+            .WithMessage(DemandForecastRules.DaysAheadErrorMessage);
     }
 }

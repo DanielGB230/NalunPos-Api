@@ -2,8 +2,8 @@ using System.Net;
 using System.Text.Json;
 using FluentAssertions;
 using Pos.Application.Common.Authorization;
+using Pos.Application.Common.Validation;
 using Pos.IntegrationTests.Fixtures;
-using Xunit;
 
 namespace Pos.IntegrationTests;
 
@@ -46,7 +46,7 @@ public class QueryValidationIntegrationTests : IClassFixture<CustomWebApplicatio
         errorsEl.TryGetProperty("id", out var idErrors).Should().BeTrue("Id debe reportarse en camelCase ('id')");
         idErrors.ValueKind.Should().Be(JsonValueKind.Array);
         idErrors.GetArrayLength().Should().BeGreaterThan(0);
-        idErrors[0].GetString().Should().Be("El identificador es obligatorio y no puede estar vacío.");
+        idErrors[0].GetString().Should().Be(IdValidationExtensions.RequiredIdErrorMessage);
     }
 
     [Fact]
@@ -72,6 +72,6 @@ public class QueryValidationIntegrationTests : IClassFixture<CustomWebApplicatio
         errorsEl.TryGetProperty("saleId", out var saleIdErrors).Should().BeTrue("SaleId debe reportarse en camelCase ('saleId')");
         saleIdErrors.ValueKind.Should().Be(JsonValueKind.Array);
         saleIdErrors.GetArrayLength().Should().BeGreaterThan(0);
-        saleIdErrors[0].GetString().Should().Be("El identificador es obligatorio y no puede estar vacío.");
+        saleIdErrors[0].GetString().Should().Be(IdValidationExtensions.RequiredIdErrorMessage);
     }
 }
