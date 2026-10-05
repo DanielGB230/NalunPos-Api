@@ -5,12 +5,9 @@ using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using Pos.IntegrationTests.Fixtures;
 using Xunit;
 using Xunit.Abstractions;
-
-using Microsoft.Extensions.Configuration;
-using Pos.IntegrationTests.Fixtures;
-using Pos.Domain.ValueObjects;
 
 namespace Pos.IntegrationTests;
 
@@ -95,50 +92,11 @@ public class AuthenticationEndpointTests : IClassFixture<CustomWebApplicationFac
         Assert.Empty(unprotectedEndpoints);
     }
 
-    private string GenerateJwtToken(Guid roleId, Guid? tenantId = null, Guid? overrideUserId = null)
-    {
-        var config = _factory.Services.GetRequiredService<IConfiguration>();
-        var generator = new Pos.Infrastructure.Authentication.JwtTokenGenerator(config);
-
-        using var scope = _factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<Pos.Infrastructure.Persistence.Context.PosDbContext>();
-
-        var role = db.Roles.FirstOrDefault(r => r.Id == roleId);
-        if (role == null)
-        {
-            role = Pos.Domain.Entities.Role.Create(tenantId ?? Guid.Empty, "TestRole_" + Guid.NewGuid().ToString()[..6], "Test Role");
-            db.Roles.Add(role);
-            roleId = role.Id;
-        }
-
-        var emailStr = $"test_{Guid.NewGuid().ToString()[..8]}@domain.com";
-        var user = Pos.Domain.Entities.User.Create(
-            new Email(emailStr),
-            new PasswordHash("hashedpassword"),
-            roleId,
-            tenantId,
-            "Test",
-            "User"
-        );
-
-        if (overrideUserId.HasValue)
-        {
-            typeof(Pos.Domain.Common.Entity<Guid>).GetProperty(nameof(Pos.Domain.Entities.User.Id))!.SetValue(user, overrideUserId.Value);
-        }
-
-        db.Users.Add(user);
-        db.SaveChangesAsync().GetAwaiter().GetResult();
-
-        return generator.GenerateToken(user);
-    }
-
     [Fact]
     public async Task PlatformEndpoints_WhenCalledByTenantUser_ShouldReturn403Forbidden()
     {
         // Arrange
-        var client = _factory.CreateClient();
-        string token = GenerateJwtToken(Guid.NewGuid(), tenantId: Guid.NewGuid());
-        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        var (client, _, _) = await AuthenticatedClientFactory.CreateAuthenticatedClientAsync(_factory, tenantId: Guid.NewGuid());
 
         // Act
         var response = await client.GetAsync("/api/v1/platform/tenants");
@@ -147,19 +105,13 @@ public class AuthenticationEndpointTests : IClassFixture<CustomWebApplicationFac
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
-
-
     [Fact]
     public async Task GetUserNotifications_WhenCalledForAnotherUser_ShouldReturn403Forbidden()
     {
         // Arrange
-        var client = _factory.CreateClient();
-        Guid userAId = Guid.NewGuid();
-        Guid userBId = Guid.NewGuid();
         Guid tenantId = Guid.NewGuid();
-
-        string tokenUserA = GenerateJwtToken(Guid.NewGuid(), tenantId: tenantId, overrideUserId: userAId);
-        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", tokenUserA);
+        var (client, _, _) = await AuthenticatedClientFactory.CreateAuthenticatedClientAsync(_factory, tenantId: tenantId);
+        Guid userBId = Guid.NewGuid();
 
         // Act - User A tries to read User B's notifications
         var response = await client.GetAsync($"/api/v1/Notifications/user/{userBId}");
@@ -172,15 +124,11 @@ public class AuthenticationEndpointTests : IClassFixture<CustomWebApplicationFac
     public async Task GetUserNotifications_WhenCalledForSelf_ShouldNotReturnForbiddenOrUnauthorized()
     {
         // Arrange
-        var client = _factory.CreateClient();
-        Guid userAId = Guid.NewGuid();
         Guid tenantId = Guid.NewGuid();
-
-        string tokenUserA = GenerateJwtToken(Guid.NewGuid(), tenantId: tenantId, overrideUserId: userAId);
-        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", tokenUserA);
+        var (client, userA, _) = await AuthenticatedClientFactory.CreateAuthenticatedClientAsync(_factory, tenantId: tenantId);
 
         // Act - User A reads their own notifications
-        var response = await client.GetAsync($"/api/v1/Notifications/user/{userAId}");
+        var response = await client.GetAsync($"/api/v1/Notifications/user/{userA.Id}");
 
         // Assert
         Assert.NotEqual(HttpStatusCode.Unauthorized, response.StatusCode);
