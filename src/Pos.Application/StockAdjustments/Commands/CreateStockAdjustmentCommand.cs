@@ -9,6 +9,8 @@ using Pos.Domain.Enums;
 using Pos.Domain.Exceptions;
 using Pos.Domain.Interfaces;
 
+using Pos.Application.Common.Validation;
+
 namespace Pos.Application.StockAdjustments.Commands;
 
 public record CreateStockAdjustmentLineDto(Guid ProductId, decimal Quantity);
@@ -31,7 +33,7 @@ public class CreateStockAdjustmentCommandValidator : AbstractValidator<CreateSto
         RuleFor(x => x.Lines).NotEmpty().WithMessage("El ajuste debe tener al menos una línea.");
         RuleForEach(x => x.Lines).ChildRules(l =>
         {
-            l.RuleFor(i => i.ProductId).NotEmpty();
+            l.RuleFor(i => i.ProductId).NotEmpty().WithMessage(IdValidationExtensions.RequiredIdErrorMessage);
             l.RuleFor(i => i.Quantity).NotEqual(0).WithMessage("La cantidad de ajuste no puede ser cero.");
         });
     }

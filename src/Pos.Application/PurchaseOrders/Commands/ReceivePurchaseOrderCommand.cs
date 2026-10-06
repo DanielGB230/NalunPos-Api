@@ -9,6 +9,8 @@ using Pos.Domain.Enums;
 using Pos.Domain.Exceptions;
 using Pos.Domain.Interfaces;
 
+using Pos.Application.Common.Validation;
+
 namespace Pos.Application.PurchaseOrders.Commands;
 
 public record ReceivePurchaseOrderLineDto(
@@ -33,8 +35,8 @@ public class ReceivePurchaseOrderCommandValidator : AbstractValidator<ReceivePur
         RuleFor(x => x.ReceivedLines).NotEmpty().WithMessage("Debe especificar al menos una línea a recibir.");
         RuleForEach(x => x.ReceivedLines).ChildRules(l =>
         {
-            l.RuleFor(i => i.ProductId).NotEmpty();
-            l.RuleFor(i => i.ReceivedQuantity).GreaterThan(0);
+            l.RuleFor(i => i.ProductId).NotEmpty().WithMessage(IdValidationExtensions.RequiredIdErrorMessage);
+            l.RuleFor(i => i.ReceivedQuantity).GreaterThan(0).WithMessage("La cantidad recibida debe ser mayor a 0.");
         });
     }
 }

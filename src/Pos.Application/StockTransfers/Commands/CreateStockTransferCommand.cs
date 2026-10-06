@@ -9,6 +9,8 @@ using Pos.Domain.Enums;
 using Pos.Domain.Exceptions;
 using Pos.Domain.Interfaces;
 
+using Pos.Application.Common.Validation;
+
 namespace Pos.Application.StockTransfers.Commands;
 
 public record CreateStockTransferLineDto(Guid ProductId, decimal Quantity);
@@ -35,7 +37,7 @@ public class CreateStockTransferCommandValidator : AbstractValidator<CreateStock
         RuleFor(x => x.Lines).NotEmpty().WithMessage("El traspaso debe contener al menos una línea de producto.");
         RuleForEach(x => x.Lines).ChildRules(l =>
         {
-            l.RuleFor(i => i.ProductId).NotEmpty();
+            l.RuleFor(i => i.ProductId).NotEmpty().WithMessage(IdValidationExtensions.RequiredIdErrorMessage);
             l.RuleFor(i => i.Quantity).GreaterThan(0).WithMessage("La cantidad a traspasar debe ser mayor a cero.");
         });
     }

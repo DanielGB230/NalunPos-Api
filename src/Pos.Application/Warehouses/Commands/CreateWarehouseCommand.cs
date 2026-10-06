@@ -23,7 +23,9 @@ public class CreateWarehouseCommandValidator : AbstractValidator<CreateWarehouse
     public CreateWarehouseCommandValidator()
     {
         RuleFor(x => x.BranchId).NotEmpty().WithMessage("El ID de la sucursal es requerido.");
-        RuleFor(x => x.Name).NotEmpty().MaximumLength(100).WithMessage("El nombre del almacén es requerido (máx. 100 caracteres).");
+        RuleFor(x => x.Name)
+            .NotEmpty().WithMessage("El nombre del almacén es requerido.")
+            .MaximumLength(100).WithMessage("El nombre del almacén no puede exceder los 100 caracteres.");
     }
 }
 

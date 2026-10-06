@@ -30,6 +30,7 @@ public static class DependencyInjection
 
         // FluentValidation — MIT, permitido por ADR 0014
         services.AddValidatorsFromAssembly(assembly);
+        Pos.Application.Common.Validation.FluentValidationCultureConfiguration.ConfigureDefaultCulture();
 
         return services;
     }
