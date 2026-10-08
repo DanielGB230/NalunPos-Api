@@ -1,4 +1,7 @@
+using System.Collections.Generic;
+using System.IO;
 using System.Text.RegularExpressions;
+using Pos.Architecture.Tests.Support;
 using Xunit;
 
 namespace Pos.Architecture.Tests;
@@ -8,17 +11,7 @@ public class BehaviorGovernanceTests
     [Fact]
     public void Every_Behavior_Class_Must_Be_Referenced_In_DependencyInjection_Code_Not_Comments()
     {
-        var baseDir = AppContext.BaseDirectory;
-        var dirInfo = new DirectoryInfo(baseDir);
-
-        while (dirInfo != null && !File.Exists(Path.Combine(dirInfo.FullName, "Pos.slnx")) && !File.Exists(Path.Combine(dirInfo.FullName, "NalunPos-Api.sln")))
-        {
-            dirInfo = dirInfo.Parent;
-        }
-
-        Assert.NotNull(dirInfo);
-
-        var appDir = Path.Combine(dirInfo.FullName, "src", "Pos.Application");
+        var appDir = SolutionDirectory.PosApplication;
         var behaviorsDir = Path.Combine(appDir, "Common", "Behaviors");
         var diFile = Path.Combine(appDir, "DependencyInjection.cs");
 

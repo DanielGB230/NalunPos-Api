@@ -4,6 +4,7 @@ using ArchUnitNET.Loader;
 using ArchUnitNET.xUnit;
 using Microsoft.EntityFrameworkCore;
 using Pos.Application.Common.Interfaces;
+using Pos.Architecture.Tests.Support;
 using Pos.Domain.Common;
 using Pos.Infrastructure;
 using Xunit;
@@ -477,17 +478,7 @@ public class ArchitectureTests
     [Fact]
     public void Controllers_Must_Use_ToActionResult_And_Not_Access_Result_Value_Directly()
     {
-        var baseDir = AppContext.BaseDirectory;
-        var dirInfo = new DirectoryInfo(baseDir);
-
-        while (dirInfo != null && !File.Exists(Path.Combine(dirInfo.FullName, "Pos.slnx")) && !File.Exists(Path.Combine(dirInfo.FullName, "NalunPos-Api.sln")))
-        {
-            dirInfo = dirInfo.Parent;
-        }
-
-        Assert.NotNull(dirInfo);
-
-        var apiDir = Path.Combine(dirInfo.FullName, "src", "Pos.Api");
+        var apiDir = SolutionDirectory.PosApi;
         var controllersDir = Path.Combine(apiDir, "Controllers");
         var resultExtensionsFile = Path.Combine(apiDir, "Extensions", "ResultExtensions.cs");
 
@@ -518,7 +509,7 @@ public class ArchitectureTests
 
                 if (resultValueRegex.IsMatch(line))
                 {
-                    var relativePath = Path.GetRelativePath(dirInfo.FullName, file);
+                    var relativePath = Path.GetRelativePath(SolutionDirectory.Root, file);
                     violations.Add($"{relativePath} (Línea {i + 1}): {trimmed}");
                 }
             }
@@ -533,17 +524,7 @@ public class ArchitectureTests
     [Fact]
     public void ClearDomainEvents_MustOnlyBeCalledFrom_InsertOutboxMessagesInterceptor()
     {
-        var baseDir = AppContext.BaseDirectory;
-        var dirInfo = new DirectoryInfo(baseDir);
-
-        while (dirInfo != null && !File.Exists(Path.Combine(dirInfo.FullName, "Pos.slnx")) && !File.Exists(Path.Combine(dirInfo.FullName, "NalunPos-Api.sln")))
-        {
-            dirInfo = dirInfo.Parent;
-        }
-
-        Assert.NotNull(dirInfo);
-
-        var srcDir = Path.Combine(dirInfo.FullName, "src");
+        var srcDir = Path.Combine(SolutionDirectory.Root, "src");
         Assert.True(Directory.Exists(srcDir), $"El directorio de código fuente '{srcDir}' no existe.");
 
         var csFiles = Directory.GetFiles(srcDir, "*.cs", SearchOption.AllDirectories);
@@ -574,7 +555,7 @@ public class ArchitectureTests
 
                 if (clearEventsRegex.IsMatch(line))
                 {
-                    var relativePath = Path.GetRelativePath(dirInfo.FullName, file);
+                    var relativePath = Path.GetRelativePath(SolutionDirectory.Root, file);
                     violations.Add($"{relativePath} (Línea {i + 1}): {trimmed}");
                 }
             }
@@ -589,17 +570,7 @@ public class ArchitectureTests
     [Fact]
     public void SetSuperAdmin_MustOnlyBeCalledFrom_OutboxProcessorBackgroundService()
     {
-        var baseDir = AppContext.BaseDirectory;
-        var dirInfo = new DirectoryInfo(baseDir);
-
-        while (dirInfo != null && !File.Exists(Path.Combine(dirInfo.FullName, "Pos.slnx")) && !File.Exists(Path.Combine(dirInfo.FullName, "NalunPos-Api.sln")))
-        {
-            dirInfo = dirInfo.Parent;
-        }
-
-        Assert.NotNull(dirInfo);
-
-        var srcDir = Path.Combine(dirInfo.FullName, "src");
+        var srcDir = Path.Combine(SolutionDirectory.Root, "src");
         Assert.True(Directory.Exists(srcDir), $"El directorio de código fuente '{srcDir}' no existe.");
 
         var csFiles = Directory.GetFiles(srcDir, "*.cs", SearchOption.AllDirectories);
@@ -632,7 +603,7 @@ public class ArchitectureTests
 
                 if (setSuperAdminRegex.IsMatch(line))
                 {
-                    var relativePath = Path.GetRelativePath(dirInfo.FullName, file);
+                    var relativePath = Path.GetRelativePath(SolutionDirectory.Root, file);
                     violations.Add($"{relativePath} (Línea {i + 1}): {trimmed}");
                 }
             }
