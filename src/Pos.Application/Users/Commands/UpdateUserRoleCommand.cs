@@ -1,5 +1,4 @@
-using FluentValidation;
-using Pos.Application.Common.Attributes;
+﻿using Pos.Application.Common.Attributes;
 using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Users.DTOs;
@@ -16,17 +15,7 @@ public record UpdateUserRoleCommand(
     Guid? TenantId = null
 ) : ICommand<Result<UserDto>>;
 
-public class UpdateUserRoleCommandValidator : AbstractValidator<UpdateUserRoleCommand>
-{
-    public UpdateUserRoleCommandValidator()
-    {
-        RuleFor(x => x.Id)
-            .NotEmpty().WithMessage("El ID del usuario es requerido.");
 
-        RuleFor(x => x.RoleId)
-            .NotEmpty().WithMessage("El RoleId no puede estar vacío.");
-    }
-}
 
 public class UpdateUserRoleCommandHandler : ICommandHandler<UpdateUserRoleCommand, Result<UserDto>>
 {

@@ -1,6 +1,5 @@
-using Pos.Application.Common.Attributes;
+﻿using Pos.Application.Common.Attributes;
 using Pos.Application.Common.Authorization;
-using FluentValidation;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Invoicing.DTOs;
 using Pos.Domain.Entities;
@@ -23,20 +22,7 @@ public record IssueInvoiceCommand(
 ) : ICommand<Result<InvoiceDto>>;
 
 [HasPermission(Permissions.Invoices.Issue)]
-public class IssueInvoiceCommandValidator : AbstractValidator<IssueInvoiceCommand>
-{
-    public IssueInvoiceCommandValidator()
-    {
-        RuleFor(x => x.SaleId)
-            .NotEmpty().WithMessage("El ID de la venta es requerido.");
 
-        RuleFor(x => x.DocumentNumber)
-            .NotEmpty().WithMessage("El número de comprobante es requerido.");
-
-        RuleFor(x => x.CustomerTaxId)
-            .NotEmpty().WithMessage("El TaxId del cliente es requerido.");
-    }
-}
 
 [HasPermission(Permissions.Invoices.Issue)]
 public class IssueInvoiceCommandHandler : ICommandHandler<IssueInvoiceCommand, Result<InvoiceDto>>

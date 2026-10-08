@@ -1,6 +1,5 @@
-using Pos.Application.Common.Attributes;
+﻿using Pos.Application.Common.Attributes;
 using Pos.Application.Common.Authorization;
-using FluentValidation;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Payments.DTOs;
 using Pos.Domain.Common;
@@ -22,20 +21,7 @@ public record ProcessPaymentCommand(
 ) : ICommand<Result<PaymentDto>>;
 
 [HasPermission(Permissions.Payments.Process)]
-public class ProcessPaymentCommandValidator : AbstractValidator<ProcessPaymentCommand>
-{
-    public ProcessPaymentCommandValidator()
-    {
-        RuleFor(x => x.SaleId)
-            .NotEmpty().WithMessage("El ID de la venta es requerido.");
 
-        RuleFor(x => x.Amount)
-            .GreaterThan(0).WithMessage("El monto del pago debe ser mayor a cero.");
-
-        RuleFor(x => x.Method)
-            .IsInEnum().WithMessage("El método de pago especificado no es válido.");
-    }
-}
 
 [HasPermission(Permissions.Payments.Process)]
 public class ProcessPaymentCommandHandler : ICommandHandler<ProcessPaymentCommand, Result<PaymentDto>>

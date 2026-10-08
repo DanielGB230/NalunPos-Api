@@ -1,6 +1,5 @@
-using Pos.Application.Common.Attributes;
+﻿using Pos.Application.Common.Attributes;
 using Pos.Application.Common.Authorization;
-using FluentValidation;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Notifications.DTOs;
 using Pos.Domain.Entities;
@@ -19,20 +18,7 @@ public record CreateSystemNotificationCommand(
 ) : ICommand<Result<SystemNotificationDto>>;
 
 [HasPermission(Permissions.Notifications.Create)]
-public class CreateSystemNotificationCommandValidator : AbstractValidator<CreateSystemNotificationCommand>
-{
-    public CreateSystemNotificationCommandValidator()
-    {
-        RuleFor(x => x.UserId)
-            .NotEmpty().WithMessage("El ID del usuario destinatario es requerido.");
 
-        RuleFor(x => x.Title)
-            .NotEmpty().WithMessage("El título es requerido.");
-
-        RuleFor(x => x.Message)
-            .NotEmpty().WithMessage("El mensaje es requerido.");
-    }
-}
 
 [HasPermission(Permissions.Notifications.Create)]
 public class CreateSystemNotificationCommandHandler : ICommandHandler<CreateSystemNotificationCommand, Result<SystemNotificationDto>>

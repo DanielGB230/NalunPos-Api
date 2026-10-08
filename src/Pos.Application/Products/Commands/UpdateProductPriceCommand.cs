@@ -1,7 +1,6 @@
-using Pos.Application.Common.Attributes;
+﻿using Pos.Application.Common.Attributes;
 using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
-using FluentValidation;
 using Pos.Application.Products.DTOs;
 using Pos.Domain.Common;
 using Pos.Domain.Exceptions;
@@ -19,21 +18,7 @@ public record UpdateProductPriceCommand(
 ) : ICommand<Result<ProductDto>>;
 
 [HasPermission(Permissions.Products.Update)]
-public class UpdateProductPriceCommandValidator : AbstractValidator<UpdateProductPriceCommand>
-{
-    public UpdateProductPriceCommandValidator()
-    {
-        RuleFor(x => x.ProductId)
-            .NotEmpty().WithMessage("El ID del producto es requerido.");
 
-        RuleFor(x => x.PriceAmount)
-            .GreaterThanOrEqualTo(0).WithMessage("El precio debe ser mayor o igual a 0.");
-
-        RuleFor(x => x.Currency)
-            .NotEmpty().WithMessage("La divisa es requerida.")
-            .Length(3).WithMessage("La divisa debe ser un código ISO de 3 caracteres.");
-    }
-}
 
 [HasPermission(Permissions.Products.Update)]
 public class UpdateProductPriceCommandHandler : ICommandHandler<UpdateProductPriceCommand, Result<ProductDto>>

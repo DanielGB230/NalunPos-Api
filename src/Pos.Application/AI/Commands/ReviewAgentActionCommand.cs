@@ -1,6 +1,5 @@
-using Pos.Application.Common.Attributes;
+﻿using Pos.Application.Common.Attributes;
 using Pos.Application.Common.Authorization;
-using FluentValidation;
 using Pos.Application.AI.DTOs;
 using Pos.Application.Common.Interfaces;
 using Pos.Domain.Common;
@@ -15,14 +14,7 @@ public record ReviewAgentActionCommand(
     bool Approve
 ) : ICommand<Result<AgentActionRecordDto>>;
 
-public class ReviewAgentActionCommandValidator : AbstractValidator<ReviewAgentActionCommand>
-{
-    public ReviewAgentActionCommandValidator()
-    {
-        RuleFor(x => x.RecordId)
-            .NotEmpty().WithMessage("El ID del registro de propuesta es requerido.");
-    }
-}
+
 
 public class ReviewAgentActionCommandHandler : ICommandHandler<ReviewAgentActionCommand, Result<AgentActionRecordDto>>
 {
