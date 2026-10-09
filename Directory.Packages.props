@@ -50,7 +50,7 @@
   </ItemGroup>
   <ItemGroup Label="Testing — Architecture">
     <!-- Microsoft.CodeAnalysis.CSharp: Licencia MIT -->
-    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.14.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="5.6.0" />
     <PackageVersion Include="TngTech.ArchUnitNET.xUnit" Version="0.11.3" />
   </ItemGroup>
 </Project>

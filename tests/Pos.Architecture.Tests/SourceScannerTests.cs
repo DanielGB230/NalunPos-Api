@@ -59,4 +59,26 @@ public class SourceScannerTests
         var detected = PaginationSyntaxScanner.HasMaxPageSizeIdentifierToken(root);
         Assert.Equal(expectedDetected, detected);
     }
+
+    [Fact]
+    public void Roslyn_SupportsLatestCSharp14Syntax()
+    {
+        var code = """
+            extension(string s)
+            {
+                public string Name { get; set => field = value.Trim(); }
+            }
+
+            class C
+            {
+                void M(C? a)
+                {
+                    a?.B = 1;
+                }
+                public int B { get; set; }
+            }
+            """;
+
+        ParseSnippet(code);
+    }
 }

@@ -14,8 +14,8 @@ Hemos decidido incorporar la librería **`Microsoft.CodeAnalysis.CSharp` (Roslyn
 
 1. **Uso Exclusivo en Tests de Arquitectura**: `Microsoft.CodeAnalysis.CSharp` se agrega únicamente a `Pos.Architecture.Tests`. No se introduce en proyectos de código de producción (`src/`) ni en otros proyectos de test.
 2. **Gestión Centralizada de Versión**: Declarado en `Directory.Packages.props` en el grupo `Testing — Architecture`.
-3. **Versión Elegida**: `4.14.0`, seleccionada como la última versión estable publicada con compatibilidad plena para el SDK de .NET 10 / C# 13/14.
-4. **Licencia Verificada**: Licencia MIT oficial de Microsoft registrada en el manifiesto `.nuspec` del paquete.
+3. **Versión Elegida**: `5.6.0`, seleccionada tras consultar el historial de publicaciones estables 5.x de NuGet (publicada el `2026-07-02T18:19:13.627+00:00`, superando el requisito de 14 días de antigüedad), garantizando soporte para las últimas características sintácticas de C# 14.
+4. **Licencia Verificada**: Licencia MIT oficial de Microsoft registrada en el manifiesto `.nuspec` del paquete restored (`<license type="expression">MIT</license>`).
 
 ## Alternativas Descartadas
 
@@ -28,7 +28,8 @@ Hemos decidido incorporar la librería **`Microsoft.CodeAnalysis.CSharp` (Roslyn
 - **Análisis Sintáctico Robusto**: Los comentarios, cadenas de texto y variaciones de formato son ignorados automáticamente por el parser de Roslyn (`CSharpSyntaxTree`).
 - **Soporte Completo de Construcciones C#**: Identifica con precisión cualquier declaración de tipo (`class`, `struct`, `interface`, `enum`, `record`, `record struct`, `delegate`, declaradores anidados y modificadores como `file`).
 - **Pruebas Sintéticas Deterministas**: Permite escribir tests de unidad sintéticos sobre el propio escáner usando cadenas de C#.
+- **Test Canario Sintáctico**: Se incluyó un test canario (`Roslyn_SupportsLatestCSharp14Syntax`) que parsea construcciones de C# 14 (`extension`, `field`, asignación condicional nula `a?.B = 1;`). Si la versión de Roslyn queda desalineada del lenguaje del proyecto, la prueba falla de forma explícita.
 
 ### Negativas y Límites Aceptados
-- **Análisis Sintáctico (Sin Modelo Semántico)**: La solución analiza únicamente árboles de sintaxis (`SyntaxTree`), sin compilar un `SemanticModel`. Por tanto, no resuelve símbolos o tipos complejos cruzados de forma semántica.
+- **Análisis Sintáctico (Sin Modelo Semántico)**: La solución analiza únicamente árboles de sintaxis (`SyntaxTree`), sin compilar un `SemanticModel`. Por tanto, los sinónimos de `Math` definidos mediante alias (`using M = System.Math;`), variables intermedias (`var size = request.PageSize; Math.Min(size, 100);`) y operadores condicionales o ternarios no se detectan de forma semántica.
 - **Límite en Operadores Condicionales**: El escáner detecta invocaciones a `Math.Min`, `Math.Max`, `Math.Clamp` y el identificador `MaxPageSize`, pero no detecta acotamientos manuales de paginación implementados mediante operadores ternarios (`request.PageSize > 100 ? 100 : request.PageSize`) o condicionales `if`. Este límite se acepta por diseño para mantener la simplicidad y alta velocidad del escáner sintáctico.
