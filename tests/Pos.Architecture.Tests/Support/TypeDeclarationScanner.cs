@@ -6,7 +6,7 @@ namespace Pos.Architecture.Tests.Support;
 
 public static class TypeDeclarationScanner
 {
-    public static IReadOnlyList<DeclaredTypeInfo> ScanDeclaredTypes(SyntaxNode root, FileSyntaxInfo fileInfo = null!)
+    public static IReadOnlyList<DeclaredTypeInfo> ScanDeclaredTypes(SyntaxNode root)
     {
         var types = new List<DeclaredTypeInfo>();
 
@@ -24,11 +24,11 @@ public static class TypeDeclarationScanner
                     RecordDeclarationSyntax => "record",
                     _ => "type"
                 };
-                types.Add(new DeclaredTypeInfo(typeDecl.Identifier.ValueText, kind, typeDecl, fileInfo));
+                types.Add(new DeclaredTypeInfo(typeDecl.Identifier.ValueText, kind, typeDecl));
             }
             else if (node is DelegateDeclarationSyntax delegateDecl)
             {
-                types.Add(new DeclaredTypeInfo(delegateDecl.Identifier.ValueText, "delegate", delegateDecl, fileInfo));
+                types.Add(new DeclaredTypeInfo(delegateDecl.Identifier.ValueText, "delegate", delegateDecl));
             }
         }
 

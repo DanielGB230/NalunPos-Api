@@ -5,7 +5,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Pos.Architecture.Tests.Support;
 
-public sealed record DeclaredTypeInfo(string Name, string DeclarationKind, MemberDeclarationSyntax SyntaxNode, FileSyntaxInfo FileInfo);
+public sealed record DeclaredTypeInfo(string Name, string DeclarationKind, MemberDeclarationSyntax SyntaxNode);
 
 public sealed record FileSyntaxInfo(
     string FilePath,
@@ -57,9 +57,8 @@ public static class SourceTreeIndex
             var root = tree.GetCompilationUnitRoot();
             var errors = tree.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error).ToList();
 
-            var tempInfo = new FileSyntaxInfo(file, tree, root, Array.Empty<DeclaredTypeInfo>(), errors);
-            var declaredTypes = TypeDeclarationScanner.ScanDeclaredTypes(root, tempInfo);
-            var fileInfo = tempInfo with { DeclaredTypes = declaredTypes };
+            var declaredTypes = TypeDeclarationScanner.ScanDeclaredTypes(root);
+            var fileInfo = new FileSyntaxInfo(file, tree, root, declaredTypes, errors);
 
             result.Add(fileInfo);
         }
