@@ -37,41 +37,51 @@ public class PaginationGovernanceTests
             }
 
             // 1. Instancia base válida (PageNumber=1, PageSize=10)
-            var validQuery = QueryInstanceFactory.CreateInstance(queryType, 1, 10, out var createErrors);
-            if (createErrors.Count > 0)
+            var validResult = QueryInstanceFactory.CreateInstance(queryType, 1, 10);
+            if (!validResult.Success)
             {
-                failures.Add($"La query paginada '{queryType.Name}': error al crear instancia base: {string.Join("; ", createErrors)}");
+                failures.Add($"La query paginada '{queryType.Name}': error al crear instancia base: {string.Join("; ", validResult.Errors)}");
                 continue;
             }
 
+            var resValid = validator.Validate(new ValidationContext<object>(validResult.Instance!));
+            if (resValid.Errors.Any(e => e.PropertyName is "PageNumber" or "PageSize"))
+            {
+                failures.Add($"La query paginada '{queryType.Name}' rechaza la configuración base válida (PageNumber=1, PageSize=10) en sus propiedades de paginación.");
+            }
+
             // 2. PageNumber = 0 debe fallar en la propiedad PageNumber
-            var queryPageNum0 = QueryInstanceFactory.CreateInstance(queryType, 0, 10, out _);
-            var resPageNum0 = validator.Validate(new ValidationContext<object>(queryPageNum0));
+            var resPageNum0 = validator.Validate(new ValidationContext<object>(QueryInstanceFactory.CreateInstance(queryType, 0, 10).Instance!));
             if (!resPageNum0.Errors.Any(e => e.PropertyName == "PageNumber"))
             {
                 failures.Add($"La query paginada '{queryType.Name}' no aplica la regla de 'PageNumber' (PageNumber=0 no produjo error de validación en la propiedad 'PageNumber').");
             }
 
             // 3. PageSize = 0 debe fallar en la propiedad PageSize
-            var queryPageSize0 = QueryInstanceFactory.CreateInstance(queryType, 1, 0, out _);
-            var resPageSize0 = validator.Validate(new ValidationContext<object>(queryPageSize0));
+            var resPageSize0 = validator.Validate(new ValidationContext<object>(QueryInstanceFactory.CreateInstance(queryType, 1, 0).Instance!));
             if (!resPageSize0.Errors.Any(e => e.PropertyName == "PageSize"))
             {
                 failures.Add($"La query paginada '{queryType.Name}' no aplica la regla de 'PageSize' (PageSize=0 no produjo error de validación en la propiedad 'PageSize').");
             }
 
             // 4. PageSize = MaxPageSize + 1 debe fallar en la propiedad PageSize
-            var queryPageSizeOverMax = QueryInstanceFactory.CreateInstance(queryType, 1, PaginationRules.MaxPageSize + 1, out _);
-            var resPageSizeOverMax = validator.Validate(new ValidationContext<object>(queryPageSizeOverMax));
+            var overMaxVal = PaginationRules.MaxPageSize + 1;
+            var resPageSizeOverMax = validator.Validate(new ValidationContext<object>(QueryInstanceFactory.CreateInstance(queryType, 1, overMaxVal).Instance!));
             if (!resPageSizeOverMax.Errors.Any(e => e.PropertyName == "PageSize"))
             {
-                failures.Add($"La query paginada '{queryType.Name}' no aplica la regla de 'PageSize' (PageSize={PaginationRules.MaxPageSize + 1} no produjo error de validación en la propiedad 'PageSize').");
+                failures.Add($"La query paginada '{queryType.Name}' no aplica la regla de 'PageSize' (PageSize={overMaxVal} no produjo error de validación en la propiedad 'PageSize').");
             }
 
-            // 5. PageSize = MaxPageSize debe ser válido para PageSize
-            var queryPageSizeMax = QueryInstanceFactory.CreateInstance(queryType, 1, PaginationRules.MaxPageSize, out _);
-            var resPageSizeMax = validator.Validate(new ValidationContext<object>(queryPageSizeMax));
-            if (resPageSizeMax.Errors.Any(e => e.PropertyName == "PageSize"))
+            // 5. PageSize = MaxPageSize debe ser válido para PageSize y PageNumber
+            var maxResult = QueryInstanceFactory.CreateInstance(queryType, 1, PaginationRules.MaxPageSize);
+            if (!maxResult.Success)
+            {
+                failures.Add($"La query paginada '{queryType.Name}': error al crear instancia para PageSize máximo: {string.Join("; ", maxResult.Errors)}");
+                continue;
+            }
+
+            var resPageSizeMax = validator.Validate(new ValidationContext<object>(maxResult.Instance!));
+            if (resPageSizeMax.Errors.Any(e => e.PropertyName is "PageNumber" or "PageSize"))
             {
                 failures.Add($"La query paginada '{queryType.Name}' rechaza el valor máximo permitido ({PaginationRules.MaxPageSize}) en la propiedad 'PageSize'.");
             }

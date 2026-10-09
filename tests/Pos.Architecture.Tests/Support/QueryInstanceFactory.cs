@@ -1,18 +1,20 @@
-using System;
-using System.Collections.Generic;
-
 namespace Pos.Architecture.Tests.Support;
+
+public sealed record QueryInstanceResult(object? Instance, IReadOnlyList<string> Errors)
+{
+    public bool Success => Errors.Count == 0 && Instance != null;
+}
 
 public static class QueryInstanceFactory
 {
-    public static object CreateInstance(Type queryType, int pageNumber, int pageSize, out List<string> errors)
+    public static QueryInstanceResult CreateInstance(Type queryType, int pageNumber, int pageSize)
     {
-        errors = new List<string>();
+        var errors = new List<string>();
         var ctor = CqrsTypeCatalog.GetPrimaryConstructor(queryType);
         if (ctor == null)
         {
             errors.Add($"Query '{queryType.Name}' no tiene un constructor público.");
-            return null!;
+            return new QueryInstanceResult(null, errors);
         }
 
         var parameters = ctor.GetParameters();
@@ -61,9 +63,10 @@ public static class QueryInstanceFactory
 
         if (errors.Count > 0)
         {
-            return null!;
+            return new QueryInstanceResult(null, errors);
         }
 
-        return ctor.Invoke(args);
+        var instance = ctor.Invoke(args);
+        return new QueryInstanceResult(instance, errors);
     }
 }

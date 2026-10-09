@@ -64,18 +64,24 @@ public class SourceScannerTests
     public void Roslyn_SupportsLatestCSharp14Syntax()
     {
         var code = """
-            extension(string s)
+            public static class StringExtensions
             {
-                public string Name { get; set => field = value.Trim(); }
+                extension(string s)
+                {
+                    public string Title => s;
+                }
             }
 
-            class C
+            public class UserInfo
             {
-                void M(C? a)
+                public string Name { get; set => field = value.Trim(); }
+
+                public void Update(UserInfo? other)
                 {
-                    a?.B = 1;
+                    other?.Score = 10;
                 }
-                public int B { get; set; }
+
+                public int Score { get; set; }
             }
             """;
 
