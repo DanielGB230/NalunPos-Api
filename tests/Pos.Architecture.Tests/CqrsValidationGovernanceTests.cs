@@ -1,8 +1,4 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using Pos.Architecture.Tests.Support;
-using Xunit;
 
 namespace Pos.Architecture.Tests;
 
@@ -11,35 +7,40 @@ public class CqrsValidationGovernanceTests
     [Fact]
     public void EveryCommand_HasItsOwnValidatorInSeparateFile()
     {
-        var commandTypes = CqrsTypeCatalog.GetCommands();
+        SourceTreeIndex.EnsureNoSyntaxErrors();
+        var commands = CqrsTypeCatalog.GetCommands();
         var failures = new List<string>();
 
-        foreach (var commandType in commandTypes)
+        foreach (var command in commands)
         {
-            var commandFailures = ValidatorPlacementRule.ValidatePlacement(commandType, "Command");
-            failures.AddRange(commandFailures);
+            var placementFailures = ValidatorPlacementRule.ValidatePlacement(command);
+            if (placementFailures.Count > 0)
+            {
+                failures.Add($"El comando '{command.Name}' debe tener su validador '{command.Name}Validator' en su propio archivo '{command.Name}Validator.cs' en la misma carpeta. Fallas:\n- {string.Join("\n- ", placementFailures)}");
+            }
         }
 
-        Assert.True(failures.Count == 0, string.Join(Environment.NewLine, failures));
+        Assert.True(failures.Count == 0, string.Join("\n\n", failures));
     }
 
     [Fact]
     public void EveryNonExemptQuery_HasItsOwnValidatorInSeparateFile()
     {
-        var queryTypes = CqrsTypeCatalog.GetQueries();
+        SourceTreeIndex.EnsureNoSyntaxErrors();
+        var queries = CqrsTypeCatalog.GetQueries()
+            .Where(q => !CqrsTypeCatalog.IsExemptQuery(q));
+
         var failures = new List<string>();
 
-        foreach (var queryType in queryTypes)
+        foreach (var query in queries)
         {
-            if (CqrsTypeCatalog.IsExemptQuery(queryType))
+            var placementFailures = ValidatorPlacementRule.ValidatePlacement(query);
+            if (placementFailures.Count > 0)
             {
-                continue;
+                failures.Add($"La query '{query.Name}' debe tener su validador '{query.Name}Validator' en su propio archivo '{query.Name}Validator.cs' en la misma carpeta. Fallas:\n- {string.Join("\n- ", placementFailures)}");
             }
-
-            var queryFailures = ValidatorPlacementRule.ValidatePlacement(queryType, "Query");
-            failures.AddRange(queryFailures);
         }
 
-        Assert.True(failures.Count == 0, string.Join(Environment.NewLine, failures));
+        Assert.True(failures.Count == 0, string.Join("\n\n", failures));
     }
 }
