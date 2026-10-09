@@ -14,8 +14,12 @@ Hemos decidido incorporar la librería **`Microsoft.CodeAnalysis.CSharp` (Roslyn
 
 1. **Uso Exclusivo en Tests de Arquitectura**: `Microsoft.CodeAnalysis.CSharp` se agrega únicamente a `Pos.Architecture.Tests`. No se introduce en proyectos de código de producción (`src/`) ni en otros proyectos de test.
 2. **Gestión Centralizada de Versión**: Declarado en `Directory.Packages.props` en el grupo `Testing — Architecture`.
-3. **Versión Elegida**: `5.6.0`, seleccionada tras consultar el historial de publicaciones estables 5.x de NuGet (publicada el `2026-07-02T18:19:13.627+00:00`, superando el requisito de 14 días de antigüedad), garantizando soporte para las últimas características sintácticas de C# 14.
-4. **Licencia Verificada**: Licencia MIT oficial de Microsoft registrada en el manifiesto `.nuspec` del paquete restored (`<license type="expression">MIT</license>`).
+3. **Versión Elegida**: `5.9.0`, seleccionada tras consultar el historial completo de publicaciones estables 5.x desde el endpoint oficial SemVer2 (`https://api.nuget.org/v3/registration5-gz-semver2/microsoft.codeanalysis.csharp/index.json`):
+   - `5.0.0`: `2025-11-18T20:45:55.507+00:00`
+   - `5.3.0`: `2026-03-10T19:25:26.077+00:00`
+   - `5.6.0`: `2026-07-02T18:19:13.627+00:00`
+   - `5.9.0`: `2026-08-17T16:55:58.073+00:00` (publicada hace 53 días respecto a la fecha actual `2026-10-09`, superando el requisito de 14 días de antigüedad), garantizando soporte para las últimas características sintácticas de C# 14.
+4. **Licencia Verificada**: Licencia MIT oficial de Microsoft registrada en el manifiesto `.nuspec` del paquete restaurado (`<license type="expression">MIT</license>`).
 
 ## Alternativas Descartadas
 
