@@ -1,3 +1,4 @@
+﻿using Pos.Application.Tests.Support.Fakes;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Suppliers.Commands;
 using Pos.Domain.Common;
@@ -124,9 +125,4 @@ public class SuppliersCommandHandlerTests
         public Task<(IReadOnlyList<Supplier> Items, int TotalCount)> GetPagedAsync(int pageNumber, int pageSize, string? searchTerm, bool? isActive, CancellationToken cancellationToken = default) => Task.FromResult<(IReadOnlyList<Supplier>, int)>((Suppliers, Suppliers.Count));
     }
 
-    private sealed class FakeUnitOfWork : IUnitOfWork
-    {
-        public int SaveChangesCount { get; private set; }
-        public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) { SaveChangesCount++; return Task.FromResult(1); }
-    }
 }

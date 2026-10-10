@@ -1,3 +1,4 @@
+﻿using Pos.Application.Tests.Support.Fakes;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Products.Commands;
 using Pos.Domain.Common;
@@ -88,9 +89,4 @@ public class DeactivateProductCommandHandlerTests
         public Task<(IReadOnlyList<Product> Items, int TotalCount)> GetPagedAsync(int pageNumber, int pageSize, string? searchTerm, Guid? categoryId, bool? isActive = null, CancellationToken cancellationToken = default) => Task.FromResult<(IReadOnlyList<Product>, int)>((Products, Products.Count));
     }
 
-    private sealed class FakeUnitOfWork : IUnitOfWork
-    {
-        public int SaveChangesCount { get; private set; }
-        public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) { SaveChangesCount++; return Task.FromResult(1); }
-    }
 }

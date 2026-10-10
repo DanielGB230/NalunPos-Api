@@ -1,3 +1,4 @@
+﻿using Pos.Application.Tests.Support.Fakes;
 using Pos.Application.Branches.Commands;
 using Pos.Application.Common.Interfaces;
 using Pos.Domain.Common;
@@ -105,9 +106,4 @@ public class BranchesCommandHandlerTests
         public Task<(IReadOnlyList<Branch> Items, int TotalCount)> GetPagedAsync(int pageNumber, int pageSize, string? searchTerm, bool? isActive, CancellationToken cancellationToken = default) => Task.FromResult<(IReadOnlyList<Branch>, int)>((Branches, Branches.Count));
     }
 
-    private sealed class FakeUnitOfWork : IUnitOfWork
-    {
-        public int SaveChangesCount { get; private set; }
-        public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) { SaveChangesCount++; return Task.FromResult(1); }
-    }
 }

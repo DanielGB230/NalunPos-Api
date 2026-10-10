@@ -1,3 +1,4 @@
+﻿using Pos.Application.Tests.Support.Fakes;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Sales.Commands;
 using Pos.Application.Sales.DTOs;
@@ -217,40 +218,6 @@ public class CreateSaleCommandHandlerTests
         public Task<(IReadOnlyList<InventoryMovement> Items, int TotalCount)> GetMovementsPagedAsync(
             Guid? productId, Guid? warehouseId, InventoryMovementType? movementType, DateTime? dateFrom, DateTime? dateTo, int pageNumber, int pageSize, CancellationToken cancellationToken = default) => Task.FromResult<(IReadOnlyList<InventoryMovement>, int)>(([], 0));
         public Task<decimal> ReconcileStockFromLedgerAsync(Guid productId, Guid warehouseId, CancellationToken cancellationToken = default) => Task.FromResult(0m);
-    }
-
-    private sealed class FakeWarehouseRepository : IWarehouseRepository
-    {
-        public List<Warehouse> Warehouses { get; } = [];
-        public Task AddAsync(Warehouse warehouse, CancellationToken cancellationToken = default) { Warehouses.Add(warehouse); return Task.CompletedTask; }
-        public Task<Warehouse?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult(Warehouses.FirstOrDefault(w => w.Id == id));
-        public Task<Warehouse?> GetDefaultAsync(CancellationToken cancellationToken = default) => Task.FromResult(Warehouses.FirstOrDefault(w => w.IsDefault));
-        public Task<IReadOnlyList<Warehouse>> GetAllAsync(CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<Warehouse>>(Warehouses);
-        public Task<int> CountByTenantAsync(CancellationToken cancellationToken = default) => Task.FromResult(Warehouses.Count);
-        public void Update(Warehouse warehouse) { }
-    }
-
-    private sealed class FakeStockLevelRepository : IStockLevelRepository
-    {
-        public List<StockLevel> StockLevels { get; } = [];
-        public Task AddAsync(StockLevel stockLevel, CancellationToken cancellationToken = default) { StockLevels.Add(stockLevel); return Task.CompletedTask; }
-        public Task<StockLevel?> GetAsync(Guid productId, Guid warehouseId, Guid? containerId, CancellationToken cancellationToken = default) => Task.FromResult(StockLevels.FirstOrDefault(s => s.ProductId == productId && s.WarehouseId == warehouseId && s.ContainerId == containerId));
-        public Task<IReadOnlyList<StockLevel>> GetByWarehouseAsync(Guid warehouseId, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<StockLevel>>(StockLevels.Where(s => s.WarehouseId == warehouseId).ToList());
-        public Task<IReadOnlyList<StockLevel>> GetBelowThresholdAsync(Guid? warehouseId, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<StockLevel>>(StockLevels.Where(s => s.QuantityAvailable <= s.MinStockThreshold).ToList());
-        public void Update(StockLevel stockLevel) { }
-    }
-
-    private sealed class FakeTenantContext : ICurrentTenantContext
-    {
-        public Guid? TenantId { get; set; }
-        public bool IsSuperAdmin => false;
-        public bool HasTenant => TenantId.HasValue;
-    }
-
-    private sealed class FakeUnitOfWork : IUnitOfWork
-    {
-        public int SaveChangesCount { get; private set; }
-        public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) { SaveChangesCount++; return Task.FromResult(1); }
     }
 
     private sealed class FakeDispatcher : IDispatcher

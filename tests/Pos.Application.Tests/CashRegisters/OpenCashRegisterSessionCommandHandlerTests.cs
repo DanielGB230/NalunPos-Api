@@ -1,3 +1,4 @@
+﻿using Pos.Application.Tests.Support.Fakes;
 using Pos.Application.CashRegisters.Commands;
 using Pos.Domain.Common;
 using Pos.Domain.Entities;
@@ -88,9 +89,4 @@ public class OpenCashRegisterSessionCommandHandlerTests
         public void UpdateSession(CashRegisterSession session) { }
     }
 
-    private sealed class FakeUnitOfWork : IUnitOfWork
-    {
-        public int SaveChangesCount { get; private set; }
-        public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) { SaveChangesCount++; return Task.FromResult(1); }
-    }
 }

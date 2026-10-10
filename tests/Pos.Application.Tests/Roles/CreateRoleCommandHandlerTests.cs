@@ -1,3 +1,4 @@
+﻿using Pos.Application.Tests.Support.Fakes;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Roles.Commands;
 using Pos.Domain.Common;
@@ -77,16 +78,4 @@ public class CreateRoleCommandHandlerTests
         public Task<(IReadOnlyList<Role> Items, int TotalCount)> GetPagedAsync(int pageNumber, int pageSize, string? searchTerm, CancellationToken cancellationToken = default) => Task.FromResult<(IReadOnlyList<Role>, int)>((Roles, Roles.Count));
     }
 
-    private sealed class FakeUnitOfWork : IUnitOfWork
-    {
-        public int SaveChangesCount { get; private set; }
-        public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) { SaveChangesCount++; return Task.FromResult(1); }
-    }
-
-    private sealed class FakeCurrentTenantContext : ICurrentTenantContext
-    {
-        public Guid? TenantId { get; set; } = Guid.NewGuid();
-        public bool IsSuperAdmin => false;
-        public bool HasTenant { get; } = true;
-    }
 }

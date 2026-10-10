@@ -1,3 +1,4 @@
+﻿using Pos.Application.Tests.Support.Fakes;
 using Pos.Application.Authentication.Commands.Login;
 using Pos.Application.Common.Interfaces;
 using Pos.Domain.Common;
@@ -147,8 +148,4 @@ public class LoginCommandHandlerTests
         public bool Verify(string password, PasswordHash passwordHash) => password == ValidPassword;
     }
 
-    private sealed class FakeTokenGenerator : ITokenGenerator
-    {
-        public string GenerateToken(User user) => "fake-jwt-token-for-user";
-    }
 }

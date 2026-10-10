@@ -1,3 +1,4 @@
+﻿using Pos.Application.Tests.Support.Fakes;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.PosDevices.Commands;
 using Pos.Domain.Common;
@@ -108,18 +109,6 @@ public class PosDevicesCommandHandlerTests
         Assert.Equal("PosDevice.NotFound", result.Error.Code);
     }
 
-    private sealed class FakePosDeviceRepository : IPosDeviceRepository
-    {
-        public List<PosDevice> Devices { get; } = [];
-
-        public Task<PosDevice?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult(Devices.FirstOrDefault(d => d.Id == id));
-        public Task<PosDevice?> GetBySerialNumberAsync(string serialNumber, CancellationToken cancellationToken = default) => Task.FromResult(Devices.FirstOrDefault(d => d.SerialNumber.Equals(serialNumber, StringComparison.OrdinalIgnoreCase)));
-        public Task<bool> ExistsBySerialNumberAsync(string serialNumber, Guid? excludeId = null, CancellationToken cancellationToken = default) => Task.FromResult(Devices.Any(d => d.SerialNumber.Equals(serialNumber, StringComparison.OrdinalIgnoreCase) && d.Id != excludeId));
-        public Task AddAsync(PosDevice device, CancellationToken cancellationToken = default) { Devices.Add(device); return Task.CompletedTask; }
-        public void Update(PosDevice device) { }
-        public Task<IReadOnlyList<PosDevice>> GetByBranchIdAsync(Guid branchId, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<PosDevice>>(Devices.Where(d => d.BranchId == branchId).ToList());
-    }
-
     private sealed class FakeBranchRepository : IBranchRepository
     {
         public List<Branch> Branches { get; } = [];
@@ -134,9 +123,4 @@ public class PosDevicesCommandHandlerTests
         public Task<(IReadOnlyList<Branch> Items, int TotalCount)> GetPagedAsync(int pageNumber, int pageSize, string? searchTerm, bool? isActive, CancellationToken cancellationToken = default) => Task.FromResult<(IReadOnlyList<Branch>, int)>((Branches, Branches.Count));
     }
 
-    private sealed class FakeUnitOfWork : IUnitOfWork
-    {
-        public int SaveChangesCount { get; private set; }
-        public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) { SaveChangesCount++; return Task.FromResult(1); }
-    }
 }

@@ -1,3 +1,4 @@
+﻿using Pos.Application.Tests.Support.Fakes;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Users.Commands;
 using Pos.Domain.Common;
@@ -98,12 +99,6 @@ public class CreateUserCommandHandlerTests
         public string HashPassword(string password) => $"hashed_{password}";
         public bool VerifyPassword(string password, string hash) => hash == $"hashed_{password}";
         public bool Verify(string password, PasswordHash passwordHash) => passwordHash.Value == $"hashed_{password}";
-    }
-
-    private sealed class FakeUnitOfWork : IUnitOfWork
-    {
-        public int SaveChangesCount { get; private set; }
-        public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) { SaveChangesCount++; return Task.FromResult(1); }
     }
 
     private sealed class FakeAuthUserLookup : IAuthUserLookup

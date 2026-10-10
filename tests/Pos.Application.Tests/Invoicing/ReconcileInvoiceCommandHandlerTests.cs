@@ -1,3 +1,4 @@
+﻿using Pos.Application.Tests.Support.Fakes;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Invoicing.Commands;
 using Pos.Domain.Common;
@@ -116,28 +117,6 @@ public class ReconcileInvoiceCommandHandlerTests
         public Task<IReadOnlyList<Invoice>> GetPendingInvoicesOlderThanAsync(DateTime thresholdUtc, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<Invoice>>(Invoices.Where(i => i.Status == InvoiceStatus.Pending && i.IssueDateUtc <= thresholdUtc).ToList());
         public Task AddAsync(Invoice invoice, CancellationToken cancellationToken = default) { Invoices.Add(invoice); return Task.CompletedTask; }
         public void Update(Invoice invoice) { }
-    }
-
-    private sealed class FakeElectronicInvoicingService : IElectronicInvoicingService
-    {
-        public ElectronicInvoiceProviderStatus StatusToReturn { get; set; } = ElectronicInvoiceProviderStatus.Accepted;
-        public ElectronicInvoiceProviderStatus SendStatusToReturn { get; set; } = ElectronicInvoiceProviderStatus.Accepted;
-
-        public Task<InvoicingServiceResult> GetStatusAsync(Invoice invoice, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(new InvoicingServiceResult(StatusToReturn, invoice.DocumentNumber, "HASH", null));
-        }
-
-        public Task<InvoicingServiceResult> SendInvoiceAsync(Invoice invoice, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(new InvoicingServiceResult(SendStatusToReturn, invoice.DocumentNumber, "HASH", null));
-        }
-    }
-
-    private sealed class FakeUnitOfWork : IUnitOfWork
-    {
-        public int SaveChangesCount { get; private set; }
-        public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) { SaveChangesCount++; return Task.FromResult(1); }
     }
 
     private sealed class FakeDispatcher : IDispatcher

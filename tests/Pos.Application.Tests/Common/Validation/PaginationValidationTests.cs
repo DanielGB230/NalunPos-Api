@@ -1,3 +1,4 @@
+﻿using Pos.Application.Tests.Support.Fakes;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using Pos.Application.Common.Authorization;
@@ -198,12 +199,6 @@ public class PaginationValidationTests
             return Activator.CreateInstance(p.ParameterType);
         }).ToArray();
         return ctor.Invoke(parameters);
-    }
-
-    private sealed class FakeCurrentUserService : ICurrentUserService
-    {
-        public Guid? UserId { get; set; }
-        public string? UserEmail => "test@example.com";
     }
 
     private sealed class FakeUserRepository : IUserRepository

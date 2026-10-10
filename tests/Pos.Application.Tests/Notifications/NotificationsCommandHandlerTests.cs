@@ -1,3 +1,4 @@
+﻿using Pos.Application.Tests.Support.Fakes;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Notifications.Commands;
 using Pos.Domain.Common;
@@ -90,22 +91,6 @@ public class NotificationsCommandHandlerTests
         Assert.Equal("SystemNotification.NotFound", result.Error.Code);
     }
 
-    private sealed class FakeNotificationRepository : ISystemNotificationRepository
-    {
-        public List<SystemNotification> Notifications { get; } = [];
-
-        public Task<SystemNotification?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult(Notifications.FirstOrDefault(n => n.Id == id));
-        public Task AddAsync(SystemNotification notification, CancellationToken cancellationToken = default) { Notifications.Add(notification); return Task.CompletedTask; }
-        public void Update(SystemNotification notification) { }
-        public Task<IReadOnlyList<SystemNotification>> GetByUserIdAsync(Guid userId, bool unreadOnly = false, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<SystemNotification>>(Notifications.Where(n => n.UserId == userId && (!unreadOnly || !n.IsRead)).ToList());
-        public Task<(IReadOnlyList<SystemNotification> Items, int TotalCount)> GetPagedByUserIdAsync(Guid userId, bool unreadOnly = false, int pageNumber = 1, int pageSize = 20, CancellationToken cancellationToken = default)
-        {
-            var filtered = Notifications.Where(n => n.UserId == userId && (!unreadOnly || !n.IsRead)).ToList();
-            var items = filtered.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToList();
-            return Task.FromResult<(IReadOnlyList<SystemNotification>, int)>((items, filtered.Count));
-        }
-    }
-
     private sealed class FakeUserRepository : IUserRepository
     {
         public List<User> Users { get; } = [];
@@ -118,19 +103,4 @@ public class NotificationsCommandHandlerTests
         public Task<(IReadOnlyList<User> Items, int TotalCount)> GetPagedAsync(int pageNumber, int pageSize, string? searchTerm, bool? isActive, CancellationToken cancellationToken = default) => Task.FromResult<(IReadOnlyList<User>, int)>((Users, Users.Count));
     }
 
-    private sealed class FakePushNotificationService : IPushNotificationService
-    {
-        public int SentCount { get; private set; }
-        public Task SendToUserAsync(Guid userId, string title, string message, CancellationToken cancellationToken = default)
-        {
-            SentCount++;
-            return Task.CompletedTask;
-        }
-    }
-
-    private sealed class FakeUnitOfWork : IUnitOfWork
-    {
-        public int SaveChangesCount { get; private set; }
-        public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) { SaveChangesCount++; return Task.FromResult(1); }
-    }
 }

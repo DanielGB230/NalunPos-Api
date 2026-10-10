@@ -1,3 +1,4 @@
+﻿using Pos.Application.Tests.Support.Fakes;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Payments.Commands;
 using Pos.Application.Payments.DTOs;
@@ -77,14 +78,6 @@ public class ProcessPaymentCommandHandlerTests
     }
 
     // Fakes de prueba
-    private sealed class FakePaymentRepository : IPaymentRepository
-    {
-        public List<Payment> Payments { get; } = [];
-        public Task<Payment?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult(Payments.FirstOrDefault(p => p.Id == id));
-        public Task<IReadOnlyList<Payment>> GetBySaleIdAsync(Guid saleId, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<Payment>>(Payments.Where(p => p.SaleId == saleId).ToList());
-        public Task AddAsync(Payment payment, CancellationToken cancellationToken = default) { Payments.Add(payment); return Task.CompletedTask; }
-        public void Update(Payment payment) { }
-    }
 
     private sealed class FakeSaleRepository : ISaleRepository
     {
@@ -94,23 +87,6 @@ public class ProcessPaymentCommandHandlerTests
         public Task AddAsync(Sale sale, CancellationToken cancellationToken = default) { Sales.Add(sale); return Task.CompletedTask; }
         public void Update(Sale sale) { }
         public Task<(IReadOnlyList<Sale> Items, int TotalCount)> GetPagedAsync(int pageNumber, int pageSize, Guid? sessionId, Guid? customerId, DateTime? startDate, DateTime? endDate, CancellationToken cancellationToken = default) => Task.FromResult< (IReadOnlyList<Sale>, int) >((Sales, Sales.Count));
-    }
-
-    private sealed class FakePaymentGateway : IPaymentGateway
-    {
-        public bool ShouldSucceed { get; set; } = true;
-        public Task<PaymentGatewayResult> ProcessPaymentAsync(Payment payment, CancellationToken cancellationToken = default)
-        {
-            if (ShouldSucceed)
-                return Task.FromResult(new PaymentGatewayResult(true, "TXN-99999", null));
-            return Task.FromResult(new PaymentGatewayResult(false, null, "FONDOS_INSUFICIENTES"));
-        }
-    }
-
-    private sealed class FakeUnitOfWork : IUnitOfWork
-    {
-        public int SaveChangesCount { get; private set; }
-        public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) { SaveChangesCount++; return Task.FromResult(1); }
     }
 
     private sealed class FakeDispatcher : IDispatcher

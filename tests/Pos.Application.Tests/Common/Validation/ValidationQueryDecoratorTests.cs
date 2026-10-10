@@ -1,3 +1,4 @@
+﻿using Pos.Application.Tests.Support.Fakes;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using Pos.Application.Common.Attributes;
@@ -154,12 +155,6 @@ public class ValidationQueryDecoratorTests
         {
             RuleFor(x => x.Id).NotEmpty().WithMessage("Id es requerido");
         }
-    }
-
-    private sealed class FakeCurrentUserService : ICurrentUserService
-    {
-        public Guid? UserId { get; set; }
-        public string? UserEmail => "test@example.com";
     }
 
     private sealed class FakeUserRepository : IUserRepository
