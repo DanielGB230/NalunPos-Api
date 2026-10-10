@@ -24,4 +24,5 @@ public static class SolutionDirectory
     public static string Root => SolutionRootPath.Value;
     public static string PosApplication => Path.Combine(Root, "src", "Pos.Application");
     public static string PosApi => Path.Combine(Root, "src", "Pos.Api");
+    public static string PosApplicationTests => Path.Combine(Root, "tests", "Pos.Application.Tests");
 }
