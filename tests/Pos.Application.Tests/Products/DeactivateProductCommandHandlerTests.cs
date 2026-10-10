@@ -76,17 +76,4 @@ public class DeactivateProductCommandHandlerTests
         Assert.Equal(0, _unitOfWork.SaveChangesCount);
     }
 
-    private sealed class FakeProductRepository : IProductRepository
-    {
-        public List<Product> Products { get; } = [];
-
-        public Task<Product?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult(Products.FirstOrDefault(p => p.Id == id));
-        public Task<Product?> GetBySkuAsync(Sku sku, CancellationToken cancellationToken = default) => Task.FromResult(Products.FirstOrDefault(p => p.Sku.Value == sku.Value));
-        public Task<bool> ExistsBySkuAsync(Sku sku, Guid? excludeId = null, CancellationToken cancellationToken = default) => Task.FromResult(Products.Any(p => p.Sku.Value == sku.Value && (excludeId == null || p.Id != excludeId.Value)));
-        public Task AddAsync(Product product, CancellationToken cancellationToken = default) { Products.Add(product); return Task.CompletedTask; }
-        public void Update(Product product) { }
-        public void Delete(Product product) => Products.Remove(product);
-        public Task<(IReadOnlyList<Product> Items, int TotalCount)> GetPagedAsync(int pageNumber, int pageSize, string? searchTerm, Guid? categoryId, bool? isActive = null, CancellationToken cancellationToken = default) => Task.FromResult<(IReadOnlyList<Product>, int)>((Products, Products.Count));
-    }
-
 }

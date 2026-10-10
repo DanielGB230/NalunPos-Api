@@ -157,33 +157,4 @@ public class ValidationQueryDecoratorTests
         }
     }
 
-    private sealed class FakeUserRepository : IUserRepository
-    {
-        public User? UserToReturn { get; set; }
-
-        public Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
-            => Task.FromResult(UserToReturn);
-
-        public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default)
-            => Task.FromResult(UserToReturn);
-
-        public Task<bool> ExistsByEmailAsync(string email, Guid? excludeId = null, CancellationToken cancellationToken = default)
-            => Task.FromResult(false);
-
-        public Task AddAsync(User user, CancellationToken cancellationToken = default) => Task.CompletedTask;
-
-        public void Update(User user) { }
-
-        public Task<(IReadOnlyList<User> Items, int TotalCount)> GetPagedAsync(
-            int pageNumber,
-            int pageSize,
-            string? searchTerm,
-            bool? isActive = null,
-            CancellationToken cancellationToken = default)
-        {
-            IReadOnlyList<User> emptyList = Array.Empty<User>();
-            return Task.FromResult((Items: emptyList, TotalCount: 0));
-        }
-    }
-
 }

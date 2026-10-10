@@ -165,25 +165,4 @@ public class CreateSaleCommandHandlerTests
 
     // Fakes de prueba
 
-    private sealed class FakeProductRepository : IProductRepository
-    {
-        public List<Product> Products { get; } = [];
-        public Task<Product?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult(Products.FirstOrDefault(p => p.Id == id));
-        public Task<Product?> GetBySkuAsync(Sku sku, CancellationToken cancellationToken = default) => Task.FromResult(Products.FirstOrDefault(p => p.Sku.Value == sku.Value));
-        public Task<(IReadOnlyList<Product> Items, int TotalCount)> GetPagedAsync(int pageNumber, int pageSize, string? searchTerm, Guid? categoryId, bool? isActive = null, CancellationToken cancellationToken = default) => Task.FromResult< (IReadOnlyList<Product>, int) >((Products, Products.Count));
-        public Task<bool> ExistsBySkuAsync(Sku sku, Guid? excludeId = null, CancellationToken cancellationToken = default) => Task.FromResult(false);
-        public Task AddAsync(Product product, CancellationToken cancellationToken = default) { Products.Add(product); return Task.CompletedTask; }
-        public void Update(Product product) { }
-        public void Delete(Product product) { }
-    }
-
-    private sealed class FakeInventoryRepository : IInventoryRepository
-    {
-        public Dictionary<Guid, decimal> Stocks { get; } = new();
-        public Task AddMovementAsync(InventoryMovement movement, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task<(IReadOnlyList<InventoryMovement> Items, int TotalCount)> GetMovementsPagedAsync(
-            Guid? productId, Guid? warehouseId, InventoryMovementType? movementType, DateTime? dateFrom, DateTime? dateTo, int pageNumber, int pageSize, CancellationToken cancellationToken = default) => Task.FromResult<(IReadOnlyList<InventoryMovement>, int)>(([], 0));
-        public Task<decimal> ReconcileStockFromLedgerAsync(Guid productId, Guid warehouseId, CancellationToken cancellationToken = default) => Task.FromResult(0m);
-    }
-
 }

@@ -121,15 +121,4 @@ public class LoginCommandHandlerTests
 
     // Manual Fakes / Test Doubles
 
-    private sealed class FakePasswordHasher : IPasswordHasher
-    {
-        public string ValidPassword { get; set; } = "Password123!";
-
-        public string HashPassword(string password) => $"HASHED_{password}";
-
-        public bool VerifyPassword(string password, string passwordHash) => password == ValidPassword;
-
-        public bool Verify(string password, PasswordHash passwordHash) => password == ValidPassword;
-    }
-
 }

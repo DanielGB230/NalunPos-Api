@@ -103,40 +103,5 @@ public class RecordInventoryMovementCommandHandlerTests
     }
 
     // Fakes de prueba
-    private sealed class FakeInventoryRepository : IInventoryRepository
-    {
-        public List<InventoryMovement> Movements { get; } = [];
-        public Dictionary<Guid, decimal> StockByProduct { get; } = [];
-
-        public Task AddMovementAsync(InventoryMovement movement, CancellationToken cancellationToken = default)
-        {
-            Movements.Add(movement);
-            return Task.CompletedTask;
-        }
-
-        public Task<(IReadOnlyList<InventoryMovement> Items, int TotalCount)> GetMovementsPagedAsync(
-            Guid? productId, Guid? warehouseId, InventoryMovementType? movementType, DateTime? dateFrom, DateTime? dateTo, int pageNumber, int pageSize, CancellationToken cancellationToken = default)
-        {
-            var items = productId.HasValue ? Movements.Where(m => m.ProductId == productId.Value).ToList() : Movements;
-            return Task.FromResult<(IReadOnlyList<InventoryMovement>, int)>((items, items.Count));
-        }
-
-        public Task<decimal> ReconcileStockFromLedgerAsync(Guid productId, Guid warehouseId, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(StockByProduct.TryGetValue(productId, out decimal stock) ? stock : 0m);
-        }
-    }
-
-    private sealed class FakeProductRepository : IProductRepository
-    {
-        public List<Product> Products { get; } = [];
-        public Task<Product?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult(Products.FirstOrDefault(p => p.Id == id));
-        public Task<Product?> GetBySkuAsync(Sku sku, CancellationToken cancellationToken = default) => Task.FromResult(Products.FirstOrDefault(p => p.Sku.Value == sku.Value));
-        public Task<bool> ExistsBySkuAsync(Sku sku, Guid? excludeId = null, CancellationToken cancellationToken = default) => Task.FromResult(Products.Any(p => p.Sku.Value == sku.Value && (excludeId == null || p.Id != excludeId.Value)));
-        public Task AddAsync(Product product, CancellationToken cancellationToken = default) { Products.Add(product); return Task.CompletedTask; }
-        public void Update(Product product) { }
-        public void Delete(Product product) { Products.Remove(product); }
-        public Task<(IReadOnlyList<Product> Items, int TotalCount)> GetPagedAsync(int pageNumber, int pageSize, string? searchTerm, Guid? categoryId, bool? isActive = null, CancellationToken cancellationToken = default) => Task.FromResult< (IReadOnlyList<Product>, int) >((Products, Products.Count));
-    }
 
 }

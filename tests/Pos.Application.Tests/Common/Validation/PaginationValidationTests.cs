@@ -1,4 +1,4 @@
-﻿using Pos.Application.Tests.Support.Fakes;
+using Pos.Application.Tests.Support.Fakes;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using Pos.Application.Common.Authorization;
@@ -160,6 +160,7 @@ public class PaginationValidationTests
         var handler = provider.GetRequiredService<IQueryHandler<GetInventoryHistoryQuery, Result<PagedResult<InventoryMovementDto>>>>();
 
         userRepository.UserToReturn = User.Create("test@example.com", "hash", Guid.NewGuid(), Guid.NewGuid(), "Admin", "User");
+        productRepository.ProductToReturn = Product.Create("Product Test", Sku.Create("SKU123"), Money.Create(10.0m, "USD"), Guid.NewGuid());
 
         var invalidQuery = new GetInventoryHistoryQuery(ProductId: Guid.NewGuid(), PageNumber: 1, PageSize: 101);
 
@@ -201,142 +202,4 @@ public class PaginationValidationTests
         return ctor.Invoke(parameters);
     }
 
-    private sealed class FakeUserRepository : IUserRepository
-    {
-        public User? UserToReturn { get; set; }
-        public int LastRequestedPageSize { get; private set; }
-
-        public Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
-            => Task.FromResult(UserToReturn);
-
-        public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default)
-            => Task.FromResult(UserToReturn);
-
-        public Task<bool> ExistsByEmailAsync(string email, Guid? excludeId = null, CancellationToken cancellationToken = default)
-            => Task.FromResult(false);
-
-        public Task AddAsync(User user, CancellationToken cancellationToken = default) => Task.CompletedTask;
-
-        public void Update(User user) { }
-
-        public Task<(IReadOnlyList<User> Items, int TotalCount)> GetPagedAsync(
-            int pageNumber,
-            int pageSize,
-            string? searchTerm,
-            bool? isActive = null,
-            CancellationToken cancellationToken = default)
-        {
-            LastRequestedPageSize = pageSize;
-            IReadOnlyList<User> emptyList = Array.Empty<User>();
-            return Task.FromResult((Items: emptyList, TotalCount: 0));
-        }
-    }
-
-    private sealed class FakeInventoryRepository : IInventoryRepository
-    {
-        private int _callCount;
-
-        public Task AddMovementAsync(InventoryMovement movement, CancellationToken cancellationToken = default)
-        {
-            _callCount++;
-            return Task.CompletedTask;
-        }
-
-        public Task AddStockLevelAsync(StockLevel stockLevel, CancellationToken cancellationToken = default)
-        {
-            _callCount++;
-            return Task.CompletedTask;
-        }
-
-        public Task UpdateStockLevelAsync(StockLevel stockLevel, CancellationToken cancellationToken = default)
-        {
-            _callCount++;
-            return Task.CompletedTask;
-        }
-
-        public Task<StockLevel?> GetStockLevelAsync(Guid productId, Guid warehouseId, CancellationToken cancellationToken = default)
-        {
-            _callCount++;
-            return Task.FromResult<StockLevel?>(null);
-        }
-
-        public Task<IReadOnlyList<StockLevel>> GetStockLevelsByProductAsync(Guid productId, CancellationToken cancellationToken = default)
-        {
-            _callCount++;
-            return Task.FromResult<IReadOnlyList<StockLevel>>(Array.Empty<StockLevel>());
-        }
-
-        public Task<decimal> ReconcileStockFromLedgerAsync(Guid productId, Guid warehouseId, CancellationToken cancellationToken = default)
-        {
-            _callCount++;
-            return Task.FromResult(0m);
-        }
-
-        public Task<(IReadOnlyList<InventoryMovement> Items, int TotalCount)> GetMovementsPagedAsync(
-            Guid? productId,
-            Guid? warehouseId,
-            InventoryMovementType? movementType,
-            DateTime? dateFrom,
-            DateTime? dateTo,
-            int pageNumber,
-            int pageSize,
-            CancellationToken cancellationToken = default)
-        {
-            _callCount++;
-            IReadOnlyList<InventoryMovement> emptyList = Array.Empty<InventoryMovement>();
-            return Task.FromResult((Items: emptyList, TotalCount: 0));
-        }
-    }
-
-    private sealed class FakeProductRepository : IProductRepository
-    {
-        private int _callCount;
-
-        public Task<Product?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
-        {
-            _callCount++;
-            return Task.FromResult<Product?>(Product.Create("Product Test", Sku.Create("SKU123"), Money.Create(10.0m, "USD"), Guid.NewGuid()));
-        }
-
-        public Task<Product?> GetBySkuAsync(Sku sku, CancellationToken cancellationToken = default)
-        {
-            _callCount++;
-            return Task.FromResult<Product?>(null);
-        }
-
-        public Task<bool> ExistsBySkuAsync(Sku sku, Guid? excludeId = null, CancellationToken cancellationToken = default)
-        {
-            _callCount++;
-            return Task.FromResult(false);
-        }
-
-        public Task AddAsync(Product product, CancellationToken cancellationToken = default)
-        {
-            _callCount++;
-            return Task.CompletedTask;
-        }
-
-        public void Update(Product product)
-        {
-            _callCount++;
-        }
-
-        public void Delete(Product product)
-        {
-            _callCount++;
-        }
-
-        public Task<(IReadOnlyList<Product> Items, int TotalCount)> GetPagedAsync(
-            int pageNumber,
-            int pageSize,
-            string? searchTerm,
-            Guid? categoryId = null,
-            bool? isActive = null,
-            CancellationToken cancellationToken = default)
-        {
-            _callCount++;
-            IReadOnlyList<Product> emptyList = Array.Empty<Product>();
-            return Task.FromResult((Items: emptyList, TotalCount: 0));
-        }
-    }
 }
