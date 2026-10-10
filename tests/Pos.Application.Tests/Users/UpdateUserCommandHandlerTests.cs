@@ -88,23 +88,4 @@ public class UpdateUserCommandHandlerTests
         public Task<(IReadOnlyList<User> Items, int TotalCount)> GetPagedAsync(int pageNumber, int pageSize, string? searchTerm, bool? isActive, CancellationToken cancellationToken = default) => Task.FromResult<(IReadOnlyList<User>, int)>((Users, Users.Count));
     }
 
-    private sealed class FakeAuthUserLookup : IAuthUserLookup
-    {
-        private readonly List<User> _users;
-
-        public FakeAuthUserLookup(List<User> users)
-        {
-            _users = users;
-        }
-
-        public Task<User?> FindByEmailAsync(string email, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(_users.FirstOrDefault(u => string.Equals(u.Email.Value, email, StringComparison.OrdinalIgnoreCase)));
-        }
-
-        public Task<bool> ExistsByEmailAsync(string email, Guid? excludeId = null, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(_users.Any(u => string.Equals(u.Email.Value, email, StringComparison.OrdinalIgnoreCase) && u.Id != excludeId));
-        }
-    }
 }

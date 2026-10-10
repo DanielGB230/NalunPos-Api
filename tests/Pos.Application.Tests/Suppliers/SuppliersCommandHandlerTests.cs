@@ -112,17 +112,4 @@ public class SuppliersCommandHandlerTests
         Assert.Equal(0, _unitOfWork.SaveChangesCount);
     }
 
-    private sealed class FakeSupplierRepository : ISupplierRepository
-    {
-        public List<Supplier> Suppliers { get; } = [];
-
-        public Task<Supplier?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult(Suppliers.FirstOrDefault(s => s.Id == id));
-        public Task<Supplier?> GetByTaxIdAsync(TaxId taxId, CancellationToken cancellationToken = default) => Task.FromResult(Suppliers.FirstOrDefault(s => s.TaxId.Value == taxId.Value));
-        public Task<bool> ExistsByTaxIdAsync(TaxId taxId, Guid? excludeId = null, CancellationToken cancellationToken = default) => Task.FromResult(Suppliers.Any(s => s.TaxId.Value == taxId.Value && s.Id != excludeId));
-        public Task AddAsync(Supplier supplier, CancellationToken cancellationToken = default) { Suppliers.Add(supplier); return Task.CompletedTask; }
-        public void Update(Supplier supplier) { }
-        public void Delete(Supplier supplier) => Suppliers.Remove(supplier);
-        public Task<(IReadOnlyList<Supplier> Items, int TotalCount)> GetPagedAsync(int pageNumber, int pageSize, string? searchTerm, bool? isActive, CancellationToken cancellationToken = default) => Task.FromResult<(IReadOnlyList<Supplier>, int)>((Suppliers, Suppliers.Count));
-    }
-
 }

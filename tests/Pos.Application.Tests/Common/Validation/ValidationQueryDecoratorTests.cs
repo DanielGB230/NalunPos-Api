@@ -186,12 +186,4 @@ public class ValidationQueryDecoratorTests
         }
     }
 
-    private sealed class FakeCurrentUserPermissions : ICurrentUserPermissions
-    {
-        public Task<IReadOnlySet<string>> GetPermissionsAsync(Guid? tenantId, Guid roleId, CancellationToken cancellationToken = default)
-            => Task.FromResult<IReadOnlySet<string>>(new HashSet<string>());
-
-        public Task<bool> HasPermissionAsync(Guid? tenantId, Guid roleId, string permission, CancellationToken cancellationToken = default)
-            => Task.FromResult(false);
-    }
 }

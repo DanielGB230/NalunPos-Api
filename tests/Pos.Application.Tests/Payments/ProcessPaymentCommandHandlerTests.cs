@@ -79,23 +79,4 @@ public class ProcessPaymentCommandHandlerTests
 
     // Fakes de prueba
 
-    private sealed class FakeSaleRepository : ISaleRepository
-    {
-        public List<Sale> Sales { get; } = [];
-        public Task<Sale?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult(Sales.FirstOrDefault(s => s.Id == id));
-        public Task<Sale?> GetByReceiptNumberAsync(string receiptNumber, CancellationToken cancellationToken = default) => Task.FromResult(Sales.FirstOrDefault(s => s.ReceiptNumber.Equals(receiptNumber, StringComparison.OrdinalIgnoreCase)));
-        public Task AddAsync(Sale sale, CancellationToken cancellationToken = default) { Sales.Add(sale); return Task.CompletedTask; }
-        public void Update(Sale sale) { }
-        public Task<(IReadOnlyList<Sale> Items, int TotalCount)> GetPagedAsync(int pageNumber, int pageSize, Guid? sessionId, Guid? customerId, DateTime? startDate, DateTime? endDate, CancellationToken cancellationToken = default) => Task.FromResult< (IReadOnlyList<Sale>, int) >((Sales, Sales.Count));
-    }
-
-    private sealed class FakeDispatcher : IDispatcher
-    {
-        public Task SendAsync(ICommand command, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task<TResponse> SendAsync<TResponse>(ICommand<TResponse> command, CancellationToken cancellationToken = default) => throw new NotImplementedException();
-        public Task<TResponse> SendAsync<TResponse>(IQuery<TResponse> query, CancellationToken cancellationToken = default) => throw new NotImplementedException();
-        public Task<TResponse> QueryAsync<TResponse>(IQuery<TResponse> query, CancellationToken cancellationToken = default) => throw new NotImplementedException();
-        public Task PublishAsync<TDomainEvent>(TDomainEvent domainEvent, CancellationToken cancellationToken = default) where TDomainEvent : IDomainEvent => Task.CompletedTask;
-        public Task PublishIntegrationEventAsync<TIntegrationEvent>(TIntegrationEvent integrationEvent, CancellationToken cancellationToken = default) where TIntegrationEvent : Pos.Application.IntegrationEvents.Contracts.IIntegrationEvent => Task.CompletedTask;
-    }
 }

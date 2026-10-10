@@ -132,44 +132,6 @@ public class CreateTenantCommandHandlerTests
     }
 
     // Fakes de prueba
-    private sealed class FakeTenantRepository : ITenantRepository
-    {
-        public List<Tenant> Tenants { get; } = [];
-
-        public Task<Tenant?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(Tenants.FirstOrDefault(t => t.Id == id));
-        }
-
-        public Task<bool> ExistsByTaxIdAsync(string taxId, CancellationToken cancellationToken = default)
-        {
-            string normalized = taxId.Trim();
-            return Task.FromResult(Tenants.Any(t => t.TaxId.Value.Equals(normalized, StringComparison.OrdinalIgnoreCase)));
-        }
-
-        public Task AddAsync(Tenant tenant, CancellationToken cancellationToken = default)
-        {
-            Tenants.Add(tenant);
-            return Task.CompletedTask;
-        }
-
-        public void Update(Tenant tenant)
-        {
-        }
-
-        public Task<(IReadOnlyList<Pos.Application.Platform.Tenants.DTOs.TenantDto> Items, int TotalCount)> GetPagedAsync(
-            int pageNumber,
-            int pageSize,
-            string? searchTerm,
-            CancellationToken cancellationToken = default)
-        {
-            var dtos = Tenants
-                .Select(t => new Pos.Application.Platform.Tenants.DTOs.TenantDto(t.Id, t.Name, t.TaxId.Value, t.Status.ToString(), t.CreatedAtUtc))
-                .ToList();
-
-            return Task.FromResult<(IReadOnlyList<Pos.Application.Platform.Tenants.DTOs.TenantDto>, int)>((dtos, dtos.Count));
-        }
-    }
 
     private sealed class FakeUserRepository : IUserRepository
     {
@@ -215,27 +177,6 @@ public class CreateTenantCommandHandlerTests
         public bool VerifyPassword(string password, string passwordHash) => passwordHash == $"HASHED_{password}";
 
         public bool Verify(string password, PasswordHash passwordHash) => passwordHash.Value == $"HASHED_{password}";
-    }
-
-    private sealed class FakeBranchRepository : IBranchRepository
-    {
-        public List<Branch> Branches { get; } = [];
-        public Task<Branch?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult(Branches.FirstOrDefault(b => b.Id == id));
-        public Task<IReadOnlyList<Branch>> GetAllAsync(bool? isActive = null, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<Branch>>(Branches);
-        public Task<bool> ExistsByNameAsync(string name, Guid? excludeId = null, CancellationToken cancellationToken = default) => Task.FromResult(false);
-        public Task AddAsync(Branch branch, CancellationToken cancellationToken = default) { Branches.Add(branch); return Task.CompletedTask; }
-        public void Update(Branch branch) { }
-    }
-
-    private sealed class FakeRoleRepository : IRoleRepository
-    {
-        public List<Role> Roles { get; } = [];
-        public Task AddAsync(Role role, CancellationToken cancellationToken = default) { Roles.Add(role); return Task.CompletedTask; }
-        public Task<bool> ExistsByNameAsync(string name, Guid? excludeId = null, CancellationToken cancellationToken = default) => Task.FromResult(Roles.Any(r => r.Name == name && r.Id != excludeId));
-        public Task<Role?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult(Roles.FirstOrDefault(r => r.Id == id));
-        public Task<Role?> GetByNameAsync(string name, CancellationToken cancellationToken = default) => Task.FromResult(Roles.FirstOrDefault(r => r.Name == name));
-        public Task<IReadOnlyList<Role>> GetAllAsync(CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<Role>>(Roles);
-        public void Update(Role role) { }
     }
 
 }

@@ -101,23 +101,4 @@ public class CreateUserCommandHandlerTests
         public bool Verify(string password, PasswordHash passwordHash) => passwordHash.Value == $"hashed_{password}";
     }
 
-    private sealed class FakeAuthUserLookup : IAuthUserLookup
-    {
-        private readonly List<User> _users;
-
-        public FakeAuthUserLookup(List<User> users)
-        {
-            _users = users;
-        }
-
-        public Task<User?> FindByEmailAsync(string email, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(_users.FirstOrDefault(u => string.Equals(u.Email.Value, email, StringComparison.OrdinalIgnoreCase)));
-        }
-
-        public Task<bool> ExistsByEmailAsync(string email, Guid? excludeId = null, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(_users.Any(u => string.Equals(u.Email.Value, email, StringComparison.OrdinalIgnoreCase) && u.Id != excludeId));
-        }
-    }
 }

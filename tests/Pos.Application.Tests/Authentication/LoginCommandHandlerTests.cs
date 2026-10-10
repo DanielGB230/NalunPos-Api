@@ -120,22 +120,6 @@ public class LoginCommandHandlerTests
     }
 
     // Manual Fakes / Test Doubles
-    private sealed class FakeAuthUserLookup : IAuthUserLookup
-    {
-        public List<User> Users { get; } = [];
-
-        public Task<User?> FindByEmailAsync(string email, CancellationToken cancellationToken = default)
-        {
-            string normalized = email.Trim().ToLowerInvariant();
-            return Task.FromResult(Users.FirstOrDefault(u => u.Email.Value == normalized));
-        }
-
-        public Task<bool> ExistsByEmailAsync(string email, Guid? excludeId = null, CancellationToken cancellationToken = default)
-        {
-            string normalized = email.Trim().ToLowerInvariant();
-            return Task.FromResult(Users.Any(u => u.Email.Value == normalized && (excludeId == null || u.Id != excludeId.Value)));
-        }
-    }
 
     private sealed class FakePasswordHasher : IPasswordHasher
     {

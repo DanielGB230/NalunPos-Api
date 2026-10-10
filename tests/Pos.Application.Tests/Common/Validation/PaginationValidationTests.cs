@@ -232,19 +232,6 @@ public class PaginationValidationTests
         }
     }
 
-    private sealed class FakeCurrentUserPermissions : ICurrentUserPermissions
-    {
-        public Task<IReadOnlySet<string>> GetPermissionsAsync(Guid? tenantId, Guid roleId, CancellationToken cancellationToken = default)
-            => Task.FromResult<IReadOnlySet<string>>(new HashSet<string>
-            {
-                Permissions.Users.View,
-                Permissions.Inventory.View
-            });
-
-        public Task<bool> HasPermissionAsync(Guid? tenantId, Guid roleId, string permission, CancellationToken cancellationToken = default)
-            => Task.FromResult(true);
-    }
-
     private sealed class FakeInventoryRepository : IInventoryRepository
     {
         private int _callCount;

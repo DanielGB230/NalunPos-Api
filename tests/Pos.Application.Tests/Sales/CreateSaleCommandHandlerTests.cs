@@ -164,40 +164,6 @@ public class CreateSaleCommandHandlerTests
     }
 
     // Fakes de prueba
-    private sealed class FakeSaleRepository : ISaleRepository
-    {
-        public List<Sale> Sales { get; } = [];
-        public Task<Sale?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult(Sales.FirstOrDefault(s => s.Id == id));
-        public Task<Sale?> GetByReceiptNumberAsync(string receiptNumber, CancellationToken cancellationToken = default) => Task.FromResult(Sales.FirstOrDefault(s => s.ReceiptNumber.Equals(receiptNumber, StringComparison.OrdinalIgnoreCase)));
-        public Task AddAsync(Sale sale, CancellationToken cancellationToken = default) { Sales.Add(sale); return Task.CompletedTask; }
-        public void Update(Sale sale) { }
-        public Task<(IReadOnlyList<Sale> Items, int TotalCount)> GetPagedAsync(int pageNumber, int pageSize, Guid? sessionId, Guid? customerId, DateTime? startDate, DateTime? endDate, CancellationToken cancellationToken = default) => Task.FromResult< (IReadOnlyList<Sale>, int) >((Sales.AsReadOnly(), Sales.Count));
-    }
-
-    private sealed class FakeCashRegisterRepository : ICashRegisterRepository
-    {
-        public List<CashRegisterSession> Sessions { get; } = [];
-        public Task<CashRegister?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult<CashRegister?>(null);
-        public Task<IReadOnlyList<CashRegister>> GetAllAsync(CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<CashRegister>>([]);
-        public Task AddAsync(CashRegister register, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public void Update(CashRegister register) { }
-        public Task<CashRegisterSession?> GetSessionByIdAsync(Guid sessionId, CancellationToken cancellationToken = default) => Task.FromResult(Sessions.FirstOrDefault(s => s.Id == sessionId));
-        public Task<CashRegisterSession?> GetActiveSessionByRegisterIdAsync(Guid registerId, CancellationToken cancellationToken = default) => Task.FromResult(Sessions.FirstOrDefault(s => s.CashRegisterId == registerId && s.Status == SessionStatus.Open));
-        public Task AddSessionAsync(CashRegisterSession session, CancellationToken cancellationToken = default) { Sessions.Add(session); return Task.CompletedTask; }
-        public void UpdateSession(CashRegisterSession session) { }
-    }
-
-    private sealed class FakeCustomerRepository : ICustomerRepository
-    {
-        public List<Customer> Customers { get; } = [];
-        public Task<Customer?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult(Customers.FirstOrDefault(c => c.Id == id));
-        public Task<Customer?> GetByTaxIdAsync(TaxId taxId, CancellationToken cancellationToken = default) => Task.FromResult<Customer?>(null);
-        public Task<bool> ExistsByTaxIdAsync(TaxId taxId, Guid? excludeId = null, CancellationToken cancellationToken = default) => Task.FromResult(false);
-        public Task AddAsync(Customer customer, CancellationToken cancellationToken = default) { Customers.Add(customer); return Task.CompletedTask; }
-        public void Update(Customer customer) { }
-        public void Delete(Customer customer) { }
-        public Task<(IReadOnlyList<Customer> Items, int TotalCount)> GetPagedAsync(int pageNumber, int pageSize, string? searchTerm, bool? isActive = null, CancellationToken cancellationToken = default) => Task.FromResult< (IReadOnlyList<Customer>, int) >((Customers, Customers.Count));
-    }
 
     private sealed class FakeProductRepository : IProductRepository
     {
@@ -220,13 +186,4 @@ public class CreateSaleCommandHandlerTests
         public Task<decimal> ReconcileStockFromLedgerAsync(Guid productId, Guid warehouseId, CancellationToken cancellationToken = default) => Task.FromResult(0m);
     }
 
-    private sealed class FakeDispatcher : IDispatcher
-    {
-        public Task SendAsync(ICommand command, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task<TResponse> SendAsync<TResponse>(ICommand<TResponse> command, CancellationToken cancellationToken = default) => throw new NotImplementedException();
-        public Task<TResponse> SendAsync<TResponse>(IQuery<TResponse> query, CancellationToken cancellationToken = default) => throw new NotImplementedException();
-        public Task<TResponse> QueryAsync<TResponse>(IQuery<TResponse> query, CancellationToken cancellationToken = default) => throw new NotImplementedException();
-        public Task PublishAsync<TDomainEvent>(TDomainEvent domainEvent, CancellationToken cancellationToken = default) where TDomainEvent : IDomainEvent => Task.CompletedTask;
-        public Task PublishIntegrationEventAsync<TIntegrationEvent>(TIntegrationEvent integrationEvent, CancellationToken cancellationToken = default) where TIntegrationEvent : Pos.Application.IntegrationEvents.Contracts.IIntegrationEvent => Task.CompletedTask;
-    }
 }
