@@ -63,4 +63,51 @@ public class FakeGovernanceTests
             $"Se encontraron tipos Fake declarados fuera de Support/Fakes en Pos.Application.Tests:\n{string.Join("\n", failures)}"
         );
     }
+
+    [Fact]
+    public void EveryInterface_ImplementedBySupportFakes_HasAtMostOneFakeImplementation()
+    {
+        var testsDirectory = SolutionDirectory.PosApplicationTests;
+        var fakesDirectory = Path.Combine(testsDirectory, "Support", "Fakes");
+        Assert.True(Directory.Exists(fakesDirectory), $"El directorio '{fakesDirectory}' no existe.");
+
+        var files = Directory.GetFiles(fakesDirectory, "*.cs", SearchOption.TopDirectoryOnly);
+        var parseOptions = new CSharpParseOptions(LanguageVersion.Latest);
+        var interfaceToFakes = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+
+        foreach (var file in files)
+        {
+            var text = File.ReadAllText(file);
+            var tree = CSharpSyntaxTree.ParseText(text, parseOptions, path: file);
+            var root = tree.GetCompilationUnitRoot();
+
+            var classDeclarations = root.DescendantNodes().OfType<Microsoft.CodeAnalysis.CSharp.Syntax.ClassDeclarationSyntax>();
+
+            foreach (var classDecl in classDeclarations)
+            {
+                if (classDecl.BaseList == null) continue;
+
+                foreach (var baseType in classDecl.BaseList.Types)
+                {
+                    var interfaceName = baseType.Type.ToString();
+                    if (!interfaceToFakes.TryGetValue(interfaceName, out var fakesList))
+                    {
+                        fakesList = new List<string>();
+                        interfaceToFakes[interfaceName] = fakesList;
+                    }
+                    fakesList.Add(classDecl.Identifier.Text);
+                }
+            }
+        }
+
+        var duplicates = interfaceToFakes
+            .Where(kvp => kvp.Value.Count > 1)
+            .Select(kvp => $"Interfaz '{kvp.Key}' está implementada por múltiples fakes: {string.Join(", ", kvp.Value)}")
+            .ToList();
+
+        Assert.True(
+            duplicates.Count == 0,
+            $"Se encontraron interfaces implementadas por más de un fake en Support/Fakes:\n{string.Join("\n", duplicates)}"
+        );
+    }
 }
