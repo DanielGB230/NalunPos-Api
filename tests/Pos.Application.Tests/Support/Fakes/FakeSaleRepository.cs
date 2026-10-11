@@ -5,6 +5,7 @@ using Pos.Domain.Interfaces;
 
 public sealed class FakeSaleRepository : ISaleRepository
 {
+    /// <summary>Colección en memoria de ventas.</summary>
     public List<Sale> Sales { get; } = [];
 
     public Task<Sale?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult(Sales.FirstOrDefault(s => s.Id == id));

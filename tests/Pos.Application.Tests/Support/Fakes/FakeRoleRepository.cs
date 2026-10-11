@@ -5,6 +5,7 @@ using Pos.Domain.Interfaces;
 
 public sealed class FakeRoleRepository : IRoleRepository
 {
+    /// <summary>Colección en memoria de roles.</summary>
     public List<Role> Roles { get; } = [];
 
     public Task<IReadOnlyList<Role>> GetAllAsync(CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<Role>>(Roles);

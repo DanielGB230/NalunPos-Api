@@ -6,14 +6,18 @@ using Pos.Domain.Enums;
 
 public sealed class FakeElectronicInvoicingService : IElectronicInvoicingService
 {
+    /// <summary>Estado de consulta que devolverá el proveedor electrónico.</summary>
     public ElectronicInvoiceProviderStatus? StatusToReturn { get; set; }
+    /// <summary>Estado de envío que devolverá el proveedor electrónico.</summary>
     public ElectronicInvoiceProviderStatus? SendStatusToReturn { get; set; }
 
+    /// <summary>Configura el estado a retornar en consultas de comprobantes.</summary>
     public void ReturnStatus(ElectronicInvoiceProviderStatus status)
     {
         StatusToReturn = status;
     }
 
+    /// <summary>Configura el estado a retornar al enviar comprobantes.</summary>
     public void ReturnSendStatus(ElectronicInvoiceProviderStatus status)
     {
         SendStatusToReturn = status;

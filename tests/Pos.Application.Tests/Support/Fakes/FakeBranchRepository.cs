@@ -5,6 +5,7 @@ using Pos.Domain.Interfaces;
 
 public sealed class FakeBranchRepository : IBranchRepository
 {
+    /// <summary>Colección en memoria de sucursales.</summary>
     public List<Branch> Branches { get; } = [];
 
     public Task<IReadOnlyList<Branch>> GetAllAsync(bool? isActive = null, CancellationToken cancellationToken = default)

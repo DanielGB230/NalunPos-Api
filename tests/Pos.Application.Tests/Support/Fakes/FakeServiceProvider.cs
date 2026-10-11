@@ -4,6 +4,7 @@ public sealed class FakeServiceProvider : IServiceProvider
 {
     private readonly Dictionary<Type, object> _services = new();
 
+    /// <summary>Registra una implementación de servicio para el contenedor falso.</summary>
     public void Register<TService>(object implementation)
     {
         _services[typeof(TService)] = implementation;

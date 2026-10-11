@@ -5,8 +5,11 @@ using Pos.Domain.Interfaces;
 
 public sealed class FakeUserRepository : IUserRepository
 {
+    /// <summary>Colección en memoria de usuarios.</summary>
     public List<User> Users { get; } = [];
+    /// <summary>Usuario específico configurado para retornar en consultas de prueba.</summary>
     public User? UserToReturn { get; set; }
+    /// <summary>Registra el tamaño de página solicitado en la última consulta paginada.</summary>
     public int LastRequestedPageSize { get; private set; }
 
     public Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)

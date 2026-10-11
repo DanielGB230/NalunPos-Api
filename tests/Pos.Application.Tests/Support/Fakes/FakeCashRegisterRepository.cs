@@ -6,7 +6,9 @@ using Pos.Domain.Interfaces;
 
 public sealed class FakeCashRegisterRepository : ICashRegisterRepository
 {
+    /// <summary>Colección en memoria de cajas registradoras.</summary>
     public List<CashRegister> Registers { get; } = [];
+    /// <summary>Colección en memoria de sesiones de caja registradora.</summary>
     public List<CashRegisterSession> Sessions { get; } = [];
 
     public Task<CashRegister?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult(Registers.FirstOrDefault(r => r.Id == id));

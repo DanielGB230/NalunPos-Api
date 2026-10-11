@@ -7,6 +7,7 @@ using Pos.Domain.Interfaces;
 
 public sealed class FakeTenantRepository : ITenantRepository
 {
+    /// <summary>Colección en memoria de inquilinos (tenants).</summary>
     public List<Tenant> Tenants { get; } = [];
 
     public Task<Tenant?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)

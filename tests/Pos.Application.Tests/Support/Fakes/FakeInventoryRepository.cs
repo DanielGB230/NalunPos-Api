@@ -6,8 +6,11 @@ using Pos.Domain.Interfaces;
 
 public sealed class FakeInventoryRepository : IInventoryRepository
 {
+    /// <summary>Colección de movimientos de inventario registrados.</summary>
     public List<InventoryMovement> Movements { get; } = [];
+    /// <summary>Diccionario de stock por producto configurado para pruebas.</summary>
     public Dictionary<Guid, decimal> Stocks { get; } = [];
+    /// <summary>Contador de llamadas realizadas al repositorio de inventario.</summary>
     public int CallCount { get; private set; }
 
     public Task AddMovementAsync(InventoryMovement movement, CancellationToken cancellationToken = default)

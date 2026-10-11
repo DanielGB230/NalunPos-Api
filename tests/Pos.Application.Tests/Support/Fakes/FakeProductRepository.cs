@@ -6,6 +6,7 @@ using Pos.Domain.ValueObjects;
 
 public sealed class FakeProductRepository : IProductRepository
 {
+    /// <summary>Colección en memoria de productos.</summary>
     public List<Product> Products { get; } = [];
     public Product? ProductToReturn { get; set; }
     public int CallCount { get; private set; }

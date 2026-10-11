@@ -6,6 +6,7 @@ using Pos.Domain.ValueObjects;
 
 public sealed class FakeSupplierRepository : ISupplierRepository
 {
+    /// <summary>Colección en memoria de proveedores.</summary>
     public List<Supplier> Suppliers { get; } = [];
 
     public Task<Supplier?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult(Suppliers.FirstOrDefault(s => s.Id == id));

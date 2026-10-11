@@ -5,6 +5,7 @@ using Pos.Domain.Interfaces;
 
 public sealed class FakeNotificationRepository : ISystemNotificationRepository
 {
+    /// <summary>Colección en memoria de notificaciones del sistema.</summary>
     public List<SystemNotification> Notifications { get; } = [];
 
     public Task<SystemNotification?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult(Notifications.FirstOrDefault(n => n.Id == id));

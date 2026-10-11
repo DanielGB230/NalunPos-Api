@@ -5,6 +5,7 @@ using Pos.Domain.Interfaces;
 
 public sealed class FakeWarehouseRepository : IWarehouseRepository
 {
+    /// <summary>Colección en memoria de almacenes.</summary>
     public List<Warehouse> Warehouses { get; } = [];
     public Task AddAsync(Warehouse warehouse, CancellationToken cancellationToken = default) { Warehouses.Add(warehouse); return Task.CompletedTask; }
     public Task<Warehouse?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult(Warehouses.FirstOrDefault(w => w.Id == id));

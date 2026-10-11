@@ -6,6 +6,7 @@ using Pos.Domain.Interfaces;
 
 public sealed class FakeInvoiceRepository : IInvoiceRepository
 {
+    /// <summary>Colección en memoria de facturas y boletas.</summary>
     public List<Invoice> Invoices { get; } = [];
 
     public Task<Invoice?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult(Invoices.FirstOrDefault(i => i.Id == id));

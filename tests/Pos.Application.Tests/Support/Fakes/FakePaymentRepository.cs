@@ -5,6 +5,7 @@ using Pos.Domain.Interfaces;
 
 public sealed class FakePaymentRepository : IPaymentRepository
 {
+    /// <summary>Colección en memoria de pagos registrados.</summary>
     public List<Payment> Payments { get; } = [];
     public Task<Payment?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult(Payments.FirstOrDefault(p => p.Id == id));
     public Task<IReadOnlyList<Payment>> GetBySaleIdAsync(Guid saleId, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<Payment>>(Payments.Where(p => p.SaleId == saleId).ToList());

@@ -5,6 +5,7 @@ using Pos.Domain.Interfaces;
 
 public sealed class FakePosDeviceRepository : IPosDeviceRepository
 {
+    /// <summary>Colección en memoria de dispositivos POS.</summary>
     public List<PosDevice> Devices { get; } = [];
 
     public Task<PosDevice?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult(Devices.FirstOrDefault(d => d.Id == id));

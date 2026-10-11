@@ -5,6 +5,7 @@ using Pos.Domain.Interfaces;
 
 public sealed class FakeStockLevelRepository : IStockLevelRepository
 {
+    /// <summary>Colección en memoria de niveles de stock.</summary>
     public List<StockLevel> StockLevels { get; } = [];
     public Task AddAsync(StockLevel stockLevel, CancellationToken cancellationToken = default) { StockLevels.Add(stockLevel); return Task.CompletedTask; }
     public Task<StockLevel?> GetAsync(Guid productId, Guid warehouseId, Guid? containerId, CancellationToken cancellationToken = default) => Task.FromResult(StockLevels.FirstOrDefault(s => s.ProductId == productId && s.WarehouseId == warehouseId && s.ContainerId == containerId));

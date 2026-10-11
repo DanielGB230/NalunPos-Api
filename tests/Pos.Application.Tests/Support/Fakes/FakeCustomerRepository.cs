@@ -6,6 +6,7 @@ using Pos.Domain.ValueObjects;
 
 public sealed class FakeCustomerRepository : ICustomerRepository
 {
+    /// <summary>Colección en memoria de clientes.</summary>
     public List<Customer> Customers { get; } = [];
 
     public Task<Customer?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult(Customers.FirstOrDefault(c => c.Id == id));

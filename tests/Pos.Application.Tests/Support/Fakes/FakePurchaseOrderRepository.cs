@@ -6,6 +6,7 @@ using Pos.Domain.Interfaces;
 
 public sealed class FakePurchaseOrderRepository : IPurchaseOrderRepository
 {
+    /// <summary>Colección en memoria de órdenes de compra.</summary>
     public List<PurchaseOrder> Orders { get; } = [];
     public Task<PurchaseOrder?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult(Orders.FirstOrDefault(o => o.Id == id));
     public Task<PurchaseOrder?> GetByOrderNumberAsync(string orderNumber, CancellationToken cancellationToken = default) => Task.FromResult(Orders.FirstOrDefault(o => o.OrderNumber == orderNumber));

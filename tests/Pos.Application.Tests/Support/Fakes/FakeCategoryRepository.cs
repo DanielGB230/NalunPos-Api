@@ -5,6 +5,7 @@ using Pos.Domain.Interfaces;
 
 public sealed class FakeCategoryRepository : ICategoryRepository
 {
+    /// <summary>Colección en memoria de categorías.</summary>
     public List<Category> Categories { get; } = [];
     public Task<Category?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult(Categories.FirstOrDefault(c => c.Id == id));
     public Task<Category?> GetByNameAsync(string name, CancellationToken cancellationToken = default) => Task.FromResult(Categories.FirstOrDefault(c => c.Name.Equals(name, StringComparison.OrdinalIgnoreCase)));
