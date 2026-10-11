@@ -1,4 +1,4 @@
-﻿using Pos.Application.Tests.Support.Fakes;
+using Pos.Application.Tests.Support.Fakes;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.PurchaseOrders.Commands;
 using Pos.Application.PurchaseOrders.DTOs;
@@ -18,7 +18,7 @@ public class CreatePurchaseOrderCommandHandlerTests
     private readonly FakeSupplierRepository _supplierRepository = new();
     private readonly FakeWarehouseRepository _warehouseRepository = new();
     private readonly FakeProductRepository _productRepository = new();
-    private readonly FakeTenantContext _tenantContext = new();
+    private readonly FakeCurrentTenantContext _tenantContext = new();
     private readonly FakeUnitOfWork _unitOfWork = new();
     private readonly CreatePurchaseOrderCommandHandler _handler;
 

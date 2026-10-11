@@ -1,4 +1,4 @@
-﻿using Pos.Application.Tests.Support.Fakes;
+using Pos.Application.Tests.Support.Fakes;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Sales.Commands;
 using Pos.Application.Sales.DTOs;
@@ -20,7 +20,7 @@ public class CreateSaleCommandHandlerTests
     private readonly FakeInventoryRepository _inventoryRepository = new();
     private readonly FakeWarehouseRepository _warehouseRepository = new();
     private readonly FakeStockLevelRepository _stockLevelRepository = new();
-    private readonly FakeTenantContext _tenantContext = new();
+    private readonly FakeCurrentTenantContext _tenantContext = new();
     private readonly FakeUnitOfWork _unitOfWork = new();
     private readonly FakeDispatcher _dispatcher = new();
     private readonly CreateSaleCommandHandler _handler;

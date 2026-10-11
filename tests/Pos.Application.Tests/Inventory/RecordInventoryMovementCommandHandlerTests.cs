@@ -1,4 +1,4 @@
-﻿using Pos.Application.Tests.Support.Fakes;
+using Pos.Application.Tests.Support.Fakes;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Inventory.Commands;
 using Pos.Domain.Common;
@@ -16,7 +16,7 @@ public class RecordInventoryMovementCommandHandlerTests
     private readonly FakeStockLevelRepository _stockLevelRepository = new();
     private readonly FakeWarehouseRepository _warehouseRepository = new();
     private readonly FakeProductRepository _productRepository = new();
-    private readonly FakeTenantContext _tenantContext = new();
+    private readonly FakeCurrentTenantContext _tenantContext = new();
     private readonly FakeUnitOfWork _unitOfWork = new();
     private readonly RecordInventoryMovementCommandHandler _handler;
 

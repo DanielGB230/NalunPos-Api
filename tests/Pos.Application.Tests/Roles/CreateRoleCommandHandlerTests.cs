@@ -1,4 +1,4 @@
-﻿using Pos.Application.Tests.Support.Fakes;
+using Pos.Application.Tests.Support.Fakes;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Roles.Commands;
 using Pos.Domain.Common;
@@ -17,6 +17,7 @@ public class CreateRoleCommandHandlerTests
 
     public CreateRoleCommandHandlerTests()
     {
+        _currentTenantContext.TenantId = Guid.NewGuid();
         _handler = new CreateRoleCommandHandler(_roleRepository, _unitOfWork, _currentTenantContext);
     }
 
