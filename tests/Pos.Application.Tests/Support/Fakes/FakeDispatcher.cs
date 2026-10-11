@@ -6,7 +6,9 @@ using Pos.Domain.Common;
 
 public sealed class FakeDispatcher : IDispatcher
 {
+    /// <summary>Indica si se permite el despacho de comandos en el fake.</summary>
     public bool AllowCommandDispatch { get; set; }
+    /// <summary>Comandos despachados capturados por el fake.</summary>
     public List<ICommand> DispatchedCommands { get; } = [];
 
     public Task SendAsync(ICommand command, CancellationToken cancellationToken = default)

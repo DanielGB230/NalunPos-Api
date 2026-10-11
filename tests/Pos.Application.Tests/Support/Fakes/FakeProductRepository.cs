@@ -8,7 +8,9 @@ public sealed class FakeProductRepository : IProductRepository
 {
     /// <summary>Colección en memoria de productos.</summary>
     public List<Product> Products { get; } = [];
+    /// <summary>Producto predeterminado a devolver en búsquedas.</summary>
     public Product? ProductToReturn { get; set; }
+    /// <summary>Contador de llamadas realizadas al repositorio.</summary>
     public int CallCount { get; private set; }
 
     public Task<Product?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
