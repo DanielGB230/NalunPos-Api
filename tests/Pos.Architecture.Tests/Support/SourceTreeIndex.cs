@@ -14,38 +14,77 @@ public sealed record FileSyntaxInfo(
     IReadOnlyList<DeclaredTypeInfo> DeclaredTypes,
     IReadOnlyList<Diagnostic> SyntaxErrors);
 
-public static class SourceTreeIndex
+public sealed class SourceTreeIndex
 {
-    private static readonly Lazy<IReadOnlyList<FileSyntaxInfo>> LazyFiles = new(LoadAllFiles);
+    private static readonly Lazy<SourceTreeIndex> LazyAppAndApi = new(() =>
+        new SourceTreeIndex(SolutionDirectory.Root, [
+            SolutionDirectory.PosApplication,
+            SolutionDirectory.PosApi
+        ]));
 
-    public static IReadOnlyList<FileSyntaxInfo> ApplicationAndApiFiles => LazyFiles.Value;
+    private static readonly Lazy<SourceTreeIndex> LazySrc = new(() =>
+        new SourceTreeIndex(Path.Combine(SolutionDirectory.Root, "src"), [
+            Path.Combine(SolutionDirectory.Root, "src")
+        ]));
 
-    public static void EnsureNoSyntaxErrors()
+    public static SourceTreeIndex ApplicationAndApi => LazyAppAndApi.Value;
+    public static SourceTreeIndex Src => LazySrc.Value;
+
+    public static IReadOnlyList<FileSyntaxInfo> ApplicationAndApiFiles => ApplicationAndApi.Files;
+
+    public static SourceTreeIndex ForDirectory(string directoryPath)
     {
-        var filesWithErrors = ApplicationAndApiFiles.Where(f => f.SyntaxErrors.Count > 0).ToList();
-        if (filesWithErrors.Count > 0)
-        {
-            var details = string.Join("\n", filesWithErrors.Select(f =>
-                $"- {Path.GetRelativePath(SolutionDirectory.Root, f.FilePath)}: {string.Join("; ", f.SyntaxErrors.Select(e => e.GetMessage(CultureInfo.InvariantCulture)))}"));
-            throw new InvalidOperationException($"Se encontraron errores de sintaxis al parsear archivos C#:\n{details}");
-        }
+        return new SourceTreeIndex(directoryPath, [directoryPath]);
+    }
+
+    public static void EnsureNoSyntaxErrors(SourceTreeIndex? index = null)
+    {
+        (index ?? ApplicationAndApi).EnsureNoSyntaxErrors();
     }
 
     public static IReadOnlyList<FileSyntaxInfo> GetDeclaringFilesForType(string typeName)
     {
         EnsureNoSyntaxErrors();
-        return ApplicationAndApiFiles
+        return ApplicationAndApi.Files
             .Where(f => f.DeclaredTypes.Any(t => t.Name == typeName))
             .ToList();
     }
 
-    private static List<FileSyntaxInfo> LoadAllFiles()
+    private readonly string _rootPath;
+    private readonly IReadOnlyList<FileSyntaxInfo> _files;
+
+    public IReadOnlyList<FileSyntaxInfo> Files => _files;
+
+    public SourceTreeIndex(string rootPath, IEnumerable<string> searchDirectories)
+    {
+        _rootPath = rootPath;
+        _files = LoadFiles(searchDirectories);
+    }
+
+    public void EnsureNoSyntaxErrors()
+    {
+        var filesWithErrors = _files.Where(f => f.SyntaxErrors.Count > 0).ToList();
+        if (filesWithErrors.Count > 0)
+        {
+            var details = string.Join("\n", filesWithErrors.Select(f =>
+                $"- {Path.GetRelativePath(_rootPath, f.FilePath)}: {string.Join("; ", f.SyntaxErrors.Select(e => e.GetMessage(CultureInfo.InvariantCulture)))}"));
+            throw new InvalidOperationException($"Se encontraron errores de sintaxis al parsear archivos C#:\n{details}");
+        }
+    }
+
+    private static List<FileSyntaxInfo> LoadFiles(IEnumerable<string> directories)
     {
         var paths = new List<string>();
-        if (Directory.Exists(SolutionDirectory.PosApplication))
-            paths.AddRange(Directory.GetFiles(SolutionDirectory.PosApplication, "*.cs", SearchOption.AllDirectories));
-        if (Directory.Exists(SolutionDirectory.PosApi))
-            paths.AddRange(Directory.GetFiles(SolutionDirectory.PosApi, "*.cs", SearchOption.AllDirectories));
+        foreach (var dir in directories)
+        {
+            if (Directory.Exists(dir))
+            {
+                paths.AddRange(Directory.GetFiles(dir, "*.cs", SearchOption.AllDirectories)
+                    .Where(p => !p.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                                  .Any(part => part.Equals("bin", StringComparison.OrdinalIgnoreCase) ||
+                                               part.Equals("obj", StringComparison.OrdinalIgnoreCase))));
+            }
+        }
 
         var parseOptions = new CSharpParseOptions(LanguageVersion.Latest);
         var result = new List<FileSyntaxInfo>();

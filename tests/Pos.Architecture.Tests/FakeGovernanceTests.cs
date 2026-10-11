@@ -1,8 +1,6 @@
 namespace Pos.Architecture.Tests;
 
-using System.Globalization;
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Pos.Architecture.Tests.Support;
 using Xunit;
 
@@ -14,13 +12,14 @@ public class FakeGovernanceTests
         var testsDirectory = SolutionDirectory.PosApplicationTests;
         Assert.True(Directory.Exists(testsDirectory), $"El directorio '{testsDirectory}' no existe.");
 
-        var files = Directory.GetFiles(testsDirectory, "*.cs", SearchOption.AllDirectories);
-        var parseOptions = new CSharpParseOptions(LanguageVersion.Latest);
+        var testIndex = SourceTreeIndex.ForDirectory(testsDirectory);
+        testIndex.EnsureNoSyntaxErrors();
+
         var failures = new List<string>();
 
-        foreach (var file in files)
+        foreach (var file in testIndex.Files)
         {
-            var relativePath = Path.GetRelativePath(testsDirectory, file);
+            var relativePath = Path.GetRelativePath(testsDirectory, file.FilePath);
             var normalizedRelative = relativePath.Replace('\\', '/');
 
             // Ignorar archivos dentro de Support/Fakes
@@ -29,27 +28,7 @@ public class FakeGovernanceTests
                 continue;
             }
 
-            // Ignorar carpetas obj/ o bin/ si existieran
-            if (normalizedRelative.StartsWith("obj/", StringComparison.OrdinalIgnoreCase) ||
-                normalizedRelative.StartsWith("bin/", StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            var text = File.ReadAllText(file);
-            var tree = CSharpSyntaxTree.ParseText(text, parseOptions, path: file);
-            var errors = tree.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error).ToList();
-            if (errors.Count > 0)
-            {
-                var errorDetails = string.Join("; ", errors.Select(e => e.GetMessage(CultureInfo.InvariantCulture)));
-                failures.Add($"Error de sintaxis en '{normalizedRelative}': {errorDetails}");
-                continue;
-            }
-
-            var root = tree.GetCompilationUnitRoot();
-            var declaredTypes = TypeDeclarationScanner.ScanDeclaredTypes(root);
-
-            foreach (var type in declaredTypes)
+            foreach (var type in file.DeclaredTypes)
             {
                 if (type.Name.StartsWith("Fake", StringComparison.Ordinal))
                 {
@@ -71,17 +50,23 @@ public class FakeGovernanceTests
         var fakesDirectory = Path.Combine(testsDirectory, "Support", "Fakes");
         Assert.True(Directory.Exists(fakesDirectory), $"El directorio '{fakesDirectory}' no existe.");
 
-        var files = Directory.GetFiles(fakesDirectory, "*.cs", SearchOption.TopDirectoryOnly);
-        var parseOptions = new CSharpParseOptions(LanguageVersion.Latest);
+        var fakesIndex = SourceTreeIndex.ForDirectory(fakesDirectory);
+        fakesIndex.EnsureNoSyntaxErrors();
+
+        var srcIndex = SourceTreeIndex.Src;
+        srcIndex.EnsureNoSyntaxErrors();
+
+        var srcInterfaces = srcIndex.Files
+            .SelectMany(f => f.DeclaredTypes)
+            .Where(t => t.DeclarationKind == "interface")
+            .Select(t => t.Name)
+            .ToHashSet(StringComparer.Ordinal);
+
         var interfaceToFakes = new Dictionary<string, List<string>>(StringComparer.Ordinal);
 
-        foreach (var file in files)
+        foreach (var file in fakesIndex.Files)
         {
-            var text = File.ReadAllText(file);
-            var tree = CSharpSyntaxTree.ParseText(text, parseOptions, path: file);
-            var root = tree.GetCompilationUnitRoot();
-
-            var classDeclarations = root.DescendantNodes().OfType<Microsoft.CodeAnalysis.CSharp.Syntax.ClassDeclarationSyntax>();
+            var classDeclarations = file.Root.DescendantNodes().OfType<ClassDeclarationSyntax>();
 
             foreach (var classDecl in classDeclarations)
             {
@@ -90,6 +75,11 @@ public class FakeGovernanceTests
                 foreach (var baseType in classDecl.BaseList.Types)
                 {
                     var interfaceName = baseType.Type.ToString();
+                    if (!srcInterfaces.Contains(interfaceName))
+                    {
+                        continue;
+                    }
+
                     if (!interfaceToFakes.TryGetValue(interfaceName, out var fakesList))
                     {
                         fakesList = new List<string>();
