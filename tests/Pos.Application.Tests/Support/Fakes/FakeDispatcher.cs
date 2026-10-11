@@ -6,7 +6,20 @@ using Pos.Domain.Common;
 
 public sealed class FakeDispatcher : IDispatcher
 {
-    public Task SendAsync(ICommand command, CancellationToken cancellationToken = default) => Task.CompletedTask;
+    public bool AllowCommandDispatch { get; set; }
+    public List<ICommand> DispatchedCommands { get; } = [];
+
+    public Task SendAsync(ICommand command, CancellationToken cancellationToken = default)
+    {
+        if (!AllowCommandDispatch)
+        {
+            throw new NotImplementedException("Command dispatch is disabled by default. Set AllowCommandDispatch = true to enable.");
+        }
+
+        DispatchedCommands.Add(command);
+        return Task.CompletedTask;
+    }
+
     public Task<TResponse> SendAsync<TResponse>(ICommand<TResponse> command, CancellationToken cancellationToken = default) => throw new NotImplementedException();
     public Task<TResponse> SendAsync<TResponse>(IQuery<TResponse> query, CancellationToken cancellationToken = default) => throw new NotImplementedException();
     public Task<TResponse> QueryAsync<TResponse>(IQuery<TResponse> query, CancellationToken cancellationToken = default) => throw new NotImplementedException();

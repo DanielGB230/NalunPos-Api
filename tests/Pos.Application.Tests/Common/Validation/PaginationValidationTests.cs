@@ -95,6 +95,7 @@ public class PaginationValidationTests
         var currentUserService = new FakeCurrentUserService { UserId = Guid.NewGuid() };
         var userRepository = new FakeUserRepository();
         var currentUserPermissions = new FakeCurrentUserPermissions();
+        currentUserPermissions.Grant(Permissions.Users.View);
 
         services.AddSingleton<ICurrentUserService>(currentUserService);
         services.AddSingleton<IUserRepository>(userRepository);
@@ -121,6 +122,7 @@ public class PaginationValidationTests
         var currentUserService = new FakeCurrentUserService { UserId = Guid.NewGuid() };
         var userRepository = new FakeUserRepository();
         var currentUserPermissions = new FakeCurrentUserPermissions();
+        currentUserPermissions.Grant(Permissions.Users.View);
 
         services.AddSingleton<ICurrentUserService>(currentUserService);
         services.AddSingleton<IUserRepository>(userRepository);
@@ -147,6 +149,7 @@ public class PaginationValidationTests
         var inventoryRepository = new FakeInventoryRepository();
         var productRepository = new FakeProductRepository();
         var currentUserPermissions = new FakeCurrentUserPermissions();
+        currentUserPermissions.Grant(Permissions.Inventory.View);
 
         services.AddSingleton<ICurrentUserService>(currentUserService);
         services.AddSingleton<IUserRepository>(userRepository);
