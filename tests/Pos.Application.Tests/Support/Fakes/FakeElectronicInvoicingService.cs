@@ -6,16 +6,36 @@ using Pos.Domain.Enums;
 
 public sealed class FakeElectronicInvoicingService : IElectronicInvoicingService
 {
-    public ElectronicInvoiceProviderStatus StatusToReturn { get; set; } = ElectronicInvoiceProviderStatus.Accepted;
-    public ElectronicInvoiceProviderStatus SendStatusToReturn { get; set; } = ElectronicInvoiceProviderStatus.Accepted;
+    public ElectronicInvoiceProviderStatus? StatusToReturn { get; set; }
+    public ElectronicInvoiceProviderStatus? SendStatusToReturn { get; set; }
+
+    public void ReturnStatus(ElectronicInvoiceProviderStatus status)
+    {
+        StatusToReturn = status;
+    }
+
+    public void ReturnSendStatus(ElectronicInvoiceProviderStatus status)
+    {
+        SendStatusToReturn = status;
+    }
 
     public Task<InvoicingServiceResult> GetStatusAsync(Invoice invoice, CancellationToken cancellationToken = default)
     {
-        return Task.FromResult(new InvoicingServiceResult(StatusToReturn, invoice.DocumentNumber, "HASH", null));
+        if (StatusToReturn is null)
+        {
+            throw new InvalidOperationException("FakeElectronicInvoicingService no configurado: llama ReturnStatus()");
+        }
+
+        return Task.FromResult(new InvoicingServiceResult(StatusToReturn.Value, invoice.DocumentNumber, "HASH", null));
     }
 
     public Task<InvoicingServiceResult> SendInvoiceAsync(Invoice invoice, CancellationToken cancellationToken = default)
     {
-        return Task.FromResult(new InvoicingServiceResult(SendStatusToReturn, invoice.DocumentNumber, "HASH", null));
+        if (SendStatusToReturn is null)
+        {
+            throw new InvalidOperationException("FakeElectronicInvoicingService no configurado: llama ReturnSendStatus()");
+        }
+
+        return Task.FromResult(new InvoicingServiceResult(SendStatusToReturn.Value, invoice.DocumentNumber, "HASH", null));
     }
 }

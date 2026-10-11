@@ -1,4 +1,4 @@
-﻿using Pos.Application.Tests.Support.Fakes;
+using Pos.Application.Tests.Support.Fakes;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Payments.Commands;
 using Pos.Application.Payments.DTOs;
@@ -37,7 +37,7 @@ public class ProcessPaymentCommandHandlerTests
         var lineItem = SaleLineItem.Create(Guid.NewGuid(), "Producto Test", 1m, Money.Create(50m, "USD"));
         var sale = Sale.Create("V-001-0001", Guid.NewGuid(), null, new[] { lineItem }, 0m, "USD");
         _saleRepository.Sales.Add(sale);
-        _paymentGateway.ShouldSucceed = true;
+        _paymentGateway.Approve();
 
         var command = new ProcessPaymentCommand(
             sale.Id,

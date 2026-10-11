@@ -1,4 +1,4 @@
-﻿using Pos.Application.Tests.Support.Fakes;
+using Pos.Application.Tests.Support.Fakes;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Invoicing.Commands;
 using Pos.Domain.Common;
@@ -72,7 +72,7 @@ public class ReconcileInvoiceCommandHandlerTests
             Money.Create(100m, "USD"));
         _invoiceRepository.Invoices.Add(invoice);
 
-        _invoicingService.StatusToReturn = ElectronicInvoiceProviderStatus.Accepted;
+        _invoicingService.ReturnStatus(ElectronicInvoiceProviderStatus.Accepted);
 
         var command = new ReconcileInvoiceCommand(invoice.Id);
 
@@ -94,8 +94,8 @@ public class ReconcileInvoiceCommandHandlerTests
             Money.Create(100m, "USD"));
         _invoiceRepository.Invoices.Add(invoice);
 
-        _invoicingService.StatusToReturn = ElectronicInvoiceProviderStatus.NotFound;
-        _invoicingService.SendStatusToReturn = ElectronicInvoiceProviderStatus.Accepted;
+        _invoicingService.ReturnStatus(ElectronicInvoiceProviderStatus.NotFound);
+        _invoicingService.ReturnSendStatus(ElectronicInvoiceProviderStatus.Accepted);
 
         var command = new ReconcileInvoiceCommand(invoice.Id);
 
