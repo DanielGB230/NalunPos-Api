@@ -18,9 +18,6 @@ public record RegisterPosDeviceCommand(
 ) : ICommand<Result<PosDeviceDto>>;
 
 [HasPermission(Permissions.PosDevices.Register)]
-
-
-[HasPermission(Permissions.PosDevices.Register)]
 public class RegisterPosDeviceCommandHandler : ICommandHandler<RegisterPosDeviceCommand, Result<PosDeviceDto>>
 {
     private readonly IPosDeviceRepository _posDeviceRepository;

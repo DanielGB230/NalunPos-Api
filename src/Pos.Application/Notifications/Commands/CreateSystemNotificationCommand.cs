@@ -18,9 +18,6 @@ public record CreateSystemNotificationCommand(
 ) : ICommand<Result<SystemNotificationDto>>;
 
 [HasPermission(Permissions.Notifications.Create)]
-
-
-[HasPermission(Permissions.Notifications.Create)]
 public class CreateSystemNotificationCommandHandler : ICommandHandler<CreateSystemNotificationCommand, Result<SystemNotificationDto>>
 {
     private readonly ISystemNotificationRepository _notificationRepository;

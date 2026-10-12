@@ -26,9 +26,6 @@ public record CreateSupplierCommand(
 ) : ICommand<Result<SupplierDto>>;
 
 [HasPermission(Permissions.Suppliers.Create)]
-
-
-[HasPermission(Permissions.Suppliers.Create)]
 public class CreateSupplierCommandHandler : ICommandHandler<CreateSupplierCommand, Result<SupplierDto>>
 {
     private readonly ISupplierRepository _supplierRepository;

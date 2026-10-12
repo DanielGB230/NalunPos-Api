@@ -24,9 +24,6 @@ public record CreateProductCommand(
 ) : ICommand<Result<ProductDto>>;
 
 [HasPermission(Permissions.Products.Create)]
-
-
-[HasPermission(Permissions.Products.Create)]
 public class CreateProductCommandHandler : ICommandHandler<CreateProductCommand, Result<ProductDto>>
 {
     private readonly IProductRepository _productRepository;

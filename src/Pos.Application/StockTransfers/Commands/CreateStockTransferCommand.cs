@@ -23,9 +23,6 @@ public record CreateStockTransferCommand(
 ) : ICommand<Result<StockTransferDto>>;
 
 [HasPermission(Permissions.StockTransfers.Create)]
-
-
-[HasPermission(Permissions.StockTransfers.Create)]
 public class CreateStockTransferCommandHandler : ICommandHandler<CreateStockTransferCommand, Result<StockTransferDto>>
 {
     private readonly IStockTransferRepository _transferRepository;

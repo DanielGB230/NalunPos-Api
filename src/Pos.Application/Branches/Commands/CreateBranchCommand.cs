@@ -21,9 +21,6 @@ public record CreateBranchCommand(
 ) : ICommand<Result<BranchDto>>;
 
 [HasPermission(Permissions.Branches.Create)]
-
-
-[HasPermission(Permissions.Branches.Create)]
 public class CreateBranchCommandHandler : ICommandHandler<CreateBranchCommand, Result<BranchDto>>
 {
     private readonly IBranchRepository _branchRepository;

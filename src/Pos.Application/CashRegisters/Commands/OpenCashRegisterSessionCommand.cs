@@ -20,9 +20,6 @@ public record OpenCashRegisterSessionCommand(
 ) : ICommand<Result<CashRegisterSessionDto>>;
 
 [HasPermission(Permissions.CashRegisters.OpenSession)]
-
-
-[HasPermission(Permissions.CashRegisters.OpenSession)]
 public class OpenCashRegisterSessionCommandHandler : ICommandHandler<OpenCashRegisterSessionCommand, Result<CashRegisterSessionDto>>
 {
     private readonly ICashRegisterRepository _registerRepository;

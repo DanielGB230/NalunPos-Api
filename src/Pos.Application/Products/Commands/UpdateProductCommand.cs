@@ -19,9 +19,6 @@ public record UpdateProductCommand(
 ) : ICommand<Result<ProductDto>>;
 
 [HasPermission(Permissions.Products.Update)]
-
-
-[HasPermission(Permissions.Products.Update)]
 public class UpdateProductCommandHandler : ICommandHandler<UpdateProductCommand, Result<ProductDto>>
 {
     private readonly IProductRepository _productRepository;

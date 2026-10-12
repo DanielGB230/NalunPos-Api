@@ -25,9 +25,6 @@ public record CreateCustomerCommand(
 ) : ICommand<Result<CustomerDto>>;
 
 [HasPermission(Permissions.Customers.Create)]
-
-
-[HasPermission(Permissions.Customers.Create)]
 public class CreateCustomerCommandHandler : ICommandHandler<CreateCustomerCommand, Result<CustomerDto>>
 {
     private readonly ICustomerRepository _customerRepository;

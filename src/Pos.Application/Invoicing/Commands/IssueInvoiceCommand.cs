@@ -22,9 +22,6 @@ public record IssueInvoiceCommand(
 ) : ICommand<Result<InvoiceDto>>;
 
 [HasPermission(Permissions.Invoices.Issue)]
-
-
-[HasPermission(Permissions.Invoices.Issue)]
 public class IssueInvoiceCommandHandler : ICommandHandler<IssueInvoiceCommand, Result<InvoiceDto>>
 {
     private readonly IInvoiceRepository _invoiceRepository;
