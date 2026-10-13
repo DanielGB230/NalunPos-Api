@@ -37,6 +37,26 @@ public class AttributeGovernanceTests
     }
 
     [Fact]
+    public void NoHandlerType_HasHasPermissionAttribute()
+    {
+        var failures = new List<string>();
+
+        foreach (var file in SourceTreeIndex.ApplicationAndApi.Files)
+        {
+            var handlerFindings = HandlerPermissionScanner.Scan(file.Root);
+            foreach (var finding in handlerFindings)
+            {
+                var relPath = Path.GetRelativePath(SolutionDirectory.Root, file.FilePath);
+                failures.Add($"- {relPath} | Tipo: {finding.TypeName} | Atributo: [{finding.AttributeName}]");
+            }
+        }
+
+        Assert.True(
+            failures.Count == 0,
+            $"Ningún tipo Handler debe tener [HasPermission]. Se encontraron los siguientes:\n{string.Join("\n", failures)}");
+    }
+
+    [Fact]
     public void AttributeDuplicationScanner_IdenticalAttributesOnClass_DetectsDuplicate()
     {
         var code = """
@@ -79,6 +99,49 @@ public class AttributeGovernanceTests
         var root = ParseSnippet(code);
 
         var findings = AttributeDuplicationScanner.Scan(root);
+
+        Assert.Empty(findings);
+    }
+
+    [Fact]
+    public void HandlerPermissionScanner_HandlerWithPermission_DetectsViolation()
+    {
+        var code = """
+            [HasPermission("Branches.Create")]
+            public class CreateBranchCommandHandler {}
+            """;
+        var root = ParseSnippet(code);
+
+        var findings = HandlerPermissionScanner.Scan(root);
+
+        Assert.Single(findings);
+        Assert.Equal("CreateBranchCommandHandler", findings[0].TypeName);
+        Assert.Equal("HasPermission(\"Branches.Create\")", findings[0].AttributeName);
+    }
+
+    [Fact]
+    public void HandlerPermissionScanner_HandlerWithoutPermission_DoesNotDetect()
+    {
+        var code = """
+            public class CreateBranchCommandHandler {}
+            """;
+        var root = ParseSnippet(code);
+
+        var findings = HandlerPermissionScanner.Scan(root);
+
+        Assert.Empty(findings);
+    }
+
+    [Fact]
+    public void HandlerPermissionScanner_RecordWithPermission_DoesNotDetect()
+    {
+        var code = """
+            [HasPermission("Branches.Create")]
+            public record CreateBranchCommand();
+            """;
+        var root = ParseSnippet(code);
+
+        var findings = HandlerPermissionScanner.Scan(root);
 
         Assert.Empty(findings);
     }
