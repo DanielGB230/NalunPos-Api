@@ -10,7 +10,6 @@ namespace Pos.Application.CashRegisters.Commands;
 [HasPermission(Permissions.CashRegisters.Create)]
 public record CreateCashRegisterCommand(string Name, string SerialNumber = "") : ICommand<CashRegisterDto>;
 
-[HasPermission(Permissions.CashRegisters.Create)]
 public class CreateCashRegisterCommandHandler : ICommandHandler<CreateCashRegisterCommand, CashRegisterDto>
 {
     private readonly ICashRegisterRepository _registerRepository;

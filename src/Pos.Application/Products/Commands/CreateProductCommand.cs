@@ -23,7 +23,6 @@ public record CreateProductCommand(
     int InitialStock = 0
 ) : ICommand<Result<ProductDto>>;
 
-[HasPermission(Permissions.Products.Create)]
 public class CreateProductCommandHandler : ICommandHandler<CreateProductCommand, Result<ProductDto>>
 {
     private readonly IProductRepository _productRepository;

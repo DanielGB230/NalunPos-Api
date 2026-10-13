@@ -9,7 +9,6 @@ namespace Pos.Application.Customers.Commands;
 [HasPermission(Permissions.Customers.Update)]
 public record DeactivateCustomerCommand(Guid Id) : ICommand<Result<bool>>;
 
-[HasPermission(Permissions.Customers.Update)]
 public class DeactivateCustomerCommandHandler : ICommandHandler<DeactivateCustomerCommand, Result<bool>>
 {
     private readonly ICustomerRepository _customerRepository;

@@ -20,7 +20,6 @@ public record ProcessPaymentCommand(
     string? ExternalReference = null
 ) : ICommand<Result<PaymentDto>>;
 
-[HasPermission(Permissions.Payments.Process)]
 public class ProcessPaymentCommandHandler : ICommandHandler<ProcessPaymentCommand, Result<PaymentDto>>
 {
     private readonly IPaymentRepository _paymentRepository;

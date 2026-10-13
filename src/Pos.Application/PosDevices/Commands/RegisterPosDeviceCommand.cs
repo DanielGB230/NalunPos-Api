@@ -17,7 +17,6 @@ public record RegisterPosDeviceCommand(
     string SerialNumber
 ) : ICommand<Result<PosDeviceDto>>;
 
-[HasPermission(Permissions.PosDevices.Register)]
 public class RegisterPosDeviceCommandHandler : ICommandHandler<RegisterPosDeviceCommand, Result<PosDeviceDto>>
 {
     private readonly IPosDeviceRepository _posDeviceRepository;

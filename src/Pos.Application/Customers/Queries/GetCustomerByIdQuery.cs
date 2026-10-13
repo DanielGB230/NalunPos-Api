@@ -10,7 +10,6 @@ namespace Pos.Application.Customers.Queries;
 [HasPermission(Permissions.Customers.View)]
 public record GetCustomerByIdQuery(Guid Id) : IQuery<Result<CustomerDto>>;
 
-[HasPermission(Permissions.Customers.View)]
 public class GetCustomerByIdQueryHandler : IQueryHandler<GetCustomerByIdQuery, Result<CustomerDto>>
 {
     private readonly ICustomerRepository _customerRepository;

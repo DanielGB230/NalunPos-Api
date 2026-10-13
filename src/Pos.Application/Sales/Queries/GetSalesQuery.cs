@@ -17,7 +17,6 @@ public record GetSalesQuery(
     DateTime? EndDate = null
 ) : IQuery<PagedResult<SaleDto>>;
 
-[HasPermission(Permissions.Sales.View)]
 public class GetSalesQueryHandler : IQueryHandler<GetSalesQuery, PagedResult<SaleDto>>
 {
     private readonly ISaleRepository _saleRepository;

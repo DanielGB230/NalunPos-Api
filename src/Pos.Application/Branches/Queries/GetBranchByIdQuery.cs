@@ -10,7 +10,6 @@ namespace Pos.Application.Branches.Queries;
 [HasPermission(Permissions.Branches.View)]
 public record GetBranchByIdQuery(Guid Id) : IQuery<Result<BranchDto>>;
 
-[HasPermission(Permissions.Branches.View)]
 public class GetBranchByIdQueryHandler : IQueryHandler<GetBranchByIdQuery, Result<BranchDto>>
 {
     private readonly IBranchRepository _branchRepository;

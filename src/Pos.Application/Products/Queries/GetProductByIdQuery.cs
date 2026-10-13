@@ -10,7 +10,6 @@ namespace Pos.Application.Products.Queries;
 [HasPermission(Permissions.Products.View)]
 public record GetProductByIdQuery(Guid Id) : IQuery<Result<ProductDto>>;
 
-[HasPermission(Permissions.Products.View)]
 public class GetProductByIdQueryHandler : IQueryHandler<GetProductByIdQuery, Result<ProductDto>>
 {
     private readonly IProductRepository _productRepository;

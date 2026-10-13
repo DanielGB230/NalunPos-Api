@@ -13,7 +13,6 @@ namespace Pos.Application.Categories.Commands;
 [HasPermission(Permissions.Categories.Create)]
 public record CreateCategoryCommand(string Name, string? Description) : ICommand<Result<CategoryDto>>;
 
-[HasPermission(Permissions.Categories.Create)]
 public class CreateCategoryCommandHandler : ICommandHandler<CreateCategoryCommand, Result<CategoryDto>>
 {
     private readonly ICategoryRepository _categoryRepository;

@@ -21,7 +21,6 @@ public record IssueInvoiceCommand(
     string CustomerTaxCountryCode = "PE"
 ) : ICommand<Result<InvoiceDto>>;
 
-[HasPermission(Permissions.Invoices.Issue)]
 public class IssueInvoiceCommandHandler : ICommandHandler<IssueInvoiceCommand, Result<InvoiceDto>>
 {
     private readonly IInvoiceRepository _invoiceRepository;

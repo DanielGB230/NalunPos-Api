@@ -19,7 +19,6 @@ public record GetWarehouseMovementsQuery(
     int PageSize = 20
 ) : IQuery<Result<PagedResult<InventoryMovementDto>>>;
 
-[HasPermission(Permissions.Inventory.View)]
 public class GetWarehouseMovementsQueryHandler
     : IQueryHandler<GetWarehouseMovementsQuery, Result<PagedResult<InventoryMovementDto>>>
 {

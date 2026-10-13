@@ -18,7 +18,6 @@ public record GetCategoriesQuery(
     bool? IsActive = null
 ) : IQuery<PagedResult<CategoryDto>>;
 
-[HasPermission(Permissions.Categories.View)]
 public class GetCategoriesQueryHandler : IQueryHandler<GetCategoriesQuery, PagedResult<CategoryDto>>
 {
     private readonly ICategoryRepository _categoryRepository;

@@ -16,7 +16,6 @@ public record GetStockTransfersQuery(
     Guid? DestinationWarehouseId = null
 ) : IQuery<Result<PagedResult<StockTransferDto>>>;
 
-[HasPermission(Permissions.StockTransfers.View)]
 public class GetStockTransfersQueryHandler : IQueryHandler<GetStockTransfersQuery, Result<PagedResult<StockTransferDto>>>
 {
     private readonly IStockTransferRepository _transferRepository;

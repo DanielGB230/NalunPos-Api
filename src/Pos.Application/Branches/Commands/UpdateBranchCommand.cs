@@ -20,7 +20,6 @@ public record UpdateBranchCommand(
     string PhoneNumber
 ) : ICommand<Result<BranchDto>>;
 
-[HasPermission(Permissions.Branches.Update)]
 public class UpdateBranchCommandHandler : ICommandHandler<UpdateBranchCommand, Result<BranchDto>>
 {
     private readonly IBranchRepository _branchRepository;

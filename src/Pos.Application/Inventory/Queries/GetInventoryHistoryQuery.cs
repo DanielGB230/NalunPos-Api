@@ -16,7 +16,6 @@ public record GetInventoryHistoryQuery(
     int PageSize = 10
 ) : IQuery<Result<PagedResult<InventoryMovementDto>>>;
 
-[HasPermission(Permissions.Inventory.View)]
 public class GetInventoryHistoryQueryHandler : IQueryHandler<GetInventoryHistoryQuery, Result<PagedResult<InventoryMovementDto>>>
 {
     private readonly IInventoryRepository _inventoryRepository;

@@ -18,7 +18,6 @@ public record GetSuppliersQuery(
     bool? IsActive = null
 ) : IQuery<PagedResult<SupplierDto>>;
 
-[HasPermission(Permissions.Suppliers.View)]
 public class GetSuppliersQueryHandler : IQueryHandler<GetSuppliersQuery, PagedResult<SupplierDto>>
 {
     private readonly ISupplierRepository _supplierRepository;

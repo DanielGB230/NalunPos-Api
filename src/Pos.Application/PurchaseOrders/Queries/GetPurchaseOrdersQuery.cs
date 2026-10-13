@@ -16,7 +16,6 @@ public record GetPurchaseOrdersQuery(
     Pos.Domain.Enums.PurchaseOrderStatus? Status = null
 ) : IQuery<Result<(IReadOnlyList<PurchaseOrderDto> Items, int TotalCount)>>;
 
-[HasPermission(Permissions.PurchaseOrders.View)]
 public class GetPurchaseOrdersQueryHandler
     : IQueryHandler<GetPurchaseOrdersQuery, Result<(IReadOnlyList<PurchaseOrderDto> Items, int TotalCount)>>
 {

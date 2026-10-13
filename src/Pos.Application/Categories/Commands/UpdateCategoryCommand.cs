@@ -12,7 +12,6 @@ namespace Pos.Application.Categories.Commands;
 [HasPermission(Permissions.Categories.Update)]
 public record UpdateCategoryCommand(Guid Id, string Name, string? Description) : ICommand<Result<CategoryDto>>;
 
-[HasPermission(Permissions.Categories.Update)]
 public class UpdateCategoryCommandHandler : ICommandHandler<UpdateCategoryCommand, Result<CategoryDto>>
 {
     private readonly ICategoryRepository _categoryRepository;

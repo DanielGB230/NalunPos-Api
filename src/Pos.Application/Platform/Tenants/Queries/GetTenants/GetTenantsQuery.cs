@@ -19,7 +19,6 @@ public record GetTenantsQuery(
 /// <summary>
 /// Handler de la consulta de Tenants paginada.
 /// </summary>
-[HasPermission(Permissions.Tenants.View)]
 public class GetTenantsQueryHandler : IQueryHandler<GetTenantsQuery, PagedResult<TenantDto>>
 {
     private readonly ITenantRepository _tenantRepository;

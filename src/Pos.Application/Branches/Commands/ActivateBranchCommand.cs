@@ -9,7 +9,6 @@ namespace Pos.Application.Branches.Commands;
 [HasPermission(Permissions.Branches.Update)]
 public record ActivateBranchCommand(Guid Id) : ICommand<Result<bool>>;
 
-[HasPermission(Permissions.Branches.Update)]
 public class ActivateBranchCommandHandler : ICommandHandler<ActivateBranchCommand, Result<bool>>
 {
     private readonly IBranchRepository _branchRepository;

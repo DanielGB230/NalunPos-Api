@@ -10,7 +10,6 @@ namespace Pos.Application.Invoicing.Queries;
 [HasPermission(Permissions.Invoices.View)]
 public record GetInvoiceByIdQuery(Guid Id) : IQuery<Result<InvoiceDto>>;
 
-[HasPermission(Permissions.Invoices.View)]
 public class GetInvoiceByIdQueryHandler : IQueryHandler<GetInvoiceByIdQuery, Result<InvoiceDto>>
 {
     private readonly IInvoiceRepository _invoiceRepository;

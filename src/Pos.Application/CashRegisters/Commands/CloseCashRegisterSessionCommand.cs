@@ -18,7 +18,6 @@ public record CloseCashRegisterSessionCommand(
     string? Notes = null
 ) : ICommand<Result<CashRegisterSessionDto>>;
 
-[HasPermission(Permissions.CashRegisters.CloseSession)]
 public class CloseCashRegisterSessionCommandHandler : ICommandHandler<CloseCashRegisterSessionCommand, Result<CashRegisterSessionDto>>
 {
     private readonly ICashRegisterRepository _registerRepository;

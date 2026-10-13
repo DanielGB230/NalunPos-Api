@@ -9,7 +9,6 @@ namespace Pos.Application.Suppliers.Commands;
 [HasPermission(Permissions.Suppliers.Update)]
 public record ActivateSupplierCommand(Guid Id) : ICommand<Result<bool>>;
 
-[HasPermission(Permissions.Suppliers.Update)]
 public class ActivateSupplierCommandHandler : ICommandHandler<ActivateSupplierCommand, Result<bool>>
 {
     private readonly ISupplierRepository _supplierRepository;

@@ -17,7 +17,6 @@ public record UpdateProductPriceCommand(
     decimal? CostAmount = null
 ) : ICommand<Result<ProductDto>>;
 
-[HasPermission(Permissions.Products.Update)]
 public class UpdateProductPriceCommandHandler : ICommandHandler<UpdateProductPriceCommand, Result<ProductDto>>
 {
     private readonly IProductRepository _productRepository;

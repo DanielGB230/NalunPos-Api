@@ -10,7 +10,6 @@ namespace Pos.Application.PosDevices.Queries;
 [HasPermission(Permissions.PosDevices.View)]
 public record GetPosDeviceByIdQuery(Guid Id) : IQuery<Result<PosDeviceDto>>;
 
-[HasPermission(Permissions.PosDevices.View)]
 public class GetPosDeviceByIdQueryHandler : IQueryHandler<GetPosDeviceByIdQuery, Result<PosDeviceDto>>
 {
     private readonly IPosDeviceRepository _posDeviceRepository;

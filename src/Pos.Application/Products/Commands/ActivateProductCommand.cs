@@ -9,7 +9,6 @@ namespace Pos.Application.Products.Commands;
 [HasPermission(Permissions.Products.Update)]
 public record ActivateProductCommand(Guid Id) : ICommand<Result<bool>>;
 
-[HasPermission(Permissions.Products.Update)]
 public class ActivateProductCommandHandler : ICommandHandler<ActivateProductCommand, Result<bool>>
 {
     private readonly IProductRepository _productRepository;

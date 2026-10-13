@@ -25,7 +25,6 @@ public record UpdateSupplierCommand(
     string Phone
 ) : ICommand<Result<SupplierDto>>;
 
-[HasPermission(Permissions.Suppliers.Update)]
 public class UpdateSupplierCommandHandler : ICommandHandler<UpdateSupplierCommand, Result<SupplierDto>>
 {
     private readonly ISupplierRepository _supplierRepository;

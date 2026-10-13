@@ -14,7 +14,6 @@ namespace Pos.Application.Invoicing.Commands;
 [HasPermission(Permissions.Invoices.Issue)]
 public record ReconcileInvoiceCommand(Guid InvoiceId) : ICommand<Result<InvoiceDto>>;
 
-[HasPermission(Permissions.Invoices.Issue)]
 public class ReconcileInvoiceCommandHandler : ICommandHandler<ReconcileInvoiceCommand, Result<InvoiceDto>>
 {
     private readonly IInvoiceRepository _invoiceRepository;

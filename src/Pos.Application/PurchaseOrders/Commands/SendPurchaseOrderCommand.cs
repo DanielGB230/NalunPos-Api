@@ -11,7 +11,6 @@ namespace Pos.Application.PurchaseOrders.Commands;
 [HasPermission(Permissions.PurchaseOrders.Send)]
 public record SendPurchaseOrderCommand(Guid PurchaseOrderId) : ICommand<Result<PurchaseOrderDto>>;
 
-[HasPermission(Permissions.PurchaseOrders.Send)]
 public class SendPurchaseOrderCommandHandler : ICommandHandler<SendPurchaseOrderCommand, Result<PurchaseOrderDto>>
 {
     private readonly IPurchaseOrderRepository _orderRepository;

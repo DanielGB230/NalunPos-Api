@@ -9,7 +9,6 @@ namespace Pos.Application.CashRegisters.Queries;
 [HasPermission(Permissions.CashRegisters.View)]
 public record GetActiveSessionQuery(Guid CashRegisterId) : IQuery<CashRegisterSessionDto?>;
 
-[HasPermission(Permissions.CashRegisters.View)]
 public class GetActiveSessionQueryHandler : IQueryHandler<GetActiveSessionQuery, CashRegisterSessionDto?>
 {
     private readonly ICashRegisterRepository _registerRepository;

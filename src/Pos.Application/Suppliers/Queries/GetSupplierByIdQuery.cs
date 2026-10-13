@@ -10,7 +10,6 @@ namespace Pos.Application.Suppliers.Queries;
 [HasPermission(Permissions.Suppliers.View)]
 public record GetSupplierByIdQuery(Guid Id) : IQuery<Result<SupplierDto>>;
 
-[HasPermission(Permissions.Suppliers.View)]
 public class GetSupplierByIdQueryHandler : IQueryHandler<GetSupplierByIdQuery, Result<SupplierDto>>
 {
     private readonly ISupplierRepository _supplierRepository;

@@ -19,7 +19,6 @@ public record GetProductsQuery(
     bool? IsActive = null
 ) : IQuery<PagedResult<ProductDto>>;
 
-[HasPermission(Permissions.Products.View)]
 public class GetProductsQueryHandler : IQueryHandler<GetProductsQuery, PagedResult<ProductDto>>
 {
     private readonly IProductRepository _productRepository;

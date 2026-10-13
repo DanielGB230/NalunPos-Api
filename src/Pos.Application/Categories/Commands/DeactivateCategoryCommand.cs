@@ -9,7 +9,6 @@ namespace Pos.Application.Categories.Commands;
 [HasPermission(Permissions.Categories.Update)]
 public record DeactivateCategoryCommand(Guid Id) : ICommand<Result<bool>>;
 
-[HasPermission(Permissions.Categories.Update)]
 public class DeactivateCategoryCommandHandler : ICommandHandler<DeactivateCategoryCommand, Result<bool>>
 {
     private readonly ICategoryRepository _categoryRepository;

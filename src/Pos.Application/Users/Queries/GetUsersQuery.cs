@@ -18,7 +18,6 @@ public record GetUsersQuery(
     bool? IsActive = null
 ) : IQuery<PagedResult<UserDto>>;
 
-[HasPermission(Permissions.Users.View)]
 public class GetUsersQueryHandler : IQueryHandler<GetUsersQuery, PagedResult<UserDto>>
 {
     private readonly IUserRepository _userRepository;

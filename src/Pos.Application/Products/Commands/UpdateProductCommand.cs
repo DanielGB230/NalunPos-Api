@@ -18,7 +18,6 @@ public record UpdateProductCommand(
     Guid CategoryId
 ) : ICommand<Result<ProductDto>>;
 
-[HasPermission(Permissions.Products.Update)]
 public class UpdateProductCommandHandler : ICommandHandler<UpdateProductCommand, Result<ProductDto>>
 {
     private readonly IProductRepository _productRepository;

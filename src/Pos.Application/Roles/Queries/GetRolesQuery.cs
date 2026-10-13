@@ -9,7 +9,6 @@ namespace Pos.Application.Roles.Queries;
 [HasPermission(Permissions.Roles.View)]
 public record GetRolesQuery : IQuery<IReadOnlyList<RoleDto>>;
 
-[HasPermission(Permissions.Roles.View)]
 public class GetRolesQueryHandler : IQueryHandler<GetRolesQuery, IReadOnlyList<RoleDto>>
 {
     private readonly IRoleRepository _roleRepository;

@@ -22,7 +22,6 @@ public record CreateStockAdjustmentCommand(
     string? Notes = null
 ) : ICommand<Result<StockAdjustmentDto>>;
 
-[HasPermission(Permissions.StockAdjustments.Create)]
 public class CreateStockAdjustmentCommandHandler : ICommandHandler<CreateStockAdjustmentCommand, Result<StockAdjustmentDto>>
 {
     private readonly IStockAdjustmentRepository _adjustmentRepository;

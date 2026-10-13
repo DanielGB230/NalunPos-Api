@@ -10,7 +10,6 @@ namespace Pos.Application.Categories.Queries;
 [HasPermission(Permissions.Categories.View)]
 public record GetCategoryByIdQuery(Guid Id) : IQuery<Result<CategoryDto>>;
 
-[HasPermission(Permissions.Categories.View)]
 public class GetCategoryByIdQueryHandler : IQueryHandler<GetCategoryByIdQuery, Result<CategoryDto>>
 {
     private readonly ICategoryRepository _categoryRepository;

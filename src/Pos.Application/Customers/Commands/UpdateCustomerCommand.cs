@@ -24,7 +24,6 @@ public record UpdateCustomerCommand(
     string? Country
 ) : ICommand<Result<CustomerDto>>;
 
-[HasPermission(Permissions.Customers.Update)]
 public class UpdateCustomerCommandHandler : ICommandHandler<UpdateCustomerCommand, Result<CustomerDto>>
 {
     private readonly ICustomerRepository _customerRepository;

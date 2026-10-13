@@ -19,7 +19,6 @@ public record GetStockLevelsByWarehouseQuery(
     int PageSize = 10
 ) : IQuery<Result<PagedResult<StockLevelDto>>>;
 
-[HasPermission(Permissions.Inventory.View)]
 public class GetStockLevelsByWarehouseQueryHandler
     : IQueryHandler<GetStockLevelsByWarehouseQuery, Result<PagedResult<StockLevelDto>>>
 {

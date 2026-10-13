@@ -25,7 +25,6 @@ public record CreateSupplierCommand(
     string Phone
 ) : ICommand<Result<SupplierDto>>;
 
-[HasPermission(Permissions.Suppliers.Create)]
 public class CreateSupplierCommandHandler : ICommandHandler<CreateSupplierCommand, Result<SupplierDto>>
 {
     private readonly ISupplierRepository _supplierRepository;

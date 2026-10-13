@@ -18,7 +18,6 @@ public record GetCustomersQuery(
     bool? IsActive = null
 ) : IQuery<PagedResult<CustomerDto>>;
 
-[HasPermission(Permissions.Customers.View)]
 public class GetCustomersQueryHandler : IQueryHandler<GetCustomersQuery, PagedResult<CustomerDto>>
 {
     private readonly ICustomerRepository _customerRepository;

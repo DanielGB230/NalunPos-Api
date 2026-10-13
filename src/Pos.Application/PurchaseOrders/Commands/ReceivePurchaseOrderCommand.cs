@@ -25,7 +25,6 @@ public record ReceivePurchaseOrderCommand(
     List<ReceivePurchaseOrderLineDto> ReceivedLines
 ) : ICommand<Result<PurchaseOrderDto>>;
 
-[HasPermission(Permissions.PurchaseOrders.Receive)]
 public class ReceivePurchaseOrderCommandHandler : ICommandHandler<ReceivePurchaseOrderCommand, Result<PurchaseOrderDto>>
 {
     private readonly IPurchaseOrderRepository _orderRepository;

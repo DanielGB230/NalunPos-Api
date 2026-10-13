@@ -10,7 +10,6 @@ namespace Pos.Application.Inventory.Queries;
 [HasPermission(Permissions.Inventory.View)]
 public record GetProductStockQuery(Guid ProductId, Guid? WarehouseId = null) : IQuery<Result<ProductStockDto>>;
 
-[HasPermission(Permissions.Inventory.View)]
 public class GetProductStockQueryHandler : IQueryHandler<GetProductStockQuery, Result<ProductStockDto>>
 {
     private readonly IStockLevelRepository _stockLevelRepository;

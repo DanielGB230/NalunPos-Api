@@ -28,7 +28,6 @@ public record CreatePurchaseOrderCommand(
     string? Notes = null
 ) : ICommand<Result<PurchaseOrderDto>>;
 
-[HasPermission(Permissions.PurchaseOrders.Create)]
 public class CreatePurchaseOrderCommandHandler : ICommandHandler<CreatePurchaseOrderCommand, Result<PurchaseOrderDto>>
 {
     private readonly IPurchaseOrderRepository _orderRepository;

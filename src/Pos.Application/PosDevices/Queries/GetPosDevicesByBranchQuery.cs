@@ -9,7 +9,6 @@ namespace Pos.Application.PosDevices.Queries;
 [HasPermission(Permissions.PosDevices.View)]
 public record GetPosDevicesByBranchQuery(Guid BranchId) : IQuery<IReadOnlyList<PosDeviceDto>>;
 
-[HasPermission(Permissions.PosDevices.View)]
 public class GetPosDevicesByBranchQueryHandler : IQueryHandler<GetPosDevicesByBranchQuery, IReadOnlyList<PosDeviceDto>>
 {
     private readonly IPosDeviceRepository _posDeviceRepository;

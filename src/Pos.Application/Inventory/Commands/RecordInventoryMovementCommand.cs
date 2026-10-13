@@ -20,7 +20,6 @@ public record RecordInventoryMovementCommand(
     string? Notes = null
 ) : ICommand<Result<InventoryMovementDto>>;
 
-[HasPermission(Permissions.Inventory.AdjustStock)]
 public class RecordInventoryMovementCommandHandler : ICommandHandler<RecordInventoryMovementCommand, Result<InventoryMovementDto>>
 {
     private readonly IInventoryRepository _inventoryRepository;

@@ -28,7 +28,6 @@ public record CreateSaleCommand(
     string Currency = "USD"
 ) : ICommand<Result<SaleDto>>;
 
-[HasPermission(Permissions.Sales.Create)]
 public class CreateSaleCommandHandler : ICommandHandler<CreateSaleCommand, Result<SaleDto>>
 {
     private readonly ISaleRepository _saleRepository;
