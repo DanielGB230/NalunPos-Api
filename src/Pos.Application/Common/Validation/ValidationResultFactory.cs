@@ -45,6 +45,23 @@ public static class ValidationResultFactory
 
     /// <summary>
     /// Crea una instancia del tipo de respuesta <typeparamref name="TResponse"/> (que debe ser <see cref="Result"/> o <see cref="Result{T}"/>)
+    /// utilizando un delegado cacheado por tipo de respuesta a partir de un <see cref="DomainError"/>.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">Si <typeparamref name="TResponse"/> no es <see cref="Result"/> ni <see cref="Result{T}"/>.</exception>
+    public static TResponse CreateResultForResponse<TResponse>(DomainError error)
+    {
+        ArgumentNullException.ThrowIfNull(error);
+
+        if (!IsResultResponse<TResponse>())
+        {
+            throw new InvalidOperationException($"El tipo de respuesta '{typeof(TResponse).Name}' no es un Result ni Result<T>.");
+        }
+
+        return ResponseFailCache<TResponse>.Value(error);
+    }
+
+    /// <summary>
+    /// Crea una instancia del tipo de respuesta <typeparamref name="TResponse"/> (que debe ser <see cref="Result"/> o <see cref="Result{T}"/>)
     /// utilizando un delegado cacheado por tipo de respuesta.
     /// </summary>
     /// <exception cref="InvalidOperationException">Si <typeparamref name="TResponse"/> no es <see cref="Result"/> ni <see cref="Result{T}"/>.</exception>

@@ -66,6 +66,7 @@ public static class DependencyInjection
             var responseType = serviceType.GetGenericArguments()[1];
 
             var validationDecoratorType = typeof(ValidationDecorator<,>).MakeGenericType(commandType, responseType);
+            var tenantRequirementBehaviorType = typeof(TenantRequirementBehavior<,>).MakeGenericType(commandType, responseType);
             var authorizationBehaviorType = typeof(AuthorizationBehavior<,>).MakeGenericType(commandType, responseType);
             var loggingDecoratorType = typeof(LoggingDecorator<,>).MakeGenericType(commandType, responseType);
 
@@ -77,8 +78,10 @@ public static class DependencyInjection
                     ? ActivatorUtilities.CreateInstance(provider, descriptor.ImplementationType)
                     : descriptor.ImplementationFactory!(provider);
 
+                // Pipeline execution order: Logging -> Authorization -> TenantRequirement -> Validation -> InnerHandler
                 object validatedHandler = ActivatorUtilities.CreateInstance(provider, validationDecoratorType, innerHandler);
-                object authorizedHandler = ActivatorUtilities.CreateInstance(provider, authorizationBehaviorType, validatedHandler);
+                object tenantCheckedHandler = ActivatorUtilities.CreateInstance(provider, tenantRequirementBehaviorType, validatedHandler);
+                object authorizedHandler = ActivatorUtilities.CreateInstance(provider, authorizationBehaviorType, tenantCheckedHandler);
                 object loggedHandler = ActivatorUtilities.CreateInstance(provider, loggingDecoratorType, authorizedHandler);
 
                 return loggedHandler;
