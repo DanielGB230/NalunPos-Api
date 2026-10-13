@@ -1,4 +1,4 @@
-﻿using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Attributes;
 using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.AI.DTOs;
@@ -10,6 +10,7 @@ using Pos.Domain.Interfaces;
 
 namespace Pos.Application.AI.Commands;
 
+[RequiresTenant]
 [HasPermission(Permissions.AiGovernance.ProposeAction)]
 public record ProposeAgentActionCommand(
     string AgentId,
@@ -40,14 +41,7 @@ public class ProposeAgentActionCommandHandler : ICommandHandler<ProposeAgentActi
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        if (!_tenantContext.TenantId.HasValue || _tenantContext.TenantId.Value == Guid.Empty)
-        {
-            return Result.Fail<AgentActionRecordDto>(DomainError.Validation(
-                "Tenant.Required",
-                "Se requiere un contexto de tenant activo para proponer acciones de agente IA."));
-        }
-
-        Guid tenantId = _tenantContext.TenantId.Value;
+        Guid tenantId = _tenantContext.RequireTenantId();
 
         // Idempotencia: Verificar si ya existe una propuesta idéntica en estado pendiente
         bool exists = await _repository.ExistsPendingActionAsync(

@@ -1,4 +1,4 @@
-﻿using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Attributes;
 using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Sales.DTOs;
@@ -18,6 +18,7 @@ public record CreateSaleItemDto(
     decimal UnitPriceAmount
 );
 
+[RequiresTenant]
 [HasPermission(Permissions.Sales.Create)]
 public record CreateSaleCommand(
     string ReceiptNumber,

@@ -1,4 +1,4 @@
-﻿using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Attributes;
 using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.PurchaseOrders.DTOs;
@@ -19,6 +19,7 @@ public record ReceivePurchaseOrderLineDto(
     DateTime? ExpirationDate = null
 );
 
+[RequiresTenant]
 [HasPermission(Permissions.PurchaseOrders.Receive)]
 public record ReceivePurchaseOrderCommand(
     Guid PurchaseOrderId,
@@ -55,7 +56,7 @@ public class ReceivePurchaseOrderCommandHandler : ICommandHandler<ReceivePurchas
         if (order is null)
             return Result.Fail<PurchaseOrderDto>(DomainError.NotFound("PurchaseOrder.NotFound", $"No se encontró la orden con ID '{command.PurchaseOrderId}'."));
 
-        Guid tenantId = _tenantContext.TenantId ?? Guid.Empty;
+        Guid tenantId = _tenantContext.RequireTenantId();
 
         // 1. Actualizar el dominio — ReceiveLines valida invariantes y retorna líneas afectadas
         IReadOnlyList<PurchaseOrderLine> updatedLines;

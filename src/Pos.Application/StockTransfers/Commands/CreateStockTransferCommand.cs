@@ -1,4 +1,4 @@
-﻿using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Attributes;
 using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.StockTransfers.DTOs;
@@ -14,6 +14,7 @@ namespace Pos.Application.StockTransfers.Commands;
 
 public record CreateStockTransferLineDto(Guid ProductId, decimal Quantity);
 
+[RequiresTenant]
 [HasPermission(Permissions.StockTransfers.Create)]
 public record CreateStockTransferCommand(
     Guid SourceWarehouseId,
@@ -67,7 +68,7 @@ public class CreateStockTransferCommandHandler : ICommandHandler<CreateStockTran
         if (destWarehouse is null)
             return Result.Fail<StockTransferDto>(DomainError.NotFound("Warehouse.DestinationNotFound", $"No se encontró el almacén de destino con ID '{command.DestinationWarehouseId}'."));
 
-        Guid tenantId = _tenantContext.TenantId ?? Guid.Empty;
+        Guid tenantId = _tenantContext.RequireTenantId();
 
         // 1. Validar existencia de productos y stock disponible en ORIGEN para TODAS las líneas antes de mutar
         foreach (var line in command.Lines)

@@ -1,4 +1,4 @@
-﻿using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Attributes;
 using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Warehouses.DTOs;
@@ -9,6 +9,7 @@ using Pos.Domain.Interfaces;
 
 namespace Pos.Application.Warehouses.Commands;
 
+[RequiresTenant]
 [HasPermission(Permissions.Warehouses.Create)]
 public record CreateWarehouseCommand(
     Guid BranchId,
@@ -46,7 +47,7 @@ public class CreateWarehouseCommandHandler : ICommandHandler<CreateWarehouseComm
         if (branch is null)
             return Result.Fail<WarehouseDto>(DomainError.NotFound("Branch.NotFound", $"No se encontró la sucursal con ID '{command.BranchId}'."));
 
-        Guid tenantId = _tenantContext.TenantId ?? Guid.Empty;
+        Guid tenantId = _tenantContext.RequireTenantId();
 
         // Si se solicita IsDefault, desasignar el default actual
         if (command.IsDefault)

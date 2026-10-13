@@ -1,4 +1,4 @@
-﻿using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Attributes;
 using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Inventory.DTOs;
@@ -10,6 +10,7 @@ using Pos.Domain.Interfaces;
 
 namespace Pos.Application.Inventory.Commands;
 
+[RequiresTenant]
 [HasPermission(Permissions.Inventory.AdjustStock)]
 public record RecordInventoryMovementCommand(
     Guid ProductId,
@@ -73,12 +74,7 @@ public class RecordInventoryMovementCommandHandler : ICommandHandler<RecordInven
 
         var warehouse = await _warehouseRepository.GetByIdAsync(warehouseId, cancellationToken);
 
-        Guid tenantId = (_tenantContext.TenantId.HasValue && _tenantContext.TenantId.Value != Guid.Empty)
-            ? _tenantContext.TenantId.Value
-            : (warehouse?.TenantId ?? product.TenantId);
-
-        if (tenantId == Guid.Empty)
-            tenantId = Guid.NewGuid();
+        Guid tenantId = _tenantContext.RequireTenantId();
 
         var stockLevel = await _stockLevelRepository.GetAsync(product.Id, warehouseId, null, cancellationToken);
 

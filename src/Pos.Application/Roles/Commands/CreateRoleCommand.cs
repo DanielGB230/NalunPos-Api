@@ -1,4 +1,4 @@
-﻿using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Attributes;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Roles.DTOs;
 using Pos.Domain.Entities;
@@ -9,6 +9,7 @@ using Pos.Domain.Common;
 
 namespace Pos.Application.Roles.Commands;
 
+[RequiresTenant]
 [HasPermission(Pos.Application.Common.Authorization.Permissions.Roles.Create)]
 public record CreateRoleCommand(
     string Name,
@@ -39,15 +40,12 @@ public class CreateRoleCommandHandler : ICommandHandler<CreateRoleCommand, Resul
             return Result.Fail<RoleDto>(DomainError.Conflict("Role.AlreadyExists", $"Ya existe un rol con el nombre '{request.Name}'."));
         }
 
-        if (!_currentTenantContext.TenantId.HasValue)
-        {
-            return Result.Fail<RoleDto>(DomainError.Validation("Role.TenantIdRequired", "TenantId es requerido para crear un rol."));
-        }
+        Guid tenantId = _currentTenantContext.RequireTenantId();
 
         Role role;
         try
         {
-            role = Role.Create(_currentTenantContext.TenantId.Value, request.Name, request.Description, request.Permissions);
+            role = Role.Create(tenantId, request.Name, request.Description, request.Permissions);
         }
         catch (DomainException ex)
         {

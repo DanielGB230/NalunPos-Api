@@ -1,4 +1,4 @@
-﻿using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Attributes;
 using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.PurchaseOrders.DTOs;
@@ -19,6 +19,7 @@ public record CreatePurchaseOrderLineDto(
     string Currency = "USD"
 );
 
+[RequiresTenant]
 [HasPermission(Permissions.PurchaseOrders.Create)]
 public record CreatePurchaseOrderCommand(
     Guid SupplierId,
@@ -78,7 +79,7 @@ public class CreatePurchaseOrderCommandHandler : ICommandHandler<CreatePurchaseO
                 return Result.Fail<PurchaseOrderDto>(DomainError.Conflict("Product.Inactive", $"El producto '{product.Name}' está inactivo y no se puede añadir a una orden de compra."));
         }
 
-        Guid tenantId = _tenantContext.TenantId ?? Guid.Empty;
+        Guid tenantId = _tenantContext.RequireTenantId();
 
         PurchaseOrder order;
         try

@@ -1,4 +1,4 @@
-﻿using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Attributes;
 using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.StockAdjustments.DTOs;
@@ -14,6 +14,7 @@ namespace Pos.Application.StockAdjustments.Commands;
 
 public record CreateStockAdjustmentLineDto(Guid ProductId, decimal Quantity);
 
+[RequiresTenant]
 [HasPermission(Permissions.StockAdjustments.Create)]
 public record CreateStockAdjustmentCommand(
     Guid WarehouseId,
@@ -58,7 +59,7 @@ public class CreateStockAdjustmentCommandHandler : ICommandHandler<CreateStockAd
         if (warehouse is null)
             return Result.Fail<StockAdjustmentDto>(DomainError.NotFound("Warehouse.NotFound", $"No se encontró el almacén con ID '{command.WarehouseId}'."));
 
-        Guid tenantId = _tenantContext.TenantId ?? Guid.Empty;
+        Guid tenantId = _tenantContext.RequireTenantId();
 
         // 1. Validar todos los productos ANTES de mutar cualquier estado
         foreach (var line in command.Lines)
