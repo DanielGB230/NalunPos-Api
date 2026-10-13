@@ -1,0 +1,242 @@
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Pos.Architecture.Tests.Support;
+using Xunit;
+
+namespace Pos.Architecture.Tests;
+
+public class TenantGovernanceTests
+{
+    private static CompilationUnitSyntax ParseSnippet(string code)
+    {
+        var tree = CSharpSyntaxTree.ParseText(code, new CSharpParseOptions(LanguageVersion.Latest));
+        var errors = tree.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error).ToList();
+        Assert.True(errors.Count == 0, $"Snippet de prueba tiene errores de sintaxis:\n{string.Join("\n", errors.Select(e => e.GetMessage(System.Globalization.CultureInfo.InvariantCulture)))}");
+        return tree.GetCompilationUnitRoot();
+    }
+
+    [Fact]
+    public void NoApplicationCode_UsesTenantIdCoalesceGuidEmptyOrNewGuidForTenant()
+    {
+        var failures = new List<string>();
+
+        foreach (var file in SourceTreeIndex.ApplicationAndApi.Files)
+        {
+            if (!file.FilePath.Contains("Pos.Application", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var findings = TenantFallbackScanner.Scan(file.Root, file.FilePath);
+            foreach (var finding in findings)
+            {
+                var relPath = Path.GetRelativePath(SolutionDirectory.Root, file.FilePath);
+                failures.Add($"- {relPath}:{finding.LineNumber} | Patrón: {finding.PatternDescription} | Expresión: '{finding.ExpressionText}'");
+            }
+        }
+
+        Assert.True(
+            failures.Count == 0,
+            $"Prohibido usar fallbacks a Guid.Empty o Guid.NewGuid() para tenant en Pos.Application:\n{string.Join("\n", failures)}");
+    }
+
+    [Fact]
+    public void AllCommandHandlers_InvokingRequireTenantId_HaveRequiresTenantOnCommand()
+    {
+        var failures = new List<string>();
+
+        foreach (var file in SourceTreeIndex.ApplicationAndApi.Files)
+        {
+            if (!file.FilePath.Contains("Pos.Application", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var findings = HandlerTenantRequirementScanner.Scan(file.Root, file.FilePath);
+            foreach (var finding in findings)
+            {
+                var relPath = Path.GetRelativePath(SolutionDirectory.Root, file.FilePath);
+                failures.Add($"- {relPath} | {finding.Reason}");
+            }
+        }
+
+        Assert.True(
+            failures.Count == 0,
+            $"Todo handler que invoca RequireTenantId() debe tener [RequiresTenant] en su comando:\n{string.Join("\n", failures)}");
+    }
+
+    [Fact]
+    public void NoHandlerType_HasRequiresTenantAttribute()
+    {
+        var failures = new List<string>();
+
+        foreach (var file in SourceTreeIndex.ApplicationAndApi.Files)
+        {
+            var findings = HandlerRequiresTenantAttributeScanner.Scan(file.Root, file.FilePath);
+            foreach (var finding in findings)
+            {
+                var relPath = Path.GetRelativePath(SolutionDirectory.Root, file.FilePath);
+                failures.Add($"- {relPath} | Handler: {finding.HandlerTypeName} | Atributo: [{finding.AttributeName}]");
+            }
+        }
+
+        Assert.True(
+            failures.Count == 0,
+            $"[RequiresTenant] está prohibido en tipos *Handler (debe ir en el record del comando):\n{string.Join("\n", failures)}");
+    }
+
+    // --- Tests sintéticos para TenantFallbackScanner ---
+
+    [Fact]
+    public void TenantFallbackScanner_WhenTenantIdCoalescedWithGuidEmpty_DetectsViolation()
+    {
+        const string snippet = """
+            namespace Sample;
+            public class TestService
+            {
+                public void Execute(ICurrentTenantContext ctx)
+                {
+                    var id = ctx.TenantId ?? System.Guid.Empty;
+                }
+            }
+            """;
+
+        var root = ParseSnippet(snippet);
+        var findings = TenantFallbackScanner.Scan(root, "Sample.cs");
+
+        Assert.Single(findings);
+        Assert.Equal("TenantId ?? Guid.Empty", findings[0].PatternDescription);
+    }
+
+    [Fact]
+    public void TenantFallbackScanner_WhenTenantIdAssignedNewGuid_DetectsViolation()
+    {
+        const string snippet = """
+            namespace Sample;
+            public class TestService
+            {
+                public void Execute()
+                {
+                    System.Guid tenantId = System.Guid.NewGuid();
+                }
+            }
+            """;
+
+        var root = ParseSnippet(snippet);
+        var findings = TenantFallbackScanner.Scan(root, "Sample.cs");
+
+        Assert.Single(findings);
+        Assert.Contains("Guid.NewGuid()", findings[0].PatternDescription);
+    }
+
+    [Fact]
+    public void TenantFallbackScanner_WhenUsingRequireTenantId_DoesNotDetectViolation()
+    {
+        const string snippet = """
+            namespace Sample;
+            public class TestService
+            {
+                public void Execute(ICurrentTenantContext ctx)
+                {
+                    var id = ctx.RequireTenantId();
+                }
+            }
+            """;
+
+        var root = ParseSnippet(snippet);
+        var findings = TenantFallbackScanner.Scan(root, "Sample.cs");
+
+        Assert.Empty(findings);
+    }
+
+    // --- Tests sintéticos para HandlerTenantRequirementScanner ---
+
+    [Fact]
+    public void HandlerTenantRequirementScanner_WhenHandlerUsesRequireTenantIdWithoutAttributeOnCommand_DetectsViolation()
+    {
+        const string snippet = """
+            namespace Sample;
+            public record SampleCommand() : ICommand<Result>;
+
+            public class SampleCommandHandler : ICommandHandler<SampleCommand, Result>
+            {
+                public async Task<Result> HandleAsync(SampleCommand cmd, CancellationToken ct)
+                {
+                    var id = _tenantContext.RequireTenantId();
+                    return Result.Success();
+                }
+            }
+            """;
+
+        var root = ParseSnippet(snippet);
+        var findings = HandlerTenantRequirementScanner.Scan(root, "Sample.cs");
+
+        Assert.Single(findings);
+        Assert.Equal("SampleCommandHandler", findings[0].HandlerTypeName);
+        Assert.Equal("SampleCommand", findings[0].CommandTypeName);
+    }
+
+    [Fact]
+    public void HandlerTenantRequirementScanner_WhenHandlerUsesRequireTenantIdWithAttributeOnCommand_DoesNotDetectViolation()
+    {
+        const string snippet = """
+            namespace Sample;
+            [RequiresTenant]
+            public record SampleCommand() : ICommand<Result>;
+
+            public class SampleCommandHandler : ICommandHandler<SampleCommand, Result>
+            {
+                public async Task<Result> HandleAsync(SampleCommand cmd, CancellationToken ct)
+                {
+                    var id = _tenantContext.RequireTenantId();
+                    return Result.Success();
+                }
+            }
+            """;
+
+        var root = ParseSnippet(snippet);
+        var findings = HandlerTenantRequirementScanner.Scan(root, "Sample.cs");
+
+        Assert.Empty(findings);
+    }
+
+    // --- Tests sintéticos para HandlerRequiresTenantAttributeScanner ---
+
+    [Fact]
+    public void HandlerRequiresTenantAttributeScanner_WhenHandlerHasRequiresTenantAttribute_DetectsViolation()
+    {
+        const string snippet = """
+            namespace Sample;
+            [RequiresTenant]
+            public class SampleCommandHandler
+            {
+            }
+            """;
+
+        var root = ParseSnippet(snippet);
+        var findings = HandlerRequiresTenantAttributeScanner.Scan(root, "Sample.cs");
+
+        Assert.Single(findings);
+        Assert.Equal("SampleCommandHandler", findings[0].HandlerTypeName);
+    }
+
+    [Fact]
+    public void HandlerRequiresTenantAttributeScanner_WhenCommandHasRequiresTenantAttribute_DoesNotDetectViolation()
+    {
+        const string snippet = """
+            namespace Sample;
+            [RequiresTenant]
+            public record SampleCommand();
+
+            public class SampleCommandHandler
+            {
+            }
+            """;
+
+        var root = ParseSnippet(snippet);
+        var findings = HandlerRequiresTenantAttributeScanner.Scan(root, "Sample.cs");
+
+        Assert.Empty(findings);
+    }
+}
