@@ -25,9 +25,17 @@ Hemos decidido implementar un esquema estricto de **Default-Deny** en el pipelin
    - Lanza `InvalidOperationException` si se invoca sin un tenant resuelto válido (violación de invariante).
    - Erradica de raíz el uso de `_tenantContext.TenantId ?? Guid.Empty`, operadores `!` y fabricaciones de tenant con `Guid.NewGuid()`.
 
-4. **Contrato de Alcance de Plataforma (`IPlatformScopedEntity`) y Sentinela de Plataforma:**
+4. **Contrato de Alcance de Plataforma (`IPlatformScopedEntity`) y Sentinela Nombrada (`PlatformScope.TenantId`):**
    - Según ADR 0008, el filtro global de `PosDbContext` (`SetTenantFilter`) y la política RLS definen `TenantId == Guid.Empty` como el alcance de plataforma cuando no hay inquilino en contexto (`_currentTenantId == null`).
-   - Para no quebrar dicho contrato ni excluir entidades por nombre de tipo de manera frágil, se introduce la interfaz marcadora de dominio:
+   - Para erradicar el uso del literal `Guid.Empty` suelto como valor mágico en comparaciones y asignaciones de alcance global, se define la constante formal de dominio:
+     ```csharp
+     namespace Pos.Domain.Common;
+     public static class PlatformScope
+     {
+         public static readonly Guid TenantId = Guid.Empty;
+     }
+     ```
+   - Interfaz marcadora de dominio:
      ```csharp
      namespace Pos.Domain.Common;
      public interface IPlatformScopedEntity : ITenantOwnedEntity
@@ -38,9 +46,9 @@ Hemos decidido implementar un esquema estricto de **Default-Deny** en el pipelin
 
 5. **`TenantSaveChangesInterceptor` Fail-Closed en EF Core:**
    - Durante `SavingChanges` y `SavingChangesAsync`, para toda entidad `Added` que implemente `ITenantOwnedEntity`:
-     - Si hay un tenant activo en contexto (`TenantId != null && TenantId != Guid.Empty`): asigna dicho `TenantId` si venía vacío.
-     - Si NO hay un tenant activo en contexto (`TenantId == null || TenantId == Guid.Empty`):
-       - Si la entidad implementa `IPlatformScopedEntity` (`Role`, `AuditLog`): permite persistir con `TenantId == Guid.Empty` como sentinela de plataforma.
+     - Si hay un tenant activo en contexto (`TenantId != null && TenantId != PlatformScope.TenantId`): asigna dicho `TenantId` si venía vacío.
+     - Si NO hay un tenant activo en contexto (`TenantId == null || TenantId == PlatformScope.TenantId`):
+       - Si la entidad implementa `IPlatformScopedEntity` (`Role`, `AuditLog`): permite persistir con `TenantId == PlatformScope.TenantId` como sentinela de plataforma.
        - Si la entidad NO implementa `IPlatformScopedEntity` (e.g. `Branch`, `Warehouse`, `Product`): lanza `InvalidOperationException` impidiendo la inserción en base de datos sin contexto de inquilino.
 
 6. **Guardas de Arquitectura con Roslyn (`TenantGovernanceTests`):**
@@ -49,14 +57,16 @@ Hemos decidido implementar un esquema estricto de **Default-Deny** en el pipelin
    - **Regla 3:** Los atributos `[RequiresTenant]` y `[AllowsNoTenant]` están prohibidos en cualquier tipo `*Handler` (`HandlerRequiresTenantAttributeScanner`).
    - **Regla 4:** Todo comando debe tener `[RequiresTenant]` o `[AllowsNoTenant]` de forma mutuamente excluyente (`CommandTenantRequirementScanner`).
    - **Regla 5:** Lista cerrada estricta para `IPlatformScopedEntity`, restringida únicamente a `Role` y `AuditLog` (`PlatformScopedEntityScanner`).
+   - **Regla 6:** Prohibido el uso de `Guid.Empty` como sentinela de tenant en `src/Pos.Infrastructure` y `src/Pos.Application`, obligando a usar `PlatformScope.TenantId` (`PlatformScopeSentinelScanner`).
 
 ## Consecuencias
 
 ### Positivas
 - **Fail-Closed Centralizado y Default-Deny**: Ningún comando de tenant se ejecuta sin contexto válido; el cliente recibe un error HTTP 400 (`tenant.required`) estructurado según RFC 9110 / RFC 9457 sin depender de validaciones tardías.
 - **Aislamiento en Persistencia**: Si una entidad del tenant llegase a crearse indebidamente sin contexto (por ejemplo por un bypass en la capa de aplicación), el interceptor de EF Core aborta la transacción antes de llegar a SQL.
-- **Transparencia en Operaciones de Plataforma**: Las operaciones globales del SuperAdmin y el registro de auditoría (`AuditLog`) continúan funcionando en el alcance de plataforma con `TenantId == Guid.Empty` de acuerdo con ADR 0008, sin comprometer el aislamiento del resto de entidades.
+- **Transparencia en Operaciones de Plataforma**: Las operaciones globales del SuperAdmin y el registro de auditoría (`AuditLog`) continúan funcionando en el alcance de plataforma con `TenantId == PlatformScope.TenantId` de acuerdo con ADR 0008, sin comprometer el aislamiento del resto de entidades.
+- **Sentinela Nombrada Fuertemente Tipada**: Se elimina la ambigüedad del valor mágico `Guid.Empty` en infraestructura y aplicación mediante `PlatformScope.TenantId`.
 - **Gobierno Automatizado**: Pruebas basadas en Roslyn previenen regresiones en tiempo de compilación y CI.
 
 ### Límites Conocidos Aceptados (Diferidos)
-- **Sobrecargas de Factoría en Dominio**: Sobrecargas tipo `Branch.Create(name, ...)` o constructores internos que no exigen `tenantId` en su firma aún existen; su eliminación y el reemplazo del valor literal `Guid.Empty` suelto por una constante nombrada (`PlatformTenantId = Guid.Empty`) quedan planificados para un paso de refactorización posterior.
+- **Sobrecargas de Factoría en Dominio (Paso 10.2)**: 12 entidades de tenant aún poseen métodos de creación factoría `Create` sin parámetro `tenantId` (o sobrecargas duales que inicializan con `Guid.Empty`), dependiendo exclusivamente del `TenantSaveChangesInterceptor`. La eliminación o refactorización de estas sobrecargas para requerir explícitamente `tenantId` en la firma de dominio se aborda en el Paso 10.2.
