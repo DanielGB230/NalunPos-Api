@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Pos.Application.Common.Interfaces;
+using Pos.Domain.Common;
 using Pos.Domain.Entities;
 using Pos.Domain.Enums;
 using Pos.Domain.ValueObjects;
@@ -93,12 +94,12 @@ public sealed partial class SuperAdminSeeder
                 
             if (constructor != null)
             {
-                superAdminRole = (Role)constructor.Invoke(new object[] { Role.SuperAdminRoleId, Guid.Empty, "SuperAdmin", "Administrador Global del Sistema", Array.Empty<string>() });
+                superAdminRole = (Role)constructor.Invoke(new object[] { Role.SuperAdminRoleId, PlatformScope.TenantId, "SuperAdmin", "Administrador Global del Sistema", Array.Empty<string>() });
             }
             else
             {
                 // Fallback if reflection fails, this shouldn't happen but just in case
-                superAdminRole = Role.Create(Guid.Empty, "SuperAdmin", "Administrador Global");
+                superAdminRole = Role.Create(PlatformScope.TenantId, "SuperAdmin", "Administrador Global");
                 typeof(Role).GetProperty("Id")?.SetValue(superAdminRole, Role.SuperAdminRoleId);
             }
             await _context.Set<Role>().AddAsync(superAdminRole, cancellationToken);

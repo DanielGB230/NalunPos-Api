@@ -44,13 +44,13 @@ public class TenantSaveChangesInterceptor : SaveChangesInterceptor
 
         if (entries.Count == 0) return;
 
-        if (!tenantId.HasValue || tenantId.Value == Guid.Empty)
+        if (!tenantId.HasValue || tenantId.Value == PlatformScope.TenantId)
         {
             var invalidEntry = entries.FirstOrDefault(e =>
             {
                 if (e.Entity is IPlatformScopedEntity) return false;
                 var property = e.Property("TenantId");
-                return property != null && (property.CurrentValue == null || (Guid)property.CurrentValue == Guid.Empty);
+                return property != null && (property.CurrentValue == null || (Guid)property.CurrentValue == PlatformScope.TenantId);
             });
 
             if (invalidEntry != null)
@@ -65,7 +65,7 @@ public class TenantSaveChangesInterceptor : SaveChangesInterceptor
         foreach (var entry in entries)
         {
             var property = entry.Property("TenantId");
-            if (property != null && (property.CurrentValue == null || (Guid)property.CurrentValue == Guid.Empty))
+            if (property != null && (property.CurrentValue == null || (Guid)property.CurrentValue == PlatformScope.TenantId))
             {
                 property.CurrentValue = tenantId.Value;
             }

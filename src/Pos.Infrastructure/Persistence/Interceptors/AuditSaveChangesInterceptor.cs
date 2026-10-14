@@ -103,7 +103,7 @@ public class AuditSaveChangesInterceptor : SaveChangesInterceptor
 
             Guid tenantId = entry.Entity is ITenantOwnedEntity tenantOwned
                 ? tenantOwned.TenantId
-                : (_tenantContext.TenantId ?? Guid.Empty);
+                : (_tenantContext.TenantId ?? PlatformScope.TenantId);
 
             var auditLog = AuditLog.Create(
                 tenantId,

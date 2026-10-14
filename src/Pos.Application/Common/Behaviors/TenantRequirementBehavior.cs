@@ -36,7 +36,7 @@ public class TenantRequirementBehavior<TCommand, TResponse> : ICommandHandler<TC
 
         if (requiresTenant)
         {
-            if (!_tenantContext.TenantId.HasValue || _tenantContext.TenantId.Value == Guid.Empty)
+            if (!_tenantContext.TenantId.HasValue || _tenantContext.TenantId.Value == PlatformScope.TenantId)
             {
                 if (ValidationResultFactory.IsResultResponse<TResponse>())
                 {

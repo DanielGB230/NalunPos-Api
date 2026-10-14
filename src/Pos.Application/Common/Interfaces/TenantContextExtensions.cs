@@ -14,12 +14,12 @@ public static class TenantContextExtensions
     /// <param name="context">El contexto de tenant actual.</param>
     /// <returns>El identificador Guid del tenant.</returns>
     /// <exception cref="ArgumentNullException">Si <paramref name="context"/> es nulo.</exception>
-    /// <exception cref="InvalidOperationException">Si el tenant no está resuelto o es Guid.Empty.</exception>
+    /// <exception cref="InvalidOperationException">Si el tenant no está resuelto o es PlatformScope.TenantId.</exception>
     public static Guid RequireTenantId(this ICurrentTenantContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
 
-        if (!context.TenantId.HasValue || context.TenantId.Value == Guid.Empty)
+        if (!context.TenantId.HasValue || context.TenantId.Value == PlatformScope.TenantId)
         {
             throw new InvalidOperationException("TenantId is required but was not resolved in the current context.");
         }
