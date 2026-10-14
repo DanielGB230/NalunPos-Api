@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Warehouses.Commands;
 using Pos.Domain.Common;
@@ -7,6 +8,7 @@ using Pos.Domain.Entities;
 using Pos.Domain.ValueObjects;
 using Pos.Infrastructure.Persistence.Context;
 using Pos.IntegrationTests.Fixtures;
+using Pos.IntegrationTests.Support;
 using Xunit;
 
 namespace Pos.IntegrationTests;
@@ -25,22 +27,29 @@ public class TenantRequirementIntegrationTests
     public async Task SuperAdminWithoutTenant_ExecutingRequiresTenantCommand_ReturnsTenantRequiredErrorAndWritesNothingToDb()
     {
         // 1. Arrange: SuperAdmin context (sin tenant: TenantId = null, IsSuperAdmin = true)
-        var sp = _fixture.CreateServiceProvider(tenantId: null, isSuperAdmin: true);
+        // Usamos FakeCurrentUserPermissions inyectado en el ServiceProvider del test para no mutar el rol SuperAdmin en BD
+        var fakePermissions = new FakeCurrentUserPermissions()
+            .Grant(Permissions.Warehouses.Create);
+
+        var sp = _fixture.CreateServiceProvider(
+            tenantId: null,
+            isSuperAdmin: true,
+            configureServices: services =>
+            {
+                services.AddScoped<ICurrentUserPermissions>(_ => fakePermissions);
+            });
+
         using var scope = sp.CreateScope();
         var dispatcher = scope.ServiceProvider.GetRequiredService<IDispatcher>();
         var db = scope.ServiceProvider.GetRequiredService<PosDbContext>();
 
-        // Asegurar que el rol de SuperAdmin en BD cuente con el permiso del comando para evaluar específicamente la barrera de tenant
-        var superAdminRole = await db.Roles.IgnoreQueryFilters().FirstAsync(r => r.Id == Role.SuperAdminRoleId);
-        superAdminRole.AddPermission(Pos.Application.Common.Authorization.Permissions.Warehouses.Create);
-        await db.SaveChangesAsync();
-
+        string uniqueWarehouseName = $"Almacen No Autorizado SuperAdmin {Guid.NewGuid():N}";
         int warehousesCountBefore = await db.Warehouses.IgnoreQueryFilters().CountAsync();
 
         // Creamos comando [RequiresTenant]
         var command = new CreateWarehouseCommand(
             BranchId: Guid.NewGuid(),
-            Name: "Almacen No Autorizado SuperAdmin",
+            Name: uniqueWarehouseName,
             Description: "Intento de escribir entidad de tenant sin contexto de tenant",
             IsDefault: false);
 
@@ -57,8 +66,96 @@ public class TenantRequirementIntegrationTests
         Assert.Equal(warehousesCountBefore, warehousesCountAfter);
 
         var createdWarehouse = await db.Warehouses.IgnoreQueryFilters()
-            .FirstOrDefaultAsync(w => w.Name == "Almacen No Autorizado SuperAdmin");
+            .FirstOrDefaultAsync(w => w.Name == uniqueWarehouseName);
         Assert.Null(createdWarehouse);
+    }
+
+    [Fact]
+    public async Task SuperAdminWithoutTenant_ExecutingCreateBranchCommand_ReturnsTenantRequiredErrorAndWritesNothingToDb()
+    {
+        // 1. Arrange: SuperAdmin context sin tenant ejecutando CreateBranchCommand (clasificado con [RequiresTenant] en Paso 9.1)
+        var fakePermissions = new FakeCurrentUserPermissions()
+            .Grant(Permissions.Branches.Create);
+
+        var sp = _fixture.CreateServiceProvider(
+            tenantId: null,
+            isSuperAdmin: true,
+            configureServices: services =>
+            {
+                services.AddScoped<ICurrentUserPermissions>(_ => fakePermissions);
+            });
+
+        using var scope = sp.CreateScope();
+        var dispatcher = scope.ServiceProvider.GetRequiredService<IDispatcher>();
+        var db = scope.ServiceProvider.GetRequiredService<PosDbContext>();
+
+        string uniqueBranchName = $"Sucursal No Autorizada SuperAdmin {Guid.NewGuid():N}";
+        int branchesCountBefore = await db.Branches.IgnoreQueryFilters().CountAsync();
+
+        var command = new Pos.Application.Branches.Commands.CreateBranchCommand(
+            Name: uniqueBranchName,
+            Street: "Av. Central 456",
+            City: "Lima",
+            ZipCode: "15001",
+            Country: "PE",
+            PhoneNumber: "+51987654321");
+
+        // 2. Act
+        var result = await dispatcher.SendAsync(command);
+
+        // 3. Assert: default-deny bloquea por tenant.required y nada se persiste en BD
+        Assert.True(result.IsFailure);
+        Assert.Equal("tenant.required", result.Error.Code);
+        Assert.Equal(ErrorType.Validation, result.Error.Type);
+
+        int branchesCountAfter = await db.Branches.IgnoreQueryFilters().CountAsync();
+        Assert.Equal(branchesCountBefore, branchesCountAfter);
+
+        var createdBranch = await db.Branches.IgnoreQueryFilters()
+            .FirstOrDefaultAsync(b => b.Name == uniqueBranchName);
+        Assert.Null(createdBranch);
+    }
+
+    [Fact]
+    public async Task PlatformOperationWithoutTenant_GeneratesAuditLogWithPlatformScopeTenantIdGuidEmpty()
+    {
+        // 1. Arrange: SuperAdmin ejecuta una operación de plataforma (CreateTenantCommand con [AllowsNoTenant])
+        var fakePermissions = new FakeCurrentUserPermissions()
+            .Grant(Permissions.Tenants.Create);
+
+        var sp = _fixture.CreateServiceProvider(
+            tenantId: null,
+            isSuperAdmin: true,
+            configureServices: services =>
+            {
+                services.AddScoped<ICurrentUserPermissions>(_ => fakePermissions);
+            });
+
+        using var scope = sp.CreateScope();
+        var dispatcher = scope.ServiceProvider.GetRequiredService<IDispatcher>();
+        var db = scope.ServiceProvider.GetRequiredService<PosDbContext>();
+
+        string uniqueSuffix = Guid.NewGuid().ToString("N")[..8];
+        var command = new Pos.Application.Platform.Tenants.Commands.CreateTenant.CreateTenantCommand(
+            Name: $"Tenant Audit Test {uniqueSuffix}",
+            DocumentNumber: $"209{DateTime.UtcNow:HHmmssff}",
+            AdminEmail: $"admin_audit_{uniqueSuffix}@enterprise.test",
+            AdminPassword: "Password123!");
+
+        // 2. Act
+        var result = await dispatcher.SendAsync(command);
+
+        // 3. Assert
+        Assert.True(result.IsSuccess);
+        Guid createdTenantId = result.Value;
+
+        // Verificar que la auditoría registró la operación con TenantId == Guid.Empty para el nuevo tenant
+        var tenantAuditLog = await db.AuditLogs
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(a => a.TableName == "Tenants" && a.RecordId == createdTenantId.ToString());
+
+        Assert.NotNull(tenantAuditLog);
+        Assert.Equal(Guid.Empty, tenantAuditLog.TenantId);
     }
 
     [Fact]
