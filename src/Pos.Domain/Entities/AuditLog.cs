@@ -7,7 +7,7 @@ namespace Pos.Domain.Entities;
 /// <summary>
 /// Entidad para Registro de Auditoría de cambios en el sistema POS.
 /// </summary>
-public class AuditLog : Entity<Guid>, ITenantOwnedEntity
+public class AuditLog : Entity<Guid>, IPlatformScopedEntity
 {
     public Guid TenantId { get; private set; }
     public string TableName { get; private set; } = string.Empty;

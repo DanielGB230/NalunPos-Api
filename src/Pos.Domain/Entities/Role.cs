@@ -8,7 +8,7 @@ namespace Pos.Domain.Entities;
 /// Agregado para Rol y Permisos (RBAC).
 /// Completamente desacoplado de Microsoft.AspNetCore.Identity.
 /// </summary>
-public class Role : AggregateRoot<Guid>, ITenantOwnedEntity
+public class Role : AggregateRoot<Guid>, IPlatformScopedEntity
 {
     public static readonly Guid SuperAdminRoleId = Guid.Parse("00000000-0000-0000-0000-000000000001");
 
