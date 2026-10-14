@@ -154,7 +154,7 @@ public class MsSqlTestFixture : IAsyncLifetime, IDisposable
         return new PosDbContext(optionsBuilder.Options, auditInterceptor: auditInterceptor, outboxInterceptor: outboxInterceptor, tenantInterceptor: tenantInterceptor, sessionContextInterceptor: sessionContextInterceptor, currentTenantId: tenantId);
     }
 
-    public IServiceProvider CreateServiceProvider(Guid? tenantId = null, bool? isSuperAdmin = null)
+    public IServiceProvider CreateServiceProvider(Guid? tenantId = null, bool? isSuperAdmin = null, Action<IServiceCollection>? configureServices = null)
     {
         var services = new ServiceCollection();
 
@@ -223,6 +223,8 @@ public class MsSqlTestFixture : IAsyncLifetime, IDisposable
 #pragma warning restore EXTEXP0018
 
         services.AddApplicationServices();
+
+        configureServices?.Invoke(services);
 
         var sp = services.BuildServiceProvider();
 
