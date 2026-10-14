@@ -38,14 +38,32 @@ public class TenantSaveChangesInterceptor : SaveChangesInterceptor
         if (context == null) return;
 
         var tenantId = _currentTenantContext.TenantId;
-        if (!tenantId.HasValue) return;
-
         var entries = context.ChangeTracker.Entries<ITenantOwnedEntity>()
-            .Where(e => e.State == EntityState.Added);
+            .Where(e => e.State == EntityState.Added)
+            .ToList();
+
+        if (entries.Count == 0) return;
+
+        if (!tenantId.HasValue || tenantId.Value == Guid.Empty)
+        {
+            var invalidEntry = entries.FirstOrDefault(e =>
+            {
+                if (e.Entity is IPlatformScopedEntity) return false;
+                var property = e.Property("TenantId");
+                return property != null && (property.CurrentValue == null || (Guid)property.CurrentValue == Guid.Empty);
+            });
+
+            if (invalidEntry != null)
+            {
+                throw new InvalidOperationException(
+                    $"No se puede persistir la entidad '{invalidEntry.Entity.GetType().Name}' que requiere aislamiento de tenant sin un contexto de tenant activo.");
+            }
+
+            return;
+        }
 
         foreach (var entry in entries)
         {
-            // Asignación de TenantId reflexiva o vía propiedad si aplica en el futuro
             var property = entry.Property("TenantId");
             if (property != null && (property.CurrentValue == null || (Guid)property.CurrentValue == Guid.Empty))
             {
