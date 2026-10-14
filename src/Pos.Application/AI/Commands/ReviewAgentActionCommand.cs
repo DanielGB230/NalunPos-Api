@@ -8,6 +8,7 @@ using Pos.Domain.Interfaces;
 
 namespace Pos.Application.AI.Commands;
 
+[RequiresTenant]
 [HasPermission(Permissions.AiGovernance.ReviewAction)]
 public record ReviewAgentActionCommand(
     Guid RecordId,

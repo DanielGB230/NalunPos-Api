@@ -10,6 +10,7 @@ using Pos.Domain.Common;
 
 namespace Pos.Application.Notifications.Commands;
 
+[RequiresTenant]
 [HasPermission(Permissions.Notifications.Create)]
 public record CreateSystemNotificationCommand(
     Guid UserId,

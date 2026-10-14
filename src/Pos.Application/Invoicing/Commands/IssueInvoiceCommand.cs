@@ -12,6 +12,7 @@ using Pos.Domain.Common;
 
 namespace Pos.Application.Invoicing.Commands;
 
+[RequiresTenant]
 [HasPermission(Permissions.Invoices.Issue)]
 public record IssueInvoiceCommand(
     Guid SaleId,

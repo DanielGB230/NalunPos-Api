@@ -10,6 +10,7 @@ using Pos.Domain.Common;
 
 namespace Pos.Application.Categories.Commands;
 
+[RequiresTenant]
 [HasPermission(Permissions.Categories.Create)]
 public record CreateCategoryCommand(string Name, string? Description) : ICommand<Result<CategoryDto>>;
 

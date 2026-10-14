@@ -10,6 +10,7 @@ using Pos.Domain.Common;
 
 namespace Pos.Application.Customers.Commands;
 
+[RequiresTenant]
 [HasPermission(Permissions.Customers.Update)]
 public record UpdateCustomerCommand(
     Guid Id,

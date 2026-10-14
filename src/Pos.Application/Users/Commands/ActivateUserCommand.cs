@@ -6,6 +6,7 @@ using Pos.Domain.Interfaces;
 
 namespace Pos.Application.Users.Commands;
 
+[RequiresTenant]
 [HasPermission(Permissions.Users.Update)]
 public record ActivateUserCommand(Guid Id) : ICommand<Result<bool>>;
 

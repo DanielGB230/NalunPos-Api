@@ -6,6 +6,7 @@ using Pos.Domain.Interfaces;
 
 namespace Pos.Application.Branches.Commands;
 
+[RequiresTenant]
 [HasPermission(Permissions.Branches.Update)]
 public record DeactivateBranchCommand(Guid Id) : ICommand<Result<bool>>;
 

@@ -11,6 +11,7 @@ using Pos.Domain.Common;
 
 namespace Pos.Application.Suppliers.Commands;
 
+[RequiresTenant]
 [HasPermission(Permissions.Suppliers.Create)]
 public record CreateSupplierCommand(
     string Name,

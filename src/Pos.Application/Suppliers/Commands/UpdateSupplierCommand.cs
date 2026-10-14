@@ -10,6 +10,7 @@ using Pos.Domain.Common;
 
 namespace Pos.Application.Suppliers.Commands;
 
+[RequiresTenant]
 [HasPermission(Permissions.Suppliers.Update)]
 public record UpdateSupplierCommand(
     Guid Id,

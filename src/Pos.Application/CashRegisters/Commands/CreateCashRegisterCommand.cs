@@ -7,6 +7,7 @@ using Pos.Domain.Interfaces;
 
 namespace Pos.Application.CashRegisters.Commands;
 
+[RequiresTenant]
 [HasPermission(Permissions.CashRegisters.Create)]
 public record CreateCashRegisterCommand(string Name, string SerialNumber = "") : ICommand<CashRegisterDto>;
 

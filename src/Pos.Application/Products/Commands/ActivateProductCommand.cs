@@ -6,6 +6,7 @@ using Pos.Domain.Interfaces;
 
 namespace Pos.Application.Products.Commands;
 
+[RequiresTenant]
 [HasPermission(Permissions.Products.Update)]
 public record ActivateProductCommand(Guid Id) : ICommand<Result<bool>>;
 

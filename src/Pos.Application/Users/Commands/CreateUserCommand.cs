@@ -12,6 +12,7 @@ using Pos.Domain.Common;
 
 namespace Pos.Application.Users.Commands;
 
+[RequiresTenant]
 [HasPermission(Permissions.Users.Create)]
 public record CreateUserCommand(
     string FirstName,

@@ -9,6 +9,7 @@ using Pos.Domain.ValueObjects;
 
 namespace Pos.Application.Branches.Commands;
 
+[RequiresTenant]
 [HasPermission(Permissions.Branches.Update)]
 public record UpdateBranchCommand(
     Guid Id,

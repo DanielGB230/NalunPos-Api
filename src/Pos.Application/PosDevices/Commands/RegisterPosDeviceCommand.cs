@@ -10,6 +10,7 @@ using Pos.Domain.Common;
 
 namespace Pos.Application.PosDevices.Commands;
 
+[RequiresTenant]
 [HasPermission(Permissions.PosDevices.Register)]
 public record RegisterPosDeviceCommand(
     Guid BranchId,

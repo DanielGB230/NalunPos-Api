@@ -10,6 +10,7 @@ using Pos.Domain.ValueObjects;
 
 namespace Pos.Application.Branches.Commands;
 
+[RequiresTenant]
 [HasPermission(Permissions.Branches.Create)]
 public record CreateBranchCommand(
     string Name,

@@ -11,6 +11,7 @@ using Pos.Domain.Common;
 
 namespace Pos.Application.Users.Commands;
 
+[RequiresTenant]
 [HasPermission(Permissions.Users.Update)]
 public record UpdateUserCommand(
     Guid Id,

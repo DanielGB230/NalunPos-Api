@@ -9,6 +9,7 @@ using Pos.Domain.Common;
 
 namespace Pos.Application.Categories.Commands;
 
+[RequiresTenant]
 [HasPermission(Permissions.Categories.Update)]
 public record UpdateCategoryCommand(Guid Id, string Name, string? Description) : ICommand<Result<CategoryDto>>;
 

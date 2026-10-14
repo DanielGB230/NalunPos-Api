@@ -8,6 +8,7 @@ namespace Pos.Application.Authentication.Commands.Login;
 /// <summary>
 /// Command para solicitar la autenticación de un usuario con credenciales (email + password).
 /// </summary>
+[AllowsNoTenant]
 [PublicUseCase]
 public record LoginCommand(
     string Email,

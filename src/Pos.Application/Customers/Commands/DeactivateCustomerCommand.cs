@@ -6,6 +6,7 @@ using Pos.Domain.Interfaces;
 
 namespace Pos.Application.Customers.Commands;
 
+[RequiresTenant]
 [HasPermission(Permissions.Customers.Update)]
 public record DeactivateCustomerCommand(Guid Id) : ICommand<Result<bool>>;
 

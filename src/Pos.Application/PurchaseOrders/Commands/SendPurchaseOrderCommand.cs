@@ -8,6 +8,7 @@ using Pos.Domain.Interfaces;
 
 namespace Pos.Application.PurchaseOrders.Commands;
 
+[RequiresTenant]
 [HasPermission(Permissions.PurchaseOrders.Send)]
 public record SendPurchaseOrderCommand(Guid PurchaseOrderId) : ICommand<Result<PurchaseOrderDto>>;
 

@@ -6,6 +6,7 @@ using Pos.Domain.Interfaces;
 
 namespace Pos.Application.Categories.Commands;
 
+[RequiresTenant]
 [HasPermission(Permissions.Categories.Update)]
 public record DeactivateCategoryCommand(Guid Id) : ICommand<Result<bool>>;
 

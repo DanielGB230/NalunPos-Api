@@ -11,6 +11,7 @@ using Pos.Domain.Exceptions;
 
 namespace Pos.Application.Invoicing.Commands;
 
+[RequiresTenant]
 [HasPermission(Permissions.Invoices.Issue)]
 public record ReconcileInvoiceCommand(Guid InvoiceId) : ICommand<Result<InvoiceDto>>;
 

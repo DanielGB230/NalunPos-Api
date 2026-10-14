@@ -9,6 +9,7 @@ using Pos.Domain.ValueObjects;
 
 namespace Pos.Application.Products.Commands;
 
+[RequiresTenant]
 [HasPermission(Permissions.Products.Update)]
 public record UpdateProductPriceCommand(
     Guid ProductId,

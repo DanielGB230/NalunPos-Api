@@ -7,6 +7,7 @@ using Pos.Domain.Interfaces;
 
 namespace Pos.Application.Notifications.Commands;
 
+[RequiresTenant]
 [AuthenticatedOnly]
 public record MarkNotificationAsReadCommand(Guid Id) : ICommand<Result<SystemNotificationDto>>;
 

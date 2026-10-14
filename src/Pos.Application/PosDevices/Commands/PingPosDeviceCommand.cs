@@ -7,6 +7,7 @@ using Pos.Domain.Interfaces;
 
 namespace Pos.Application.PosDevices.Commands;
 
+[RequiresTenant]
 [HasPermission(Permissions.PosDevices.Ping)]
 public record PingPosDeviceCommand(Guid Id) : ICommand<Result<PosDeviceDto>>;
 

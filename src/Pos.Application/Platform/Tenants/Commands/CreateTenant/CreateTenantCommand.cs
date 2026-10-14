@@ -8,6 +8,7 @@ namespace Pos.Application.Platform.Tenants.Commands.CreateTenant;
 /// <summary>
 /// Comando para aprovisionar un nuevo Tenant (inquilino) y su usuario Administrador inicial por parte del SuperAdmin.
 /// </summary>
+[AllowsNoTenant]
 [HasPermission(Permissions.Tenants.Create)]
 public record CreateTenantCommand(
     string Name,

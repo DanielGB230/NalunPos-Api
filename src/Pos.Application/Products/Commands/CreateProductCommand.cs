@@ -10,6 +10,7 @@ using Pos.Domain.ValueObjects;
 
 namespace Pos.Application.Products.Commands;
 
+[RequiresTenant]
 [HasPermission(Permissions.Products.Create)]
 public record CreateProductCommand(
     string Name,

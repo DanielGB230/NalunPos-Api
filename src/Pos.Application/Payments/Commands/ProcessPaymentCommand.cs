@@ -11,6 +11,7 @@ using Pos.Domain.ValueObjects;
 
 namespace Pos.Application.Payments.Commands;
 
+[RequiresTenant]
 [HasPermission(Permissions.Payments.Process)]
 public record ProcessPaymentCommand(
     Guid SaleId,

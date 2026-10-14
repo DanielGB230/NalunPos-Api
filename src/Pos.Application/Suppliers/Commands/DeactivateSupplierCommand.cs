@@ -6,6 +6,7 @@ using Pos.Domain.Interfaces;
 
 namespace Pos.Application.Suppliers.Commands;
 
+[RequiresTenant]
 [HasPermission(Permissions.Suppliers.Update)]
 public record DeactivateSupplierCommand(Guid Id) : ICommand<Result<bool>>;
 

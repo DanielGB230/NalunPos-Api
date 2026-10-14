@@ -10,6 +10,7 @@ using Pos.Domain.ValueObjects;
 
 namespace Pos.Application.CashRegisters.Commands;
 
+[RequiresTenant]
 [HasPermission(Permissions.CashRegisters.OpenSession)]
 public record OpenCashRegisterSessionCommand(
     Guid CashRegisterId,

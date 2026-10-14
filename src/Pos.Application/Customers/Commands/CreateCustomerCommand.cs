@@ -11,6 +11,7 @@ using Pos.Domain.Common;
 
 namespace Pos.Application.Customers.Commands;
 
+[RequiresTenant]
 [HasPermission(Permissions.Customers.Create)]
 public record CreateCustomerCommand(
     string FullName,
