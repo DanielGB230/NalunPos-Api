@@ -348,5 +348,78 @@ public class TenantGovernanceTests
         Assert.Equal("SampleCommand", findings[0].CommandTypeName);
         Assert.Contains("declara tanto [RequiresTenant] como [AllowsNoTenant]", findings[0].Reason);
     }
+
+    // --- Tests de arquitectura y sintéticos para PlatformScopedEntityScanner ---
+
+    [Fact]
+    public void OnlyRoleAndAuditLog_CanImplement_IPlatformScopedEntity()
+    {
+        var failures = new List<string>();
+
+        foreach (var file in SourceTreeIndex.Src.Files)
+        {
+            var findings = PlatformScopedEntityScanner.Scan(file.Root, file.FilePath);
+            foreach (var finding in findings)
+            {
+                var relPath = Path.GetRelativePath(SolutionDirectory.Root, file.FilePath);
+                failures.Add($"- {relPath} | {finding.Reason}");
+            }
+        }
+
+        Assert.True(
+            failures.Count == 0,
+            $"Solo 'Role' y 'AuditLog' pueden implementar 'IPlatformScopedEntity' (lista cerrada según ADR 0008 y ADR 0017):\n{string.Join("\n", failures)}");
+    }
+
+    [Fact]
+    public void PlatformScopedEntityScanner_WhenRoleImplementsInterface_DoesNotDetectViolation()
+    {
+        const string snippet = """
+            namespace Sample;
+            public class Role : IPlatformScopedEntity
+            {
+            }
+            """;
+
+        var root = ParseSnippet(snippet);
+        var findings = PlatformScopedEntityScanner.Scan(root, "Role.cs");
+
+        Assert.Empty(findings);
+    }
+
+    [Fact]
+    public void PlatformScopedEntityScanner_WhenAuditLogImplementsInterface_DoesNotDetectViolation()
+    {
+        const string snippet = """
+            namespace Sample;
+            public class AuditLog : IPlatformScopedEntity
+            {
+            }
+            """;
+
+        var root = ParseSnippet(snippet);
+        var findings = PlatformScopedEntityScanner.Scan(root, "AuditLog.cs");
+
+        Assert.Empty(findings);
+    }
+
+    [Fact]
+    public void PlatformScopedEntityScanner_WhenUnauthorizedEntityImplementsInterface_DetectsViolation()
+    {
+        const string snippet = """
+            namespace Sample;
+            public class Branch : IPlatformScopedEntity
+            {
+            }
+            """;
+
+        var root = ParseSnippet(snippet);
+        var findings = PlatformScopedEntityScanner.Scan(root, "Branch.cs");
+
+        Assert.Single(findings);
+        Assert.Equal("Branch", findings[0].TypeName);
+        Assert.Contains("solo 'Role' y 'AuditLog' están autorizados", findings[0].Reason);
+    }
 }
+
 
