@@ -35,7 +35,9 @@ public static class HandlerRequiresTenantAttributeScanner
                 }
 
                 if (attrName.Equals("RequiresTenant", StringComparison.Ordinal) ||
-                    attrName.EndsWith(".RequiresTenant", StringComparison.Ordinal))
+                    attrName.EndsWith(".RequiresTenant", StringComparison.Ordinal) ||
+                    attrName.Equals("AllowsNoTenant", StringComparison.Ordinal) ||
+                    attrName.EndsWith(".AllowsNoTenant", StringComparison.Ordinal))
                 {
                     findings.Add(new HandlerRequiresTenantAttributeFinding(
                         filePath,

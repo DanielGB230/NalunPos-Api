@@ -83,7 +83,7 @@ public class TenantGovernanceTests
 
         Assert.True(
             failures.Count == 0,
-            $"[RequiresTenant] está prohibido en tipos *Handler (debe ir en el record del comando):\n{string.Join("\n", failures)}");
+            $"[RequiresTenant] y [AllowsNoTenant] están prohibidos en tipos *Handler (debe ir en el record del comando):\n{string.Join("\n", failures)}");
     }
 
     // --- Tests sintéticos para TenantFallbackScanner ---
@@ -239,4 +239,114 @@ public class TenantGovernanceTests
 
         Assert.Empty(findings);
     }
+
+    [Fact]
+    public void HandlerRequiresTenantAttributeScanner_WhenHandlerHasAllowsNoTenantAttribute_DetectsViolation()
+    {
+        const string snippet = """
+            namespace Sample;
+            [AllowsNoTenant]
+            public class SampleCommandHandler
+            {
+            }
+            """;
+
+        var root = ParseSnippet(snippet);
+        var findings = HandlerRequiresTenantAttributeScanner.Scan(root, "Sample.cs");
+
+        Assert.Single(findings);
+        Assert.Equal("SampleCommandHandler", findings[0].HandlerTypeName);
+    }
+
+    // --- Tests de arquitectura y sintéticos para CommandTenantRequirementScanner ---
+
+    [Fact]
+    public void AllCommands_DeclareExactlyOne_Of_RequiresTenant_Or_AllowsNoTenant()
+    {
+        var failures = new List<string>();
+
+        foreach (var file in SourceTreeIndex.ApplicationAndApi.Files)
+        {
+            if (!file.FilePath.Contains("Pos.Application", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var findings = CommandTenantRequirementScanner.Scan(file.Root, file.FilePath);
+            foreach (var finding in findings)
+            {
+                var relPath = Path.GetRelativePath(SolutionDirectory.Root, file.FilePath);
+                failures.Add($"- {relPath} | {finding.Reason}");
+            }
+        }
+
+        Assert.True(
+            failures.Count == 0,
+            $"Todo comando (ICommand) debe declarar exactamente uno de [RequiresTenant] o [AllowsNoTenant] (Fail-Closed):\n{string.Join("\n", failures)}");
+    }
+
+    [Fact]
+    public void CommandTenantRequirementScanner_WhenCommandHasRequiresTenant_DoesNotDetectViolation()
+    {
+        const string snippet = """
+            namespace Sample;
+            [RequiresTenant]
+            public record SampleCommand() : ICommand<Result>;
+            """;
+
+        var root = ParseSnippet(snippet);
+        var findings = CommandTenantRequirementScanner.Scan(root, "Sample.cs");
+
+        Assert.Empty(findings);
+    }
+
+    [Fact]
+    public void CommandTenantRequirementScanner_WhenCommandHasAllowsNoTenant_DoesNotDetectViolation()
+    {
+        const string snippet = """
+            namespace Sample;
+            [AllowsNoTenant]
+            public record SampleCommand() : ICommand<Result>;
+            """;
+
+        var root = ParseSnippet(snippet);
+        var findings = CommandTenantRequirementScanner.Scan(root, "Sample.cs");
+
+        Assert.Empty(findings);
+    }
+
+    [Fact]
+    public void CommandTenantRequirementScanner_WhenCommandHasNeither_DetectsViolation()
+    {
+        const string snippet = """
+            namespace Sample;
+            public record SampleCommand() : ICommand<Result>;
+            """;
+
+        var root = ParseSnippet(snippet);
+        var findings = CommandTenantRequirementScanner.Scan(root, "Sample.cs");
+
+        Assert.Single(findings);
+        Assert.Equal("SampleCommand", findings[0].CommandTypeName);
+        Assert.Contains("no declara ni [RequiresTenant] ni [AllowsNoTenant]", findings[0].Reason);
+    }
+
+    [Fact]
+    public void CommandTenantRequirementScanner_WhenCommandHasBoth_DetectsViolation()
+    {
+        const string snippet = """
+            namespace Sample;
+            [RequiresTenant]
+            [AllowsNoTenant]
+            public record SampleCommand() : ICommand<Result>;
+            """;
+
+        var root = ParseSnippet(snippet);
+        var findings = CommandTenantRequirementScanner.Scan(root, "Sample.cs");
+
+        Assert.Single(findings);
+        Assert.Equal("SampleCommand", findings[0].CommandTypeName);
+        Assert.Contains("declara tanto [RequiresTenant] como [AllowsNoTenant]", findings[0].Reason);
+    }
 }
+
