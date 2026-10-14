@@ -420,6 +420,125 @@ public class TenantGovernanceTests
         Assert.Equal("Branch", findings[0].TypeName);
         Assert.Contains("solo 'Role' y 'AuditLog' están autorizados", findings[0].Reason);
     }
+
+    // --- Tests de arquitectura y sintéticos para PlatformScopeSentinelScanner ---
+
+    [Fact]
+    public void GuidEmpty_IsForbiddenAsTenantSentinel_InInfrastructureAndApplication()
+    {
+        var failures = new List<string>();
+
+        foreach (var file in SourceTreeIndex.Src.Files)
+        {
+            var relPath = Path.GetRelativePath(SolutionDirectory.Root, file.FilePath).Replace('\\', '/');
+
+            // Limitar a Pos.Infrastructure y Pos.Application
+            if (!relPath.StartsWith("src/Pos.Infrastructure/", StringComparison.OrdinalIgnoreCase) &&
+                !relPath.StartsWith("src/Pos.Application/", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            // Excluir migraciones generadas
+            if (relPath.Contains("/Migrations/"))
+            {
+                continue;
+            }
+
+            var findings = PlatformScopeSentinelScanner.Scan(file.Root, file.FilePath);
+            foreach (var finding in findings)
+            {
+                failures.Add($"- {relPath}:{finding.LineNumber} | {finding.PatternDescription} -> {finding.ExpressionText}");
+            }
+        }
+
+        Assert.True(
+            failures.Count == 0,
+            $"En 'src/Pos.Infrastructure' y 'src/Pos.Application' está prohibido el uso de 'Guid.Empty' como centinela de tenant. Debe usarse 'PlatformScope.TenantId' según ADR 0008 y ADR 0017:\n{string.Join("\n", failures)}");
+    }
+
+    [Fact]
+    public void PlatformScopeSentinelScanner_WhenTenantIdCoalescedWithGuidEmpty_DetectsViolation()
+    {
+        const string snippet = """
+            namespace Sample;
+            public class TestClass
+            {
+                public void Method(Guid? tenantId)
+                {
+                    var id = tenantId ?? Guid.Empty;
+                }
+            }
+            """;
+
+        var root = ParseSnippet(snippet);
+        var findings = PlatformScopeSentinelScanner.Scan(root, "TestClass.cs");
+
+        Assert.Single(findings);
+        Assert.Contains("Debe usar PlatformScope.TenantId", findings[0].PatternDescription);
+    }
+
+    [Fact]
+    public void PlatformScopeSentinelScanner_WhenTenantIdComparedWithGuidEmpty_DetectsViolation()
+    {
+        const string snippet = """
+            namespace Sample;
+            public class TestClass
+            {
+                public bool Method(Guid tenantId)
+                {
+                    return tenantId == Guid.Empty;
+                }
+            }
+            """;
+
+        var root = ParseSnippet(snippet);
+        var findings = PlatformScopeSentinelScanner.Scan(root, "TestClass.cs");
+
+        Assert.Single(findings);
+        Assert.Contains("Comparación de TenantId con Guid.Empty", findings[0].PatternDescription);
+    }
+
+    [Fact]
+    public void PlatformScopeSentinelScanner_WhenNonTenantIdComparedWithGuidEmpty_DoesNotDetectViolation()
+    {
+        const string snippet = """
+            namespace Sample;
+            public class TestClass
+            {
+                public bool Method(Guid productId)
+                {
+                    return productId == Guid.Empty;
+                }
+            }
+            """;
+
+        var root = ParseSnippet(snippet);
+        var findings = PlatformScopeSentinelScanner.Scan(root, "TestClass.cs");
+
+        Assert.Empty(findings);
+    }
+
+    [Fact]
+    public void PlatformScopeSentinelScanner_WhenUsingPlatformScopeTenantId_DoesNotDetectViolation()
+    {
+        const string snippet = """
+            namespace Sample;
+            public class TestClass
+            {
+                public bool Method(Guid tenantId)
+                {
+                    return tenantId == PlatformScope.TenantId;
+                }
+            }
+            """;
+
+        var root = ParseSnippet(snippet);
+        var findings = PlatformScopeSentinelScanner.Scan(root, "TestClass.cs");
+
+        Assert.Empty(findings);
+    }
 }
+
 
 
