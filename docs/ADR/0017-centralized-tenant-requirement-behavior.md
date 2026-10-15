@@ -60,9 +60,24 @@ Hemos decidido implementar un esquema estricto de **Default-Deny** en el pipelin
    - **Regla 6:** Prohibido el uso de `Guid.Empty` como sentinela de tenant en `src/Pos.Infrastructure` y `src/Pos.Application`, obligando a usar `PlatformScope.TenantId` (`PlatformScopeSentinelScanner`).
    - **Regla 7 (Ratchet de Factorías de Tenant):** Toda entidad `ITenantOwnedEntity` que no sea de plataforma (`IPlatformScopedEntity`) debe requerir el parámetro `Guid tenantId` en sus factorías estáticas `Create*`. La guarda ratchet (`TenantEntityFactoryRatchetScanner`) mantiene una lista temporal de pendientes que solo puede encogerse; si una entidad de la lista ya cumple la regla, el test falla exigiendo su retiro inmediato.
 
-7. **Invariante de Dominio en Creación de Entidades de Tenant:**
-   - Una entidad de tenant (`ITenantOwnedEntity` no plataforma) no puede nacer con `tenantId == PlatformScope.TenantId` ni `tenantId == Guid.Empty`.
-   - La factoría canónica recibe `Guid tenantId` como primer parámetro y valida la invariante lanzando `DomainException` con el estilo estándar de guardas del dominio.
+7. **Invariante de Dominio en Creación de Entidades de Tenant y Helper Compartido `TenantGuard`:**
+   - Una entidad de tenant (`ITenantOwnedEntity` no plataforma) no puede nacer con `tenantId == PlatformScope.TenantId` (que equivale al valor vacío `Guid.Empty`).
+   - Se introduce el helper compartido de dominio `Pos.Domain.Common.TenantGuard` como **único lugar canónico** para aplicar y hacer cumplir esta invariante:
+     ```csharp
+     namespace Pos.Domain.Common;
+     public static class TenantGuard
+     {
+         public static Guid RequireTenantId(Guid tenantId, string entityDescription)
+         {
+             if (tenantId == PlatformScope.TenantId)
+             {
+                 throw new DomainException($"El ID del tenant es requerido para crear {entityDescription}.");
+             }
+             return tenantId;
+         }
+     }
+     ```
+   - Cada factoría canónica recibe `Guid tenantId` como **primer parámetro** y delega la validación exclusivamente en `TenantGuard.RequireTenantId(tenantId, ...)`.
    - Las sobrecargas de factoría sin `tenantId` se eliminan por completo.
 
 ## Consecuencias
@@ -73,8 +88,9 @@ Hemos decidido implementar un esquema estricto de **Default-Deny** en el pipelin
 - **Transparencia en Operaciones de Plataforma**: Las operaciones globales del SuperAdmin y el registro de auditoría (`AuditLog`) continúan funcionando en el alcance de plataforma con `TenantId == PlatformScope.TenantId` de acuerdo con ADR 0008, sin comprometer el aislamiento del resto de entidades.
 - **Sentinela Nombrada Fuertemente Tipada**: Se elimina la ambigüedad del valor mágico `Guid.Empty` en infraestructura y aplicación mediante `PlatformScope.TenantId`.
 - **Gobierno Automatizado mediante Pruebas**: Hoy las guardas de arquitectura se ejecutan de manera determinista vía `dotnet test` sobre la suite `Pos.Architecture.Tests` (el pipeline de CI se construirá en su fase posterior).
+- **Invariante Unificada de Tenant en Dominio**: `TenantGuard` erradica duplicaciones de validación en constructores o factorías de entidades de tenant.
 
 ### Límites Conocidos Aceptados (Diferidos)
-- **Avance Ratchet de Factorías en Dominio (Paso 10.2)**: 2 entidades han sido resueltas satisfactoriamente (`Branch` y `CashRegister`). Restan 10 entidades de tenant pendientes en la lista ratchet (`Category`, `Customer`, `Invoice`, `Payment`, `PosDevice`, `Product`, `Sale`, `SaleLineItem`, `Supplier`, `SystemNotification`), a resolverse en los lotes b, c y d.
+- **Avance Ratchet de Factorías en Dominio (Paso 10.2)**: 6 entidades han sido resueltas satisfactoriamente (`Branch`, `CashRegister`, `Payment`, `Invoice`, `PosDevice`, `SystemNotification`). Restan 6 entidades de tenant pendientes en la lista ratchet (`Category`, `Customer`, `Product`, `Sale`, `SaleLineItem`, `Supplier`), a resolverse en los lotes posteriores.
 - **Configuración de `CashRegisters.BranchId` en EF Core (Paso 10.2a-bis)**: `CashRegisters.BranchId` se valida ahora en el dominio (`branchId != Guid.Empty`) y en el caso de uso (`IBranchRepository.GetByIdAsync`), pero no cuenta aún con configuración EF explícita, clave foránea ni índice en `CashRegisterConfiguration`. Asimismo, pueden existir filas con `BranchId` vacío en bases de datos de desarrollo previas a esta migración (resolución programada para 10.2a-bis).
 
