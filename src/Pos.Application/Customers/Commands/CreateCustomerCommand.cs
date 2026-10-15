@@ -1,4 +1,4 @@
-﻿using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Attributes;
 using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Customers.DTOs;
@@ -29,11 +29,16 @@ public class CreateCustomerCommandHandler : ICommandHandler<CreateCustomerComman
 {
     private readonly ICustomerRepository _customerRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ICurrentTenantContext _tenantContext;
 
-    public CreateCustomerCommandHandler(ICustomerRepository customerRepository, IUnitOfWork unitOfWork)
+    public CreateCustomerCommandHandler(
+        ICustomerRepository customerRepository,
+        IUnitOfWork unitOfWork,
+        ICurrentTenantContext tenantContext)
     {
         _customerRepository = customerRepository ?? throw new ArgumentNullException(nameof(customerRepository));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _tenantContext = tenantContext ?? throw new ArgumentNullException(nameof(tenantContext));
     }
 
     public async Task<Result<CustomerDto>> HandleAsync(CreateCustomerCommand request, CancellationToken cancellationToken)
@@ -64,6 +69,7 @@ public class CreateCustomerCommandHandler : ICommandHandler<CreateCustomerComman
             }
 
             customer = Customer.Create(
+                _tenantContext.RequireTenantId(),
                 request.FullName,
                 taxIdVo,
                 request.Email,

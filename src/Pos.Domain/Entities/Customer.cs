@@ -27,12 +27,14 @@ public class Customer : AggregateRoot<Guid>, ITenantOwnedEntity
 
     private Customer(
         Guid id,
+        Guid tenantId,
         string fullName,
         TaxId taxId,
         string email,
         string phone,
         Address? address) : base(id)
     {
+        TenantId = TenantGuard.RequireTenantId(tenantId, "un cliente");
         SetFullName(fullName);
         TaxId = taxId ?? throw new ArgumentNullException(nameof(taxId));
         Email = email?.Trim() ?? string.Empty;
@@ -45,24 +47,14 @@ public class Customer : AggregateRoot<Guid>, ITenantOwnedEntity
     }
 
     public static Customer Create(
+        Guid tenantId,
         string fullName,
         TaxId taxId,
         string email = "",
         string phone = "",
         Address? address = null)
     {
-        return new Customer(Guid.NewGuid(), fullName, taxId, email, phone, address);
-    }
-
-    public static Customer Create(
-        Guid id,
-        string fullName,
-        TaxId taxId,
-        string email = "",
-        string phone = "",
-        Address? address = null)
-    {
-        return new Customer(id, fullName, taxId, email, phone, address);
+        return new Customer(Guid.NewGuid(), tenantId, fullName, taxId, email, phone, address);
     }
 
     public void UpdateDetails(

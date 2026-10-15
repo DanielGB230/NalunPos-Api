@@ -1,4 +1,4 @@
-﻿using Pos.Application.Tests.Support.Fakes;
+using Pos.Application.Tests.Support.Fakes;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Customers.Commands;
 using Pos.Application.Customers.Queries;
@@ -14,12 +14,14 @@ public class CustomersCommandHandlerAndQueryHandlerTests
 {
     private readonly FakeCustomerRepository _customerRepository = new();
     private readonly FakeUnitOfWork _unitOfWork = new();
+    private readonly FakeCurrentTenantContext _tenantContext = new() { TenantId = Guid.NewGuid() };
 
     [Fact]
     public async Task GetCustomerById_WhenCustomerExists_ShouldReturnSuccess()
     {
         // Arrange
         var customer = Customer.Create(
+            _tenantContext.TenantId!.Value,
             "Cliente Frecuente",
             TaxId.Create("20123456789", "PE"),
             "cliente@test.com",
@@ -71,7 +73,7 @@ public class CustomersCommandHandlerAndQueryHandlerTests
             "15002",
             "PE"
         );
-        var handler = new CreateCustomerCommandHandler(_customerRepository, _unitOfWork);
+        var handler = new CreateCustomerCommandHandler(_customerRepository, _unitOfWork, _tenantContext);
 
         // Act
         var result = await handler.HandleAsync(command, CancellationToken.None);
@@ -89,6 +91,7 @@ public class CustomersCommandHandlerAndQueryHandlerTests
     {
         // Arrange
         var existingCustomer = Customer.Create(
+            _tenantContext.TenantId!.Value,
             "Empresa Existente",
             TaxId.Create("20987654321", "PE"),
             "existente@test.pe",
@@ -101,7 +104,7 @@ public class CustomersCommandHandlerAndQueryHandlerTests
             "20987654321",
             "PE"
         );
-        var handler = new CreateCustomerCommandHandler(_customerRepository, _unitOfWork);
+        var handler = new CreateCustomerCommandHandler(_customerRepository, _unitOfWork, _tenantContext);
 
         // Act
         var result = await handler.HandleAsync(command, CancellationToken.None);

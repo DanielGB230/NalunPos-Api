@@ -139,6 +139,7 @@ public class CreateSaleCommandHandlerTests
         _registerRepository.Sessions.Add(session);
 
         var customer = Customer.Create(
+            tenantId,
             "Cliente Inactivo",
             TaxId.Create("12345678-9", "PE"),
             "inactivo@test.com");

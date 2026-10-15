@@ -16,7 +16,6 @@ public static class TenantEntityFactoryRatchetScanner
     public static readonly HashSet<string> PendingEntities = new(StringComparer.Ordinal)
     {
         "Category",
-        "Customer",
         "Product",
         "Sale",
         "SaleLineItem",
