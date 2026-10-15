@@ -18,6 +18,7 @@ public class ProcessPaymentCommandHandlerTests
     private readonly FakePaymentGateway _paymentGateway = new();
     private readonly FakeUnitOfWork _unitOfWork = new();
     private readonly FakeDispatcher _dispatcher = new();
+    private readonly FakeCurrentTenantContext _tenantContext = new() { TenantId = Guid.NewGuid() };
     private readonly ProcessPaymentCommandHandler _handler;
 
     public ProcessPaymentCommandHandlerTests()
@@ -27,7 +28,8 @@ public class ProcessPaymentCommandHandlerTests
             _saleRepository,
             _paymentGateway,
             _unitOfWork,
-            _dispatcher);
+            _dispatcher,
+            _tenantContext);
     }
 
     [Fact]

@@ -1,4 +1,4 @@
-﻿using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Attributes;
 using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Payments.DTOs;
@@ -28,19 +28,22 @@ public class ProcessPaymentCommandHandler : ICommandHandler<ProcessPaymentComman
     private readonly IPaymentGateway _paymentGateway;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IDispatcher _dispatcher;
+    private readonly ICurrentTenantContext _tenantContext;
 
     public ProcessPaymentCommandHandler(
         IPaymentRepository paymentRepository,
         ISaleRepository saleRepository,
         IPaymentGateway paymentGateway,
         IUnitOfWork unitOfWork,
-        IDispatcher dispatcher)
+        IDispatcher dispatcher,
+        ICurrentTenantContext tenantContext)
     {
         _paymentRepository = paymentRepository ?? throw new ArgumentNullException(nameof(paymentRepository));
         _saleRepository = saleRepository ?? throw new ArgumentNullException(nameof(saleRepository));
         _paymentGateway = paymentGateway ?? throw new ArgumentNullException(nameof(paymentGateway));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
+        _tenantContext = tenantContext ?? throw new ArgumentNullException(nameof(tenantContext));
     }
 
     public async Task<Result<PaymentDto>> HandleAsync(ProcessPaymentCommand request, CancellationToken cancellationToken)
@@ -59,7 +62,7 @@ public class ProcessPaymentCommandHandler : ICommandHandler<ProcessPaymentComman
         try
         {
             var amountMoney = Money.Create(request.Amount, request.Currency);
-            payment = Payment.Create(request.SaleId, amountMoney, request.Method, request.ExternalReference);
+            payment = Payment.Create(_tenantContext.RequireTenantId(), request.SaleId, amountMoney, request.Method, request.ExternalReference);
         }
         catch (DomainException ex)
         {

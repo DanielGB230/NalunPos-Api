@@ -1,5 +1,7 @@
+using Pos.Domain.Common;
 using Pos.Domain.Entities;
 using Pos.Domain.Enums;
+using Pos.Domain.Exceptions;
 using Pos.Domain.ValueObjects;
 using Xunit;
 
@@ -11,14 +13,16 @@ public class PaymentTests
     public void CreatePaymentShouldInstantiatePendingPaymentWithNoSensitiveCardData()
     {
         // Arrange
+        var tenantId = Guid.NewGuid();
         Guid saleId = Guid.NewGuid();
         var amount = Money.Create(295m, "USD");
 
         // Act
-        var payment = Payment.Create(saleId, amount, PaymentMethod.CreditCard, "VOUCHER-9988");
+        var payment = Payment.Create(tenantId, saleId, amount, PaymentMethod.CreditCard, "VOUCHER-9988");
 
         // Assert
         Assert.NotEqual(Guid.Empty, payment.Id);
+        Assert.Equal(tenantId, payment.TenantId);
         Assert.Equal(saleId, payment.SaleId);
         Assert.Equal(amount, payment.Amount);
         Assert.Equal(PaymentMethod.CreditCard, payment.Method);
@@ -36,7 +40,8 @@ public class PaymentTests
     public void ProcessPaymentShouldChangeStatusToProcessedAndEmitEvent()
     {
         // Arrange
-        var payment = Payment.Create(Guid.NewGuid(), Money.Create(100m, "USD"), PaymentMethod.Cash);
+        var tenantId = Guid.NewGuid();
+        var payment = Payment.Create(tenantId, Guid.NewGuid(), Money.Create(100m, "USD"), PaymentMethod.Cash);
 
         // Act
         payment.Process("CASH-REF-001");
@@ -45,5 +50,33 @@ public class PaymentTests
         Assert.Equal(PaymentStatus.Processed, payment.Status);
         Assert.Single(payment.DomainEvents);
         Assert.Equal("PaymentProcessedDomainEvent", payment.DomainEvents.First().GetType().Name);
+    }
+
+    [Fact]
+    public void CreatePaymentWithPlatformScopeTenantIdShouldThrowDomainException()
+    {
+        // Arrange
+        var saleId = Guid.NewGuid();
+        var amount = Money.Create(100m, "USD");
+
+        // Act & Assert
+        var ex = Assert.Throws<DomainException>(() =>
+            Payment.Create(PlatformScope.TenantId, saleId, amount, PaymentMethod.Cash));
+
+        Assert.Equal("El ID del tenant es requerido para crear un pago.", ex.Message);
+    }
+
+    [Fact]
+    public void CreatePaymentWithEmptyTenantIdShouldThrowDomainException()
+    {
+        // Arrange
+        var saleId = Guid.NewGuid();
+        var amount = Money.Create(100m, "USD");
+
+        // Act & Assert
+        var ex = Assert.Throws<DomainException>(() =>
+            Payment.Create(Guid.Empty, saleId, amount, PaymentMethod.Cash));
+
+        Assert.Equal("El ID del tenant es requerido para crear un pago.", ex.Message);
     }
 }

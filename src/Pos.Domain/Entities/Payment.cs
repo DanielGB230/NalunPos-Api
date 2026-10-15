@@ -26,11 +26,14 @@ public class Payment : AggregateRoot<Guid>, ITenantOwnedEntity
 
     private Payment(
         Guid id,
+        Guid tenantId,
         Guid saleId,
         Money amount,
         PaymentMethod method,
         string? externalReference) : base(id)
     {
+        TenantId = TenantGuard.RequireTenantId(tenantId, "un pago");
+
         if (saleId == Guid.Empty)
         {
             throw new DomainException("El ID de la venta es requerido para registrar el pago.");
@@ -45,12 +48,13 @@ public class Payment : AggregateRoot<Guid>, ITenantOwnedEntity
     }
 
     public static Payment Create(
+        Guid tenantId,
         Guid saleId,
         Money amount,
         PaymentMethod method,
         string? externalReference = null)
     {
-        return new Payment(Guid.NewGuid(), saleId, amount, method, externalReference);
+        return new Payment(Guid.NewGuid(), tenantId, saleId, amount, method, externalReference);
     }
 
     public void Process(string? externalVoucherReference = null)
