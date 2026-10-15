@@ -538,7 +538,104 @@ public class TenantGovernanceTests
 
         Assert.Empty(findings);
     }
+
+    [Fact]
+    public void TenantEntityFactories_MustRequireTenantIdParameter_ExceptRatchetList()
+    {
+        var domainDir = Path.Combine(SolutionDirectory.Root, "src", "Pos.Domain");
+        var domainIndex = SourceTreeIndex.ForDirectory(domainDir);
+        domainIndex.EnsureNoSyntaxErrors();
+
+        var nonCompliantEntitiesFound = new HashSet<string>(StringComparer.Ordinal);
+        var unallowedViolations = new List<string>();
+
+        foreach (var file in domainIndex.Files)
+        {
+            var findings = TenantEntityFactoryRatchetScanner.Scan(file.Root, file.FilePath);
+            foreach (var finding in findings)
+            {
+                nonCompliantEntitiesFound.Add(finding.EntityName);
+
+                if (!TenantEntityFactoryRatchetScanner.PendingEntities.Contains(finding.EntityName))
+                {
+                    var relPath = Path.GetRelativePath(SolutionDirectory.Root, finding.FilePath);
+                    unallowedViolations.Add($"- {relPath}:{finding.LineNumber} | {finding.EntityName}::{finding.MethodSignature} | {finding.Description}");
+                }
+            }
+        }
+
+        // 1. Ninguna entidad fuera de la lista de pendientes puede exponer factorías Create* sin Guid tenantId
+        Assert.True(
+            unallowedViolations.Count == 0,
+            $"Factorías de entidad de tenant sin parámetro 'Guid tenantId' fuera de la lista ratchet de pendientes:\n{string.Join("\n", unallowedViolations)}");
+
+        // 2. Ratchet hacia adelante: si una entidad de la lista ya no tiene factorías no conformes, la lista debe encogerse
+        var obsoletePending = TenantEntityFactoryRatchetScanner.PendingEntities
+            .Where(e => !nonCompliantEntitiesFound.Contains(e))
+            .ToList();
+
+        Assert.True(
+            obsoletePending.Count == 0,
+            $"Entrada(s) obsoleta(s) en la lista ratchet de factorías pendientes (ya cumplen la regla y deben retirarse de PendingEntities):\n{string.Join(", ", obsoletePending)}");
+    }
+
+    [Fact]
+    public void TenantEntityFactoryRatchetScanner_WhenFactoryLacksTenantId_DetectsViolation()
+    {
+        const string snippet = """
+            namespace Sample;
+            public class SampleEntity : Pos.Domain.Common.AggregateRoot<System.Guid>, Pos.Domain.Common.ITenantOwnedEntity
+            {
+                public System.Guid TenantId { get; private set; }
+                public static SampleEntity Create(string name) => new SampleEntity();
+            }
+            """;
+
+        var root = ParseSnippet(snippet);
+        var findings = TenantEntityFactoryRatchetScanner.Scan(root, "SampleEntity.cs");
+
+        Assert.Single(findings);
+        Assert.Equal("SampleEntity", findings[0].EntityName);
+        Assert.Contains("Guid tenantId", findings[0].Description);
+    }
+
+    [Fact]
+    public void TenantEntityFactoryRatchetScanner_WhenFactoryHasTenantId_DoesNotDetectViolation()
+    {
+        const string snippet = """
+            namespace Sample;
+            public class SampleEntity : Pos.Domain.Common.AggregateRoot<System.Guid>, Pos.Domain.Common.ITenantOwnedEntity
+            {
+                public System.Guid TenantId { get; private set; }
+                public static SampleEntity Create(System.Guid tenantId, string name) => new SampleEntity();
+            }
+            """;
+
+        var root = ParseSnippet(snippet);
+        var findings = TenantEntityFactoryRatchetScanner.Scan(root, "SampleEntity.cs");
+
+        Assert.Empty(findings);
+    }
+
+    [Fact]
+    public void TenantEntityFactoryRatchetScanner_WhenPlatformScoped_IgnoresFactoryWithoutTenantId()
+    {
+        const string snippet = """
+            namespace Sample;
+            public class PlatformEntity : Pos.Domain.Common.AggregateRoot<System.Guid>, Pos.Domain.Common.ITenantOwnedEntity, Pos.Domain.Common.IPlatformScopedEntity
+            {
+                public System.Guid TenantId { get; private set; }
+                public static PlatformEntity Create(string name) => new PlatformEntity();
+            }
+            """;
+
+        var root = ParseSnippet(snippet);
+        var findings = TenantEntityFactoryRatchetScanner.Scan(root, "PlatformEntity.cs");
+
+        Assert.Empty(findings);
+    }
 }
+
 
 
 
