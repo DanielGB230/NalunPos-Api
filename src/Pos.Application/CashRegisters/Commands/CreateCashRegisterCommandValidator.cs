@@ -1,4 +1,4 @@
-﻿using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Attributes;
 using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using FluentValidation;
@@ -12,6 +12,9 @@ public class CreateCashRegisterCommandValidator : AbstractValidator<CreateCashRe
 {
     public CreateCashRegisterCommandValidator()
     {
+        RuleFor(x => x.BranchId)
+            .NotEmpty().WithMessage("El ID de la sucursal es requerido.");
+
         RuleFor(x => x.Name)
             .NotEmpty().WithMessage("El nombre de la caja es requerido.")
             .Length(2, 100).WithMessage("El nombre debe contener entre 2 y 100 caracteres.");

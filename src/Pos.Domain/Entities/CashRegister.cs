@@ -23,6 +23,12 @@ public class CashRegister : AggregateRoot<Guid>, ITenantOwnedEntity
 
     private CashRegister(Guid id, Guid tenantId, Guid branchId, string name, string serialNumber) : base(id)
     {
+        if (tenantId == PlatformScope.TenantId || tenantId == Guid.Empty)
+            throw new DomainException("El ID del tenant es requerido para crear una caja.");
+
+        if (branchId == Guid.Empty)
+            throw new DomainException("El ID de la sucursal es requerido para crear una caja.");
+
         TenantId = tenantId;
         BranchId = branchId;
         SetName(name);
@@ -34,11 +40,6 @@ public class CashRegister : AggregateRoot<Guid>, ITenantOwnedEntity
     public static CashRegister Create(Guid tenantId, Guid branchId, string name, string serialNumber = "")
     {
         return new CashRegister(Guid.NewGuid(), tenantId, branchId, name, serialNumber);
-    }
-
-    public static CashRegister Create(string name, string serialNumber = "")
-    {
-        return new CashRegister(Guid.NewGuid(), Guid.Empty, Guid.Empty, name, serialNumber);
     }
 
     public void UpdateDetails(string name, string serialNumber)

@@ -1,6 +1,7 @@
 namespace Pos.Api.Contracts.Requests;
 
 public record CreateCashRegisterRequest(
+    Guid BranchId,
     string Name,
     string SerialNumber = ""
 );

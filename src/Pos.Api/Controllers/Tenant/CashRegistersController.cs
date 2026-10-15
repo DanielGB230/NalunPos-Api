@@ -35,13 +35,14 @@ public class CashRegistersController : ControllerBase
     [HttpPost]
     [ProducesResponseType(typeof(CashRegisterDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<CashRegisterDto>> CreateCashRegister(
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> CreateCashRegister(
         [FromBody] CreateCashRegisterRequest request,
         CancellationToken cancellationToken)
     {
-        var command = new CreateCashRegisterCommand(request.Name, request.SerialNumber);
+        var command = new CreateCashRegisterCommand(request.BranchId, request.Name, request.SerialNumber);
         var result = await _dispatcher.SendAsync(command, cancellationToken);
-        return CreatedAtAction(nameof(GetCashRegisters), null, result);
+        return this.ToActionResult(result);
     }
 
     [HttpPost("{registerId:guid}/sessions/open")]
