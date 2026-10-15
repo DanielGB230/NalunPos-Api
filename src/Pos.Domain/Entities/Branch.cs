@@ -29,10 +29,7 @@ public class Branch : AggregateRoot<Guid>, ITenantOwnedEntity
         Address address,
         string phoneNumber) : base(id)
     {
-        if (tenantId == PlatformScope.TenantId || tenantId == Guid.Empty)
-            throw new DomainException("El ID del tenant es requerido para crear una sucursal.");
-
-        TenantId = tenantId;
+        TenantId = TenantGuard.RequireTenantId(tenantId, "una sucursal");
         SetName(name);
         Address = address ?? throw new ArgumentNullException(nameof(address));
         PhoneNumber = phoneNumber?.Trim() ?? string.Empty;

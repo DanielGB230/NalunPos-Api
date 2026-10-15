@@ -23,13 +23,10 @@ public class CashRegister : AggregateRoot<Guid>, ITenantOwnedEntity
 
     private CashRegister(Guid id, Guid tenantId, Guid branchId, string name, string serialNumber) : base(id)
     {
-        if (tenantId == PlatformScope.TenantId || tenantId == Guid.Empty)
-            throw new DomainException("El ID del tenant es requerido para crear una caja.");
+        TenantId = TenantGuard.RequireTenantId(tenantId, "una caja");
 
         if (branchId == Guid.Empty)
             throw new DomainException("El ID de la sucursal es requerido para crear una caja.");
-
-        TenantId = tenantId;
         BranchId = branchId;
         SetName(name);
         SerialNumber = serialNumber?.Trim().ToUpperInvariant() ?? string.Empty;
