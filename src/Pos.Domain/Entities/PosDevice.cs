@@ -24,10 +24,13 @@ public class PosDevice : AggregateRoot<Guid>, ITenantOwnedEntity
 
     private PosDevice(
         Guid id,
+        Guid tenantId,
         Guid branchId,
         string name,
         string serialNumber) : base(id)
     {
+        TenantId = TenantGuard.RequireTenantId(tenantId, "un dispositivo POS");
+
         if (branchId == Guid.Empty)
         {
             throw new DomainException("El ID de la sucursal asignada es requerido.");
@@ -43,9 +46,9 @@ public class PosDevice : AggregateRoot<Guid>, ITenantOwnedEntity
         RaiseDomainEvent(new PosDeviceRegisteredDomainEvent(Id, BranchId, Name, SerialNumber, CreatedAtUtc));
     }
 
-    public static PosDevice Create(Guid branchId, string name, string serialNumber)
+    public static PosDevice Create(Guid tenantId, Guid branchId, string name, string serialNumber)
     {
-        return new PosDevice(Guid.NewGuid(), branchId, name, serialNumber);
+        return new PosDevice(Guid.NewGuid(), tenantId, branchId, name, serialNumber);
     }
 
     public void UpdateDetails(string name, string serialNumber)

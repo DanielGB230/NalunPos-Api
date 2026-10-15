@@ -1,4 +1,4 @@
-﻿using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Attributes;
 using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.PosDevices.DTOs;
@@ -23,15 +23,18 @@ public class RegisterPosDeviceCommandHandler : ICommandHandler<RegisterPosDevice
     private readonly IPosDeviceRepository _posDeviceRepository;
     private readonly IBranchRepository _branchRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ICurrentTenantContext _tenantContext;
 
     public RegisterPosDeviceCommandHandler(
         IPosDeviceRepository posDeviceRepository,
         IBranchRepository branchRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        ICurrentTenantContext tenantContext)
     {
         _posDeviceRepository = posDeviceRepository ?? throw new ArgumentNullException(nameof(posDeviceRepository));
         _branchRepository = branchRepository ?? throw new ArgumentNullException(nameof(branchRepository));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _tenantContext = tenantContext ?? throw new ArgumentNullException(nameof(tenantContext));
     }
 
     public async Task<Result<PosDeviceDto>> HandleAsync(RegisterPosDeviceCommand request, CancellationToken cancellationToken)
@@ -51,7 +54,7 @@ public class RegisterPosDeviceCommandHandler : ICommandHandler<RegisterPosDevice
         PosDevice device;
         try
         {
-            device = PosDevice.Create(request.BranchId, request.Name, request.SerialNumber);
+            device = PosDevice.Create(_tenantContext.RequireTenantId(), request.BranchId, request.Name, request.SerialNumber);
         }
         catch (DomainException ex)
         {

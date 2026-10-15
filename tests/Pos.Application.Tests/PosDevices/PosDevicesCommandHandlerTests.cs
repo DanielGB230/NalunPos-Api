@@ -14,17 +14,18 @@ public class PosDevicesCommandHandlerTests
     private readonly FakePosDeviceRepository _posDeviceRepository = new();
     private readonly FakeBranchRepository _branchRepository = new();
     private readonly FakeUnitOfWork _unitOfWork = new();
+    private readonly FakeCurrentTenantContext _tenantContext = new() { TenantId = Guid.NewGuid() };
 
     [Fact]
     public async Task RegisterPosDevice_WithValidBranchAndUniqueSerial_ShouldCreateDeviceAndReturnSuccess()
     {
         // Arrange
-        var tenantId = Guid.NewGuid();
+        var tenantId = _tenantContext.TenantId!.Value;
         var branch = Branch.Create(tenantId, "Sucursal Norte", Address.Create("Av. Norte 100", "Lima", "15001", "PE"), "+5112345678");
         _branchRepository.Branches.Add(branch);
 
         var command = new RegisterPosDeviceCommand(branch.Id, "Caja Principal 01", "MAC-00-11-22-33-44");
-        var handler = new RegisterPosDeviceCommandHandler(_posDeviceRepository, _branchRepository, _unitOfWork);
+        var handler = new RegisterPosDeviceCommandHandler(_posDeviceRepository, _branchRepository, _unitOfWork, _tenantContext);
 
         // Act
         var result = await handler.HandleAsync(command, CancellationToken.None);
@@ -42,7 +43,7 @@ public class PosDevicesCommandHandlerTests
     {
         // Arrange
         var command = new RegisterPosDeviceCommand(Guid.NewGuid(), "Caja Inexistente", "MAC-99-99-99");
-        var handler = new RegisterPosDeviceCommandHandler(_posDeviceRepository, _branchRepository, _unitOfWork);
+        var handler = new RegisterPosDeviceCommandHandler(_posDeviceRepository, _branchRepository, _unitOfWork, _tenantContext);
 
         // Act
         var result = await handler.HandleAsync(command, CancellationToken.None);
@@ -57,15 +58,15 @@ public class PosDevicesCommandHandlerTests
     public async Task RegisterPosDevice_WhenSerialNumberAlreadyExists_ShouldReturnConflictResult()
     {
         // Arrange
-        var tenantId = Guid.NewGuid();
+        var tenantId = _tenantContext.TenantId!.Value;
         var branch = Branch.Create(tenantId, "Sucursal Sur", Address.Create("Av. Sur 200", "Lima", "15002", "PE"), "+5112345679");
         _branchRepository.Branches.Add(branch);
 
-        var existingDevice = PosDevice.Create(branch.Id, "Caja Existente", "MAC-00-11-22-33-44");
+        var existingDevice = PosDevice.Create(tenantId, branch.Id, "Caja Existente", "MAC-00-11-22-33-44");
         _posDeviceRepository.Devices.Add(existingDevice);
 
         var command = new RegisterPosDeviceCommand(branch.Id, "Nueva Caja", "MAC-00-11-22-33-44");
-        var handler = new RegisterPosDeviceCommandHandler(_posDeviceRepository, _branchRepository, _unitOfWork);
+        var handler = new RegisterPosDeviceCommandHandler(_posDeviceRepository, _branchRepository, _unitOfWork, _tenantContext);
 
         // Act
         var result = await handler.HandleAsync(command, CancellationToken.None);
@@ -80,7 +81,7 @@ public class PosDevicesCommandHandlerTests
     public async Task PingPosDevice_WhenDeviceExists_ShouldRecordPingAndReturnSuccess()
     {
         // Arrange
-        var device = PosDevice.Create(Guid.NewGuid(), "POS Movil 01", "MAC-55-66-77");
+        var device = PosDevice.Create(Guid.NewGuid(), Guid.NewGuid(), "POS Movil 01", "MAC-55-66-77");
         _posDeviceRepository.Devices.Add(device);
 
         var command = new PingPosDeviceCommand(device.Id);
