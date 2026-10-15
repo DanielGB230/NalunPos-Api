@@ -1,4 +1,4 @@
-﻿using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Attributes;
 using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Notifications.DTOs;
@@ -24,17 +24,20 @@ public class CreateSystemNotificationCommandHandler : ICommandHandler<CreateSyst
     private readonly IUserRepository _userRepository;
     private readonly IPushNotificationService _pushNotificationService;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ICurrentTenantContext _tenantContext;
 
     public CreateSystemNotificationCommandHandler(
         ISystemNotificationRepository notificationRepository,
         IUserRepository userRepository,
         IPushNotificationService pushNotificationService,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        ICurrentTenantContext tenantContext)
     {
         _notificationRepository = notificationRepository ?? throw new ArgumentNullException(nameof(notificationRepository));
         _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
         _pushNotificationService = pushNotificationService ?? throw new ArgumentNullException(nameof(pushNotificationService));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _tenantContext = tenantContext ?? throw new ArgumentNullException(nameof(tenantContext));
     }
 
     public async Task<Result<SystemNotificationDto>> HandleAsync(CreateSystemNotificationCommand request, CancellationToken cancellationToken)
@@ -48,7 +51,7 @@ public class CreateSystemNotificationCommandHandler : ICommandHandler<CreateSyst
         SystemNotification notification;
         try
         {
-            notification = SystemNotification.Create(request.UserId, request.Title, request.Message);
+            notification = SystemNotification.Create(_tenantContext.RequireTenantId(), request.UserId, request.Title, request.Message);
         }
         catch (DomainException ex)
         {

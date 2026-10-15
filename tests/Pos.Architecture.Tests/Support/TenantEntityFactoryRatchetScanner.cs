@@ -20,8 +20,7 @@ public static class TenantEntityFactoryRatchetScanner
         "Product",
         "Sale",
         "SaleLineItem",
-        "Supplier",
-        "SystemNotification"
+        "Supplier"
     };
 
     public static IReadOnlyList<TenantEntityFactoryFinding> Scan(SyntaxNode root, string filePath = "")

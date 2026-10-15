@@ -1,4 +1,4 @@
-﻿using Pos.Application.Tests.Support.Fakes;
+using Pos.Application.Tests.Support.Fakes;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Notifications.Commands;
 using Pos.Domain.Common;
@@ -16,6 +16,7 @@ public class NotificationsCommandHandlerTests
     private readonly FakeUserRepository _userRepository = new();
     private readonly FakePushNotificationService _pushNotificationService = new();
     private readonly FakeUnitOfWork _unitOfWork = new();
+    private readonly FakeCurrentTenantContext _tenantContext = new() { TenantId = Guid.NewGuid() };
 
     [Fact]
     public async Task CreateSystemNotification_WhenUserExists_ShouldCreateNotificationAndSendPush()
@@ -25,7 +26,7 @@ public class NotificationsCommandHandlerTests
         _userRepository.Users.Add(user);
 
         var command = new CreateSystemNotificationCommand(user.Id, "Alerta de Stock", "El producto X está bajo en stock.");
-        var handler = new CreateSystemNotificationCommandHandler(_notificationRepository, _userRepository, _pushNotificationService, _unitOfWork);
+        var handler = new CreateSystemNotificationCommandHandler(_notificationRepository, _userRepository, _pushNotificationService, _unitOfWork, _tenantContext);
 
         // Act
         var result = await handler.HandleAsync(command, CancellationToken.None);
@@ -44,7 +45,7 @@ public class NotificationsCommandHandlerTests
     {
         // Arrange
         var command = new CreateSystemNotificationCommand(Guid.NewGuid(), "Título", "Mensaje");
-        var handler = new CreateSystemNotificationCommandHandler(_notificationRepository, _userRepository, _pushNotificationService, _unitOfWork);
+        var handler = new CreateSystemNotificationCommandHandler(_notificationRepository, _userRepository, _pushNotificationService, _unitOfWork, _tenantContext);
 
         // Act
         var result = await handler.HandleAsync(command, CancellationToken.None);
@@ -60,7 +61,7 @@ public class NotificationsCommandHandlerTests
     public async Task MarkNotificationAsRead_WhenNotificationExists_ShouldMarkAsReadAndReturnSuccess()
     {
         // Arrange
-        var notification = SystemNotification.Create(Guid.NewGuid(), "Aviso", "Mensaje de aviso");
+        var notification = SystemNotification.Create(_tenantContext.TenantId!.Value, Guid.NewGuid(), "Aviso", "Mensaje de aviso");
         _notificationRepository.Notifications.Add(notification);
 
         var command = new MarkNotificationAsReadCommand(notification.Id);

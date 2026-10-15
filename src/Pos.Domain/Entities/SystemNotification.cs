@@ -22,10 +22,13 @@ public class SystemNotification : AggregateRoot<Guid>, ITenantOwnedEntity
 
     private SystemNotification(
         Guid id,
+        Guid tenantId,
         Guid userId,
         string title,
         string message) : base(id)
     {
+        TenantId = TenantGuard.RequireTenantId(tenantId, "una notificación");
+
         if (userId == Guid.Empty)
         {
             throw new DomainException("El ID del usuario destinatario es requerido.");
@@ -50,9 +53,9 @@ public class SystemNotification : AggregateRoot<Guid>, ITenantOwnedEntity
         RaiseDomainEvent(new NotificationCreatedDomainEvent(Id, UserId, Title, CreatedAtUtc));
     }
 
-    public static SystemNotification Create(Guid userId, string title, string message)
+    public static SystemNotification Create(Guid tenantId, Guid userId, string title, string message)
     {
-        return new SystemNotification(Guid.NewGuid(), userId, title, message);
+        return new SystemNotification(Guid.NewGuid(), tenantId, userId, title, message);
     }
 
     public void MarkAsRead()
