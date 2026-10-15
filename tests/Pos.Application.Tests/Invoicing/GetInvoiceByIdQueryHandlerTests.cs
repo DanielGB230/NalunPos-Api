@@ -1,4 +1,4 @@
-﻿using Pos.Application.Tests.Support.Fakes;
+using Pos.Application.Tests.Support.Fakes;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Invoicing.Queries;
 using Pos.Domain.Common;
@@ -19,6 +19,7 @@ public class GetInvoiceByIdQueryHandlerTests
     {
         // Arrange
         var invoice = Invoice.Create(
+            Guid.NewGuid(),
             Guid.NewGuid(),
             InvoiceDocumentType.Invoice,
             "F001-00000001",

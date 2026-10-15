@@ -17,7 +17,6 @@ public static class TenantEntityFactoryRatchetScanner
     {
         "Category",
         "Customer",
-        "Invoice",
         "PosDevice",
         "Product",
         "Sale",

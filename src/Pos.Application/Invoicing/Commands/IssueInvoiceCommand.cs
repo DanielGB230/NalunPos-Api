@@ -1,4 +1,4 @@
-﻿using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Attributes;
 using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Invoicing.DTOs;
@@ -29,19 +29,22 @@ public class IssueInvoiceCommandHandler : ICommandHandler<IssueInvoiceCommand, R
     private readonly IElectronicInvoicingService _invoicingService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IDispatcher _dispatcher;
+    private readonly ICurrentTenantContext _tenantContext;
 
     public IssueInvoiceCommandHandler(
         IInvoiceRepository invoiceRepository,
         ISaleRepository saleRepository,
         IElectronicInvoicingService invoicingService,
         IUnitOfWork unitOfWork,
-        IDispatcher dispatcher)
+        IDispatcher dispatcher,
+        ICurrentTenantContext tenantContext)
     {
         _invoiceRepository = invoiceRepository ?? throw new ArgumentNullException(nameof(invoiceRepository));
         _saleRepository = saleRepository ?? throw new ArgumentNullException(nameof(saleRepository));
         _invoicingService = invoicingService ?? throw new ArgumentNullException(nameof(invoicingService));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
+        _tenantContext = tenantContext ?? throw new ArgumentNullException(nameof(tenantContext));
     }
 
     public async Task<Result<InvoiceDto>> HandleAsync(IssueInvoiceCommand request, CancellationToken cancellationToken)
@@ -63,6 +66,7 @@ public class IssueInvoiceCommandHandler : ICommandHandler<IssueInvoiceCommand, R
         {
             var taxIdVo = TaxId.Create(request.CustomerTaxId, request.CustomerTaxCountryCode);
             invoice = Invoice.Create(
+                _tenantContext.RequireTenantId(),
                 request.SaleId,
                 request.DocumentType,
                 request.DocumentNumber,

@@ -28,12 +28,15 @@ public class Invoice : AggregateRoot<Guid>, ITenantOwnedEntity
 
     private Invoice(
         Guid id,
+        Guid tenantId,
         Guid saleId,
         InvoiceDocumentType documentType,
         string documentNumber,
         TaxId customerTaxId,
         Money totalAmount) : base(id)
     {
+        TenantId = TenantGuard.RequireTenantId(tenantId, "una factura");
+
         if (saleId == Guid.Empty)
         {
             throw new DomainException("El ID de la venta es requerido para emitir la factura.");
@@ -63,13 +66,14 @@ public class Invoice : AggregateRoot<Guid>, ITenantOwnedEntity
     }
 
     public static Invoice Create(
+        Guid tenantId,
         Guid saleId,
         InvoiceDocumentType documentType,
         string documentNumber,
         TaxId customerTaxId,
         Money totalAmount)
     {
-        return new Invoice(Guid.NewGuid(), saleId, documentType, documentNumber, customerTaxId, totalAmount);
+        return new Invoice(Guid.NewGuid(), tenantId, saleId, documentType, documentNumber, customerTaxId, totalAmount);
     }
 
     public void MarkAsSent()

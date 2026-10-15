@@ -44,6 +44,7 @@ public class ReconcileInvoiceCommandHandlerTests
     {
         var invoice = Invoice.Create(
             Guid.NewGuid(),
+            Guid.NewGuid(),
             InvoiceDocumentType.Invoice,
             "F001-00000002",
             TaxId.Create("20123456789", "PE"),
@@ -66,6 +67,7 @@ public class ReconcileInvoiceCommandHandlerTests
     {
         var invoice = Invoice.Create(
             Guid.NewGuid(),
+            Guid.NewGuid(),
             InvoiceDocumentType.Invoice,
             "F001-00000003",
             TaxId.Create("20123456789", "PE"),
@@ -87,6 +89,7 @@ public class ReconcileInvoiceCommandHandlerTests
     public async Task HandleAsync_WhenProviderReturnsNotFound_ShouldRetrySendInvoice()
     {
         var invoice = Invoice.Create(
+            Guid.NewGuid(),
             Guid.NewGuid(),
             InvoiceDocumentType.Invoice,
             "F001-00000004",
