@@ -42,8 +42,19 @@ public class TenantSaveChangesInterceptorTests
 
         await using var context = new PosDbContext(options, tenantInterceptor: interceptor);
 
-        // Branch no es IPlatformScopedEntity; su sobrecarga sin tenant genera TenantId = Guid.Empty
-        var branch = Branch.Create("Sucursal Test", Address.Create("Calle 1", "Ciudad", "12345", "Peru"));
+        // Branch no es IPlatformScopedEntity; se simula una entidad en ChangeTracker con TenantId vacío
+        var constructor = typeof(Branch).GetConstructor(
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance,
+            null,
+            [typeof(Guid), typeof(Guid), typeof(string), typeof(Address), typeof(string)],
+            null);
+        var branch = (Branch)Activator.CreateInstance(
+            typeof(Branch),
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance,
+            null,
+            [Guid.NewGuid(), Guid.NewGuid(), "Sucursal Test", Address.Create("Calle 1", "Ciudad", "12345", "Peru"), ""],
+            null)!;
+        typeof(Branch).GetProperty("TenantId")!.SetValue(branch, Guid.Empty);
 
         await context.Branches.AddAsync(branch);
 
@@ -104,7 +115,13 @@ public class TenantSaveChangesInterceptorTests
 
         await using var context = new PosDbContext(options, tenantInterceptor: interceptor);
 
-        var branch = Branch.Create("Sucursal AutoTenant", Address.Create("Calle 2", "Ciudad", "12345", "Peru"));
+        var branch = (Branch)Activator.CreateInstance(
+            typeof(Branch),
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance,
+            null,
+            [Guid.NewGuid(), Guid.NewGuid(), "Sucursal AutoTenant", Address.Create("Calle 2", "Ciudad", "12345", "Peru"), ""],
+            null)!;
+        typeof(Branch).GetProperty("TenantId")!.SetValue(branch, Guid.Empty);
 
         await context.Branches.AddAsync(branch);
 

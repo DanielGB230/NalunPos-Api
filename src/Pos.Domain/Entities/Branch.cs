@@ -29,6 +29,9 @@ public class Branch : AggregateRoot<Guid>, ITenantOwnedEntity
         Address address,
         string phoneNumber) : base(id)
     {
+        if (tenantId == PlatformScope.TenantId || tenantId == Guid.Empty)
+            throw new DomainException("El ID del tenant es requerido para crear una sucursal.");
+
         TenantId = tenantId;
         SetName(name);
         Address = address ?? throw new ArgumentNullException(nameof(address));
@@ -44,10 +47,6 @@ public class Branch : AggregateRoot<Guid>, ITenantOwnedEntity
         return new Branch(Guid.NewGuid(), tenantId, name, address, phoneNumber);
     }
 
-    public static Branch Create(string name, Address address, string phoneNumber = "")
-    {
-        return new Branch(Guid.NewGuid(), Guid.Empty, name, address, phoneNumber);
-    }
 
     public void UpdateDetails(string name, Address address, string phoneNumber)
     {

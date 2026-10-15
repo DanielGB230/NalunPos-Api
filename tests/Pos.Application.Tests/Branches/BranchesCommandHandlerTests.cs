@@ -1,4 +1,4 @@
-﻿using Pos.Application.Tests.Support.Fakes;
+using Pos.Application.Tests.Support.Fakes;
 using Pos.Application.Branches.Commands;
 using Pos.Application.Common.Interfaces;
 using Pos.Domain.Common;
@@ -13,6 +13,7 @@ public class BranchesCommandHandlerTests
 {
     private readonly FakeBranchRepository _branchRepository = new();
     private readonly FakeUnitOfWork _unitOfWork = new();
+    private readonly FakeCurrentTenantContext _tenantContext = new() { TenantId = Guid.NewGuid() };
 
     [Fact]
     public async Task CreateBranch_WithUniqueName_ShouldCreateBranchAndReturnSuccess()
@@ -26,7 +27,7 @@ public class BranchesCommandHandlerTests
             "PE",
             "+5184221100"
         );
-        var handler = new CreateBranchCommandHandler(_branchRepository, _unitOfWork);
+        var handler = new CreateBranchCommandHandler(_branchRepository, _unitOfWork, _tenantContext);
 
         // Act
         var result = await handler.HandleAsync(command, CancellationToken.None);
@@ -44,7 +45,7 @@ public class BranchesCommandHandlerTests
     {
         // Arrange
         var address = Address.Create("Av. Sol 100", "Cusco", "08000", "PE");
-        var existingBranch = Branch.Create("Sucursal Centro", address, "+5184221100");
+        var existingBranch = Branch.Create(_tenantContext.TenantId!.Value, "Sucursal Centro", address, "+5184221100");
         _branchRepository.Branches.Add(existingBranch);
 
         var command = new CreateBranchCommand(
@@ -54,7 +55,7 @@ public class BranchesCommandHandlerTests
             "08000",
             "PE"
         );
-        var handler = new CreateBranchCommandHandler(_branchRepository, _unitOfWork);
+        var handler = new CreateBranchCommandHandler(_branchRepository, _unitOfWork, _tenantContext);
 
         // Act
         var result = await handler.HandleAsync(command, CancellationToken.None);

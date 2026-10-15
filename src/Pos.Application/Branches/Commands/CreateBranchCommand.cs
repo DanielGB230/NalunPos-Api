@@ -1,4 +1,4 @@
-﻿using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Attributes;
 using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Branches.DTOs;
@@ -25,11 +25,16 @@ public class CreateBranchCommandHandler : ICommandHandler<CreateBranchCommand, R
 {
     private readonly IBranchRepository _branchRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ICurrentTenantContext _tenantContext;
 
-    public CreateBranchCommandHandler(IBranchRepository branchRepository, IUnitOfWork unitOfWork)
+    public CreateBranchCommandHandler(
+        IBranchRepository branchRepository,
+        IUnitOfWork unitOfWork,
+        ICurrentTenantContext tenantContext)
     {
         _branchRepository = branchRepository ?? throw new ArgumentNullException(nameof(branchRepository));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _tenantContext = tenantContext ?? throw new ArgumentNullException(nameof(tenantContext));
     }
 
     public async Task<Result<BranchDto>> HandleAsync(CreateBranchCommand request, CancellationToken cancellationToken)
@@ -45,7 +50,7 @@ public class CreateBranchCommandHandler : ICommandHandler<CreateBranchCommand, R
         try
         {
             address = Address.Create(request.Street, request.City, request.ZipCode, request.Country);
-            branch = Branch.Create(request.Name, address, request.PhoneNumber);
+            branch = Branch.Create(_tenantContext.RequireTenantId(), request.Name, address, request.PhoneNumber);
         }
         catch (DomainException ex)
         {
