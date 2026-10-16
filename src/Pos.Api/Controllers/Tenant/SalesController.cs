@@ -54,7 +54,7 @@ public class SalesController : ControllerBase
 
     [HttpPost]
     [EnableRateLimiting("PosCheckoutPolicy")]
-    [ProducesResponseType(typeof(SaleDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(SaleDto), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
@@ -71,6 +71,6 @@ public class SalesController : ControllerBase
             request.Currency);
 
         var result = await _dispatcher.SendAsync(command, cancellationToken);
-        return this.ToActionResult(result);
+        return this.ToCreatedResult(result, nameof(GetSaleById), new { id = result.Value?.Id });
     }
 }

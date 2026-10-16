@@ -55,7 +55,7 @@ public class PosDevicesController : ControllerBase
     {
         var command = new RegisterPosDeviceCommand(request.BranchId, request.Name, request.SerialNumber);
         var result = await _dispatcher.SendAsync(command, cancellationToken);
-        return this.ToActionResult(result);
+        return this.ToCreatedResult(result, nameof(GetPosDeviceById), new { id = result.Value?.Id });
     }
 
     [HttpPost("{id:guid}/ping")]

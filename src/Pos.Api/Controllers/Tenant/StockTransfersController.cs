@@ -49,6 +49,6 @@ public class StockTransfersController : ControllerBase
             request.Notes);
 
         var result = await _dispatcher.SendAsync(command, cancellationToken);
-        return this.ToActionResult(result);
+        return this.ToCreatedResult(result, t => t.Id);
     }
 }

@@ -42,7 +42,7 @@ public class CashRegistersController : ControllerBase
     {
         var command = new CreateCashRegisterCommand(request.BranchId, request.Name, request.SerialNumber);
         var result = await _dispatcher.SendAsync(command, cancellationToken);
-        return this.ToActionResult(result);
+        return this.ToCreatedResult(result, c => c.Id);
     }
 
     [HttpPost("{registerId:guid}/sessions/open")]

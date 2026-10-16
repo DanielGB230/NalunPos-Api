@@ -61,7 +61,7 @@ public class CategoriesController : ControllerBase
     {
         var command = new CreateCategoryCommand(request.Name, request.Description);
         var result = await _dispatcher.SendAsync(command, cancellationToken);
-        return this.ToActionResult(result);
+        return this.ToCreatedResult(result, nameof(GetCategoryById), new { id = result.Value?.Id });
     }
 
     [HttpPatch("{id:guid}")]

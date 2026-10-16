@@ -73,7 +73,7 @@ public class ProductsController : ControllerBase
             request.InitialStock);
 
         var result = await _dispatcher.SendAsync(command, cancellationToken);
-        return this.ToActionResult(result);
+        return this.ToCreatedResult(result, nameof(GetProductById), new { id = result.Value?.Id });
     }
 
     [HttpPatch("{id:guid}")]

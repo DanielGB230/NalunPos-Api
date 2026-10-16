@@ -38,7 +38,7 @@ public class InvoicesController : ControllerBase
             request.CustomerTaxCountryCode);
 
         var result = await _dispatcher.SendAsync(command, cancellationToken);
-        return this.ToActionResult(result);
+        return this.ToCreatedResult(result, nameof(GetInvoiceById), new { id = result.Value?.Id });
     }
 
     [HttpGet("{id:guid}")]

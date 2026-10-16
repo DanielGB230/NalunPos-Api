@@ -52,7 +52,7 @@ public class NotificationsController : ControllerBase
     {
         var command = new CreateSystemNotificationCommand(request.UserId, request.Title, request.Message);
         var result = await _dispatcher.SendAsync(command, cancellationToken);
-        return this.ToActionResult(result);
+        return this.ToCreatedResult(result, n => n.Id);
     }
 
     [HttpPost("{id:guid}/read")]

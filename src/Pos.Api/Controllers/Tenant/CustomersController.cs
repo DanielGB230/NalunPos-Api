@@ -69,7 +69,7 @@ public class CustomersController : ControllerBase
             request.Country);
 
         var result = await _dispatcher.SendAsync(command, cancellationToken);
-        return this.ToActionResult(result);
+        return this.ToCreatedResult(result, nameof(GetCustomerById), new { id = result.Value?.Id });
     }
 
     [HttpPatch("{id:guid}")]

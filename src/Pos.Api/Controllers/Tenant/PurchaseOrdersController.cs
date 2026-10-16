@@ -49,7 +49,7 @@ public class PurchaseOrdersController : ControllerBase
             request.Notes);
 
         var result = await _dispatcher.SendAsync(command, cancellationToken);
-        return this.ToActionResult(result);
+        return this.ToCreatedResult(result, p => p.Id);
     }
 
     [HttpPatch("{id:guid}/send")]

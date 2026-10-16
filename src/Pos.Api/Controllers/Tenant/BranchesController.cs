@@ -62,7 +62,7 @@ public class BranchesController : ControllerBase
             request.PhoneNumber);
 
         var result = await _dispatcher.SendAsync(command, cancellationToken);
-        return this.ToActionResult(result);
+        return this.ToCreatedResult(result, nameof(GetBranchById), new { id = result.Value?.Id });
     }
 
     [HttpPatch("{id:guid}")]

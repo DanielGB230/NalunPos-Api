@@ -42,6 +42,6 @@ public class RolesController : ControllerBase
     {
         var command = new CreateRoleCommand(request.Name, request.Description, request.Permissions);
         var result = await _dispatcher.SendAsync(command, cancellationToken);
-        return this.ToActionResult(result);
+        return this.ToCreatedResult(result, r => r.Id);
     }
 }

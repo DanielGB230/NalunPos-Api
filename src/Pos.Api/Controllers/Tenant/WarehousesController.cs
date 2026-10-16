@@ -86,6 +86,6 @@ public class WarehousesController : ControllerBase
     {
         var command = new CreateWarehouseCommand(request.BranchId, request.Name, request.Description, request.IsDefault);
         var result = await _dispatcher.SendAsync(command, cancellationToken);
-        return this.ToActionResult(result);
+        return this.ToCreatedResult(result, w => w.Id);
     }
 }

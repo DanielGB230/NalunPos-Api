@@ -20,6 +20,58 @@ public static class ResultExtensions
         return MapErrorToActionResult(controller, result.Error);
     }
 
+    /// <summary>
+    /// Convierte un Result&lt;T&gt; a 201 Created con cabecera Location calculada a partir de routeValues o URI absoluta/relativa.
+    /// </summary>
+    public static ActionResult ToCreatedResult<T>(
+        this ControllerBase controller,
+        Result<T> result,
+        string? actionName,
+        object? routeValues)
+    {
+        if (result.IsSuccess)
+        {
+            return controller.CreatedAtAction(actionName, routeValues, result.Value);
+        }
+
+        return MapErrorToActionResult(controller, result.Error);
+    }
+
+    /// <summary>
+    /// Convierte un Result&lt;T&gt; a 201 Created con cabecera Location explícita basada en URI.
+    /// </summary>
+    public static ActionResult ToCreatedResult<T>(
+        this ControllerBase controller,
+        Result<T> result,
+        string uri)
+    {
+        if (result.IsSuccess)
+        {
+            return controller.Created(uri, result.Value);
+        }
+
+        return MapErrorToActionResult(controller, result.Error);
+    }
+
+    /// <summary>
+    /// Convierte un Result&lt;T&gt; a 201 Created deduciendo la propiedad Id del payload para la cabecera Location.
+    /// </summary>
+    public static ActionResult ToCreatedResult<T>(
+        this ControllerBase controller,
+        Result<T> result,
+        Func<T, object?> idSelector)
+    {
+        if (result.IsSuccess)
+        {
+            var id = idSelector(result.Value);
+            var path = controller.Request?.Path.Value?.TrimEnd('/') ?? string.Empty;
+            var location = id != null ? $"{path}/{id}" : path;
+            return controller.Created(location, result.Value);
+        }
+
+        return MapErrorToActionResult(controller, result.Error);
+    }
+
     public static ActionResult ToActionResult(this ControllerBase controller, Result result)
     {
         if (result.IsSuccess)

@@ -58,7 +58,7 @@ public class TenantsController : ControllerBase
     /// <param name="cancellationToken">Token de cancelación</param>
     /// <returns>ID (Guid) del nuevo Tenant creado</returns>
     [HttpPost]
-    [ProducesResponseType(typeof(Guid), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Guid), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
@@ -74,6 +74,6 @@ public class TenantsController : ControllerBase
             request.AdminPassword);
 
         var result = await _dispatcher.SendAsync(command, cancellationToken);
-        return this.ToActionResult(result);
+        return this.ToCreatedResult(result, id => id);
     }
 }

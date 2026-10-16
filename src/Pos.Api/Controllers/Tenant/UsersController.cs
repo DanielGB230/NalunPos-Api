@@ -67,7 +67,7 @@ public class UsersController : ControllerBase
             request.TenantId);
 
         var result = await _dispatcher.SendAsync(command, cancellationToken);
-        return this.ToActionResult(result);
+        return this.ToCreatedResult(result, nameof(GetUserById), new { id = result.Value?.Id });
     }
 
     [HttpPatch("{id:guid}")]
