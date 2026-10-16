@@ -32,6 +32,7 @@ public class Product : AggregateRoot<Guid>, ITenantOwnedEntity
 
     private Product(
         Guid id,
+        Guid tenantId,
         string name,
         Sku sku,
         Money price,
@@ -41,6 +42,7 @@ public class Product : AggregateRoot<Guid>, ITenantOwnedEntity
         Money? cost = null,
         UnitOfMeasure unitOfMeasure = UnitOfMeasure.Unit) : base(id)
     {
+        TenantId = TenantGuard.RequireTenantId(tenantId, "un producto");
         SetName(name);
         Sku = sku ?? throw new ArgumentNullException(nameof(sku));
         Price = price ?? throw new ArgumentNullException(nameof(price));
@@ -63,6 +65,7 @@ public class Product : AggregateRoot<Guid>, ITenantOwnedEntity
     }
 
     public static Product Create(
+        Guid tenantId,
         string name,
         Sku sku,
         Money price,
@@ -72,21 +75,7 @@ public class Product : AggregateRoot<Guid>, ITenantOwnedEntity
         Money? cost = null,
         UnitOfMeasure unitOfMeasure = UnitOfMeasure.Unit)
     {
-        return new Product(Guid.NewGuid(), name, sku, price, categoryId, description, barcode, cost, unitOfMeasure);
-    }
-
-    public static Product Create(
-        Guid id,
-        string name,
-        Sku sku,
-        Money price,
-        Guid categoryId,
-        string? description = null,
-        Barcode? barcode = null,
-        Money? cost = null,
-        UnitOfMeasure unitOfMeasure = UnitOfMeasure.Unit)
-    {
-        return new Product(id, name, sku, price, categoryId, description, barcode, cost, unitOfMeasure);
+        return new Product(Guid.NewGuid(), tenantId, name, sku, price, categoryId, description, barcode, cost, unitOfMeasure);
     }
 
     public void UpdateDetails(string name, string? description, Barcode? barcode)

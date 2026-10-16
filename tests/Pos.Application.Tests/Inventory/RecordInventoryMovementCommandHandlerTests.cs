@@ -41,7 +41,7 @@ public class RecordInventoryMovementCommandHandlerTests
         var warehouse = Warehouse.Create(tenantId, Guid.NewGuid(), "Almacén Principal", isDefault: true);
         _warehouseRepository.Warehouses.Add(warehouse);
 
-        var product = Product.Create("Laptop Gamer", Sku.Create("LAP-001"), Money.Create(1200m, "USD"), Guid.NewGuid());
+        var product = Product.Create(tenantId, "Laptop Gamer", Sku.Create("LAP-001"), Money.Create(1200m, "USD"), Guid.NewGuid());
         _productRepository.Products.Add(product);
 
         var stockLevel = StockLevel.Create(tenantId, product.Id, warehouse.Id);
@@ -77,7 +77,7 @@ public class RecordInventoryMovementCommandHandlerTests
         var warehouse = Warehouse.Create(tenantId, Guid.NewGuid(), "Almacén Principal", isDefault: true);
         _warehouseRepository.Warehouses.Add(warehouse);
 
-        var product = Product.Create("Teclado Mecánico", Sku.Create("TEC-002"), Money.Create(80m, "USD"), Guid.NewGuid());
+        var product = Product.Create(tenantId, "Teclado Mecánico", Sku.Create("TEC-002"), Money.Create(80m, "USD"), Guid.NewGuid());
         _productRepository.Products.Add(product);
 
         var stockLevel = StockLevel.Create(tenantId, product.Id, warehouse.Id);

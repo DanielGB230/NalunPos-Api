@@ -52,6 +52,7 @@ public class SaleFullIntegrationTests
         dbContext.Categories.Add(category);
 
         var product = Product.Create(
+            tenantId,
             $"Inca Kola 500ml_{Guid.NewGuid()}",
             Sku.Create($"SKU-{Guid.NewGuid().ToString()[..8]}"),
             Money.Create(4.00m, "USD"),
@@ -150,6 +151,7 @@ public class SaleFullIntegrationTests
         dbContext.Categories.Add(category);
 
         var product = Product.Create(
+            tenantId,
             $"Papas Fritas 100g_{Guid.NewGuid()}",
             Sku.Create($"SKU-{Guid.NewGuid().ToString()[..8]}"),
             Money.Create(2.50m, "USD"),
@@ -221,6 +223,7 @@ public class SaleFullIntegrationTests
         dbContext.Categories.Add(category);
 
         var product = Product.Create(
+            tenantId,
             $"Detergente 1L_{Guid.NewGuid()}",
             Sku.Create($"SKU-{Guid.NewGuid().ToString()[..8]}"),
             Money.Create(5.00m, "USD"),
@@ -293,7 +296,7 @@ public class SaleFullIntegrationTests
         dbA.CashRegisters.Add(regA);
         var catA = Category.Create(tenantA, $"CatA_{Guid.NewGuid()}", "Cat Tenant A");
         dbA.Categories.Add(catA);
-        var prodA = Product.Create($"ProdA_{Guid.NewGuid()}", Sku.Create($"SKUA-{Guid.NewGuid().ToString()[..6]}"), Money.Create(10m, "USD"), catA.Id);
+        var prodA = Product.Create(tenantA, $"ProdA_{Guid.NewGuid()}", Sku.Create($"SKUA-{Guid.NewGuid().ToString()[..6]}"), Money.Create(10m, "USD"), catA.Id);
         dbA.Products.Add(prodA);
         await dbA.SaveChangesAsync();
         await dispatcherA.SendAsync(new RecordInventoryMovementCommand(prodA.Id, whA.Id, 10m, InventoryMovementType.Adjustment));
@@ -311,7 +314,7 @@ public class SaleFullIntegrationTests
         dbB.Warehouses.Add(whB);
         var catB = Category.Create(tenantB, $"CatB_{Guid.NewGuid()}", "Cat Tenant B");
         dbB.Categories.Add(catB);
-        var prodB = Product.Create($"ProdB_{Guid.NewGuid()}", Sku.Create($"SKUB-{Guid.NewGuid().ToString()[..6]}"), Money.Create(20m, "USD"), catB.Id);
+        var prodB = Product.Create(tenantB, $"ProdB_{Guid.NewGuid()}", Sku.Create($"SKUB-{Guid.NewGuid().ToString()[..6]}"), Money.Create(20m, "USD"), catB.Id);
         dbB.Products.Add(prodB);
         await dbB.SaveChangesAsync();
         await dispatcherB.SendAsync(new RecordInventoryMovementCommand(prodB.Id, whB.Id, 20m, InventoryMovementType.Adjustment));

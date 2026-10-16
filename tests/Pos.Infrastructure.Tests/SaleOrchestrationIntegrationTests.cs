@@ -137,6 +137,7 @@ public class SaleOrchestrationIntegrationTests : IDisposable
         dbContext.Categories.Add(category);
 
         var product = Product.Create(
+            tenantId,
             "Gaseosa Cola 500ml",
             Sku.Create("BEB-COL-500"),
             Money.Create(3.50m, "USD"),

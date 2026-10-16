@@ -163,7 +163,7 @@ public class PaginationValidationTests
         var handler = provider.GetRequiredService<IQueryHandler<GetInventoryHistoryQuery, Result<PagedResult<InventoryMovementDto>>>>();
 
         userRepository.UserToReturn = User.Create("test@example.com", "hash", Guid.NewGuid(), Guid.NewGuid(), "Admin", "User");
-        productRepository.ProductToReturn = Product.Create("Product Test", Sku.Create("SKU123"), Money.Create(10.0m, "USD"), Guid.NewGuid());
+        productRepository.ProductToReturn = Product.Create(Guid.NewGuid(), "Product Test", Sku.Create("SKU123"), Money.Create(10.0m, "USD"), Guid.NewGuid());
 
         var invalidQuery = new GetInventoryHistoryQuery(ProductId: Guid.NewGuid(), PageNumber: 1, PageSize: 101);
 

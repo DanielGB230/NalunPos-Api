@@ -11,16 +11,18 @@ public class ProductTests
     public void Create_WithValidParameters_ShouldInstantiateProductAndRaiseDomainEvent()
     {
         // Arrange
+        Guid tenantId = Guid.NewGuid();
         string name = "Teclado Mecánico RGB";
         var sku = Sku.Create("KEY-MECH-01");
         var price = Money.Create(129.99m, "USD");
         Guid categoryId = Guid.NewGuid();
 
         // Act
-        var product = Product.Create(name, sku, price, categoryId);
+        var product = Product.Create(tenantId, name, sku, price, categoryId);
 
         // Assert
         Assert.NotEqual(Guid.Empty, product.Id);
+        Assert.Equal(tenantId, product.TenantId);
         Assert.Equal(name, product.Name);
         Assert.Equal(sku, product.Sku);
         Assert.Equal(price, product.Price);
@@ -30,10 +32,30 @@ public class ProductTests
     }
 
     [Fact]
+    public void Create_WithPlatformTenantId_ShouldThrowDomainException()
+    {
+        // Arrange
+        var ex = Assert.Throws<DomainException>(() =>
+            Product.Create(Pos.Domain.Common.PlatformScope.TenantId, "Mouse Gamer", Sku.Create("MSE-01"), Money.Create(50m, "USD"), Guid.NewGuid()));
+
+        Assert.Equal("El ID del tenant es requerido para crear un producto.", ex.Message);
+    }
+
+    [Fact]
+    public void Create_WithEmptyTenantId_ShouldThrowDomainException()
+    {
+        // Arrange
+        var ex = Assert.Throws<DomainException>(() =>
+            Product.Create(Guid.Empty, "Mouse Gamer", Sku.Create("MSE-01"), Money.Create(50m, "USD"), Guid.NewGuid()));
+
+        Assert.Equal("El ID del tenant es requerido para crear un producto.", ex.Message);
+    }
+
+    [Fact]
     public void UpdatePrice_WithNewValidPrice_ShouldUpdatePriceAndEmitEvent()
     {
         // Arrange
-        var product = Product.Create("Mouse Gamer", Sku.Create("MSE-01"), Money.Create(50m, "USD"), Guid.NewGuid());
+        var product = Product.Create(Guid.NewGuid(), "Mouse Gamer", Sku.Create("MSE-01"), Money.Create(50m, "USD"), Guid.NewGuid());
         var newPrice = Money.Create(45m, "USD");
 
         // Act
@@ -49,14 +71,14 @@ public class ProductTests
     {
         // Arrange & Act & Assert
         Assert.Throws<DomainException>(() =>
-            Product.Create("", Sku.Create("SKU-123"), Money.Create(10m, "USD"), Guid.NewGuid()));
+            Product.Create(Guid.NewGuid(), "", Sku.Create("SKU-123"), Money.Create(10m, "USD"), Guid.NewGuid()));
     }
 
     [Fact]
     public void Activate_WhenNotActive_ShouldActivateAndEmitProductStatusChangedDomainEvent()
     {
         // Arrange
-        var product = Product.Create("Mouse Gamer", Sku.Create("MSE-01"), Money.Create(50m, "USD"), Guid.NewGuid());
+        var product = Product.Create(Guid.NewGuid(), "Mouse Gamer", Sku.Create("MSE-01"), Money.Create(50m, "USD"), Guid.NewGuid());
         product.Deactivate(); // Set to inactive first
         product.ClearDomainEvents();
 
@@ -77,7 +99,7 @@ public class ProductTests
     public void Activate_WhenAlreadyActive_ShouldNotEmitEvent()
     {
         // Arrange
-        var product = Product.Create("Mouse Gamer", Sku.Create("MSE-01"), Money.Create(50m, "USD"), Guid.NewGuid());
+        var product = Product.Create(Guid.NewGuid(), "Mouse Gamer", Sku.Create("MSE-01"), Money.Create(50m, "USD"), Guid.NewGuid());
         product.ClearDomainEvents();
 
         // Act
@@ -92,7 +114,7 @@ public class ProductTests
     public void Deactivate_WhenActive_ShouldDeactivateAndEmitProductStatusChangedDomainEvent()
     {
         // Arrange
-        var product = Product.Create("Mouse Gamer", Sku.Create("MSE-01"), Money.Create(50m, "USD"), Guid.NewGuid());
+        var product = Product.Create(Guid.NewGuid(), "Mouse Gamer", Sku.Create("MSE-01"), Money.Create(50m, "USD"), Guid.NewGuid());
         product.ClearDomainEvents();
 
         // Act
@@ -112,7 +134,7 @@ public class ProductTests
     public void Deactivate_WhenAlreadyInactive_ShouldNotEmitEvent()
     {
         // Arrange
-        var product = Product.Create("Mouse Gamer", Sku.Create("MSE-01"), Money.Create(50m, "USD"), Guid.NewGuid());
+        var product = Product.Create(Guid.NewGuid(), "Mouse Gamer", Sku.Create("MSE-01"), Money.Create(50m, "USD"), Guid.NewGuid());
         product.Deactivate();
         product.ClearDomainEvents();
 

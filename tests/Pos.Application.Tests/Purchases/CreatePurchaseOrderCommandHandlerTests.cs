@@ -54,7 +54,7 @@ public class CreatePurchaseOrderCommandHandlerTests
         var warehouse = Warehouse.Create(tenantId, Guid.NewGuid(), "Almacén Principal", isDefault: true);
         _warehouseRepository.Warehouses.Add(warehouse);
 
-        var product = Product.Create("Producto A", Sku.Create("PROD-A-001"), Money.Create(50m, "USD"), Guid.NewGuid());
+        var product = Product.Create(tenantId, "Producto A", Sku.Create("PROD-A-001"), Money.Create(50m, "USD"), Guid.NewGuid());
         _productRepository.Products.Add(product);
 
         var command = new CreatePurchaseOrderCommand(
@@ -95,7 +95,7 @@ public class CreatePurchaseOrderCommandHandlerTests
         var warehouse = Warehouse.Create(tenantId, Guid.NewGuid(), "Almacén Principal", isDefault: true);
         _warehouseRepository.Warehouses.Add(warehouse);
 
-        var product = Product.Create("Producto Inactivo", Sku.Create("PROD-A-002"), Money.Create(50m, "USD"), Guid.NewGuid());
+        var product = Product.Create(tenantId, "Producto Inactivo", Sku.Create("PROD-A-002"), Money.Create(50m, "USD"), Guid.NewGuid());
         product.Deactivate(); // Set to inactive
         _productRepository.Products.Add(product);
 

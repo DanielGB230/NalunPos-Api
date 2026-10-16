@@ -36,8 +36,8 @@ public class TenantIsolationIntegrationTests
             var catA2 = Category.Create(tenantAId, "Cat A2 Inactive", "Inactive cat for Tenant A");
             catA2.Deactivate();
 
-            var prodA1 = Product.Create("Prod A1 Active", Sku.Create("SKU-A1"), Money.Create(10.0m), catA1.Id);
-            var prodA2 = Product.Create("Prod A2 Inactive", Sku.Create("SKU-A2"), Money.Create(20.0m), catA1.Id);
+            var prodA1 = Product.Create(tenantAId, "Prod A1 Active", Sku.Create("SKU-A1"), Money.Create(10.0m), catA1.Id);
+            var prodA2 = Product.Create(tenantAId, "Prod A2 Inactive", Sku.Create("SKU-A2"), Money.Create(20.0m), catA1.Id);
             prodA2.Deactivate();
 
             dbA.Categories.AddRange(catA1, catA2);
@@ -52,8 +52,8 @@ public class TenantIsolationIntegrationTests
             var catB2 = Category.Create(tenantBId, "Cat B2 Inactive", "Inactive cat for Tenant B");
             catB2.Deactivate();
 
-            var prodB1 = Product.Create("Prod B1 Active", Sku.Create("SKU-B1"), Money.Create(30.0m), catB1.Id);
-            var prodB2 = Product.Create("Prod B2 Inactive", Sku.Create("SKU-B2"), Money.Create(40.0m), catB1.Id);
+            var prodB1 = Product.Create(tenantBId, "Prod B1 Active", Sku.Create("SKU-B1"), Money.Create(30.0m), catB1.Id);
+            var prodB2 = Product.Create(tenantBId, "Prod B2 Inactive", Sku.Create("SKU-B2"), Money.Create(40.0m), catB1.Id);
             prodB2.Deactivate();
 
             dbB.Categories.AddRange(catB1, catB2);

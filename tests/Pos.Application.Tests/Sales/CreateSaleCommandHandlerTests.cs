@@ -58,6 +58,7 @@ public class CreateSaleCommandHandlerTests
         _registerRepository.Sessions.Add(session);
 
         var product = Product.Create(
+            tenantId,
             "Producto A",
             Sku.Create("PROD-A-001"),
             Money.Create(50m, "USD"),

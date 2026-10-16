@@ -13,10 +13,7 @@ public sealed record TenantEntityFactoryFinding(
 
 public static class TenantEntityFactoryRatchetScanner
 {
-    public static readonly HashSet<string> PendingEntities = new(StringComparer.Ordinal)
-    {
-        "Product"
-    };
+    public static readonly HashSet<string> PendingEntities = new(StringComparer.Ordinal);
 
     public static IReadOnlyList<TenantEntityFactoryFinding> Scan(SyntaxNode root, string filePath = "")
     {

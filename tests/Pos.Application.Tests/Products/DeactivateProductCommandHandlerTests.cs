@@ -1,4 +1,4 @@
-﻿using Pos.Application.Tests.Support.Fakes;
+using Pos.Application.Tests.Support.Fakes;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Products.Commands;
 using Pos.Domain.Common;
@@ -24,7 +24,7 @@ public class DeactivateProductCommandHandlerTests
     public async Task HandleAsync_WhenProductIsActive_ShouldDeactivateProductAndReturnSuccess()
     {
         // Arrange
-        var product = Product.Create("Laptop Gamer", Sku.Create("LAP-001"), Money.Create(1200m, "USD"), Guid.NewGuid());
+        var product = Product.Create(Guid.NewGuid(), "Laptop Gamer", Sku.Create("LAP-001"), Money.Create(1200m, "USD"), Guid.NewGuid());
         _productRepository.Products.Add(product);
 
         var command = new DeactivateProductCommand(product.Id);
@@ -44,7 +44,7 @@ public class DeactivateProductCommandHandlerTests
     public async Task HandleAsync_WhenProductIsAlreadyInactive_ShouldReturnConflictResult()
     {
         // Arrange
-        var product = Product.Create("Laptop Gamer", Sku.Create("LAP-001"), Money.Create(1200m, "USD"), Guid.NewGuid());
+        var product = Product.Create(Guid.NewGuid(), "Laptop Gamer", Sku.Create("LAP-001"), Money.Create(1200m, "USD"), Guid.NewGuid());
         product.Deactivate();
         _productRepository.Products.Add(product);
 

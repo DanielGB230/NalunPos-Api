@@ -1,4 +1,4 @@
-﻿using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Attributes;
 using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Products.DTOs;
@@ -29,15 +29,18 @@ public class CreateProductCommandHandler : ICommandHandler<CreateProductCommand,
     private readonly IProductRepository _productRepository;
     private readonly ICategoryRepository _categoryRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ICurrentTenantContext _tenantContext;
 
     public CreateProductCommandHandler(
         IProductRepository productRepository,
         ICategoryRepository categoryRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        ICurrentTenantContext tenantContext)
     {
         _productRepository = productRepository ?? throw new ArgumentNullException(nameof(productRepository));
         _categoryRepository = categoryRepository ?? throw new ArgumentNullException(nameof(categoryRepository));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _tenantContext = tenantContext ?? throw new ArgumentNullException(nameof(tenantContext));
     }
 
     public async Task<Result<ProductDto>> HandleAsync(CreateProductCommand request, CancellationToken cancellationToken)
@@ -69,6 +72,7 @@ public class CreateProductCommandHandler : ICommandHandler<CreateProductCommand,
             var barcodeVo = !string.IsNullOrWhiteSpace(request.Barcode) ? Barcode.Create(request.Barcode) : null;
 
             product = Product.Create(
+                _tenantContext.RequireTenantId(),
                 request.Name,
                 skuVo,
                 priceVo,

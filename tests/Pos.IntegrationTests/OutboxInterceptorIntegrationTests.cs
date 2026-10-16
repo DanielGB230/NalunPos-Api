@@ -410,7 +410,7 @@ public class OutboxInterceptorIntegrationTests
             var category = Category.Create(tenantId, "Electrónica", "Desc");
             dbSetup.Categories.Add(category);
             
-            product = Product.Create("Producto", Sku.Create("SKU-1"), Money.Create(10, "USD"), category.Id);
+            product = Product.Create(tenantId, "Producto", Sku.Create("SKU-1"), Money.Create(10, "USD"), category.Id);
             dbSetup.Products.Add(product);
             
             await dbSetup.SaveChangesAsync();
@@ -454,7 +454,7 @@ public class OutboxInterceptorIntegrationTests
             var category = Category.Create(tenantId, "Electrónica", "Desc");
             dbSetup.Categories.Add(category);
             
-            product = Product.Create("Producto Admin", Sku.Create("SKU-ADM"), Money.Create(10, "USD"), category.Id);
+            product = Product.Create(tenantId, "Producto Admin", Sku.Create("SKU-ADM"), Money.Create(10, "USD"), category.Id);
             dbSetup.Products.Add(product);
             
             await dbSetup.SaveChangesAsync();
@@ -504,7 +504,7 @@ public class OutboxInterceptorIntegrationTests
         {
             var category = Category.Create(tenantId, "Categoria", "Desc");
             dbSetup.Categories.Add(category);
-            var product = Product.Create("Product", Sku.Create("SKU-1"), Money.Create(10, "USD"), category.Id);
+            var product = Product.Create(tenantId, "Product", Sku.Create("SKU-1"), Money.Create(10, "USD"), category.Id);
             dbSetup.Products.Add(product);
             
             var supplier = Supplier.Create(tenantId, "Supplier", TaxId.Create("TAX-001"), Address.Create("Street", "City", "Zip", "Country"), "Contact", "email@sup.com", "123456");
@@ -566,7 +566,7 @@ public class OutboxInterceptorIntegrationTests
         {
             var category = Category.Create(tenantId, "Categoria Admin", "Desc");
             dbSetup.Categories.Add(category);
-            var product = Product.Create("Product Admin PO", Sku.Create("SKU-ADM-PO"), Money.Create(10, "USD"), category.Id);
+            var product = Product.Create(tenantId, "Product Admin PO", Sku.Create("SKU-ADM-PO"), Money.Create(10, "USD"), category.Id);
             dbSetup.Products.Add(product);
             
             var supplier = Supplier.Create(tenantId, "Supplier Admin", TaxId.Create("TAX-002"), Address.Create("Street", "City", "Zip", "Country"), "Contact", "email2@sup.com", "123456");
@@ -634,7 +634,7 @@ public class OutboxInterceptorIntegrationTests
         {
             var category = Category.Create(tenantId, "Categoria Cancel", "Desc");
             dbSetup.Categories.Add(category);
-            var product = Product.Create("Product Cancel", Sku.Create("SKU-CANCEL"), Money.Create(10, "USD"), category.Id);
+            var product = Product.Create(tenantId, "Product Cancel", Sku.Create("SKU-CANCEL"), Money.Create(10, "USD"), category.Id);
             dbSetup.Products.Add(product);
             
             var supplier = Supplier.Create(tenantId, "Supplier Cancel", TaxId.Create("TAX-CANCEL"), Address.Create("Street", "City", "Zip", "Country"), "Contact", "email3@sup.com", "123456");
@@ -697,7 +697,7 @@ public class OutboxInterceptorIntegrationTests
         {
             var category = Category.Create(tenantId, "Categoria Cancel Admin", "Desc");
             dbSetup.Categories.Add(category);
-            var product = Product.Create("Product Cancel Admin", Sku.Create("SKU-CANCEL-ADM"), Money.Create(10, "USD"), category.Id);
+            var product = Product.Create(tenantId, "Product Cancel Admin", Sku.Create("SKU-CANCEL-ADM"), Money.Create(10, "USD"), category.Id);
             dbSetup.Products.Add(product);
             
             var supplier = Supplier.Create(tenantId, "Supplier Cancel Admin", TaxId.Create("TAX-CANCEL2"), Address.Create("Street", "City", "Zip", "Country"), "Contact", "email4@sup.com", "123456");
