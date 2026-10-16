@@ -220,6 +220,10 @@ namespace Pos.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("BranchId");
+
+                    b.HasIndex("TenantId", "BranchId");
+
                     b.ToTable("CashRegisters", (string)null);
                 });
 
@@ -1252,6 +1256,15 @@ namespace Pos.Infrastructure.Migrations
                     b.HasIndex("ProcessedOnUtc");
 
                     b.ToTable("OutboxMessages", (string)null);
+                });
+
+            modelBuilder.Entity("Pos.Domain.Entities.CashRegister", b =>
+                {
+                    b.HasOne("Pos.Domain.Entities.Branch", null)
+                        .WithMany()
+                        .HasForeignKey("BranchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Pos.Domain.Entities.CashRegisterSession", b =>

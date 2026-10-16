@@ -15,6 +15,9 @@ public class CashRegisterConfiguration : IEntityTypeConfiguration<CashRegister>
         builder.Property(r => r.Id)
             .ValueGeneratedNever();
 
+        builder.Property(r => r.BranchId)
+            .IsRequired();
+
         builder.Property(r => r.Name)
             .IsRequired()
             .HasMaxLength(100);
@@ -31,5 +34,12 @@ public class CashRegisterConfiguration : IEntityTypeConfiguration<CashRegister>
             .IsRequired();
 
         builder.Property(r => r.UpdatedAtUtc);
+
+        builder.HasIndex(r => new { r.TenantId, r.BranchId });
+
+        builder.HasOne<Branch>()
+            .WithMany()
+            .HasForeignKey(r => r.BranchId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }
