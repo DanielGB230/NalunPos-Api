@@ -38,6 +38,24 @@ public static class ResultExtensions
     }
 
     /// <summary>
+    /// Convierte un Result&lt;T&gt; a 201 Created calculando el route value id vía un selector seguro sobre la entidad sin acceder a result.Value directamente en el controller.
+    /// </summary>
+    public static ActionResult ToCreatedResult<T>(
+        this ControllerBase controller,
+        Result<T> result,
+        string actionName,
+        Func<T, object?> idSelector)
+    {
+        if (result.IsSuccess)
+        {
+            var id = idSelector(result.Value);
+            return controller.CreatedAtAction(actionName, new { id }, result.Value);
+        }
+
+        return MapErrorToActionResult(controller, result.Error);
+    }
+
+    /// <summary>
     /// Convierte un Result&lt;T&gt; a 201 Created con cabecera Location explícita basada en URI.
     /// </summary>
     public static ActionResult ToCreatedResult<T>(

@@ -70,7 +70,7 @@ public class SuppliersController : ControllerBase
             request.TaxCountryCode);
 
         var result = await _dispatcher.SendAsync(command, cancellationToken);
-        return this.ToCreatedResult(result, nameof(GetSupplierById), new { id = result.Value?.Id });
+        return this.ToCreatedResult(result, nameof(GetSupplierById), s => s.Id);
     }
 
     [HttpPatch("{id:guid}")]

@@ -71,6 +71,6 @@ public class SalesController : ControllerBase
             request.Currency);
 
         var result = await _dispatcher.SendAsync(command, cancellationToken);
-        return this.ToCreatedResult(result, nameof(GetSaleById), new { id = result.Value?.Id });
+        return this.ToCreatedResult(result, nameof(GetSaleById), s => s.Id);
     }
 }
