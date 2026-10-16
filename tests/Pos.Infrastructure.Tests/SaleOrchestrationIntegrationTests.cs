@@ -133,7 +133,7 @@ public class SaleOrchestrationIntegrationTests : IDisposable
         var register = CashRegister.Create(tenantId, branch.Id, "Caja 01", "CR-001");
         dbContext.CashRegisters.Add(register);
 
-        var category = Category.Create("Bebidas", "Categoría de bebidas");
+        var category = Category.Create(tenantId, "Bebidas", "Categoría de bebidas");
         dbContext.Categories.Add(category);
 
         var product = Product.Create(

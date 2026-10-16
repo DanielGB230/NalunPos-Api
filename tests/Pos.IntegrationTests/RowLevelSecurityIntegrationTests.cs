@@ -32,7 +32,7 @@ public class RowLevelSecurityIntegrationTests
 
         using (var dbA = _fixture.CreateDbContext(tenantAId))
         {
-            var catA = Category.Create("Cat RLS A", "Desc A");
+            var catA = Category.Create(tenantAId, "Cat RLS A", "Desc A");
             var prodA1 = Product.Create("Product RLS A1", Sku.Create("SKU-RLS-A1"), Money.Create(15.0m), catA.Id);
             var prodA2 = Product.Create("Product RLS A2", Sku.Create("SKU-RLS-A2"), Money.Create(25.0m), catA.Id);
 
@@ -43,7 +43,7 @@ public class RowLevelSecurityIntegrationTests
 
         using (var dbB = _fixture.CreateDbContext(tenantBId))
         {
-            var catB = Category.Create("Cat RLS B", "Desc B");
+            var catB = Category.Create(tenantBId, "Cat RLS B", "Desc B");
             var prodB1 = Product.Create("Product RLS B1", Sku.Create("SKU-RLS-B1"), Money.Create(35.0m), catB.Id);
 
             dbB.Categories.Add(catB);
@@ -91,7 +91,7 @@ public class RowLevelSecurityIntegrationTests
         Guid tenantAId = Guid.NewGuid();
         using (var dbA = _fixture.CreateDbContext(tenantAId))
         {
-            var catA = Category.Create("Cat FailClosed RLS", "Desc");
+            var catA = Category.Create(tenantAId, "Cat FailClosed RLS", "Desc");
             var prodA = Product.Create("Product FailClosed RLS", Sku.Create("SKU-RLS-FC"), Money.Create(10.0m), catA.Id);
 
             dbA.Categories.Add(catA);
@@ -169,7 +169,7 @@ public class RowLevelSecurityIntegrationTests
         Guid tenantAId = Guid.NewGuid();
         using (var dbA = _fixture.CreateDbContext(tenantAId))
         {
-            var catA = Category.Create("Cat Pool Leak Test", "Desc");
+            var catA = Category.Create(tenantAId, "Cat Pool Leak Test", "Desc");
             var prodA = Product.Create("Product Pool Leak Test", Sku.Create("SKU-POOL-1"), Money.Create(50.0m), catA.Id);
 
             dbA.Categories.Add(catA);
@@ -218,7 +218,7 @@ public class RowLevelSecurityIntegrationTests
         using (var dbA = _fixture.CreateDbContext(tenantAId))
         {
             roleA = Role.Create(tenantAId, "Role Global Lookup Test", "Desc");
-            var catA = Category.Create("Cat Global Lookup Test", "Desc");
+            var catA = Category.Create(tenantAId, "Cat Global Lookup Test", "Desc");
             prodA = Product.Create("Product Global Lookup Test", Sku.Create("SKU-GLOBAL-1"), Money.Create(100.0m), catA.Id);
 
             dbA.Roles.Add(roleA);

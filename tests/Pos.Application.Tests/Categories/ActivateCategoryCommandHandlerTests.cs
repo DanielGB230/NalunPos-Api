@@ -1,4 +1,4 @@
-﻿using Pos.Application.Tests.Support.Fakes;
+using Pos.Application.Tests.Support.Fakes;
 using Pos.Application.Categories.Commands;
 using Pos.Application.Common.Interfaces;
 using Pos.Domain.Common;
@@ -23,7 +23,7 @@ public class ActivateCategoryCommandHandlerTests
     public async Task HandleAsync_WhenCategoryIsInactive_ShouldActivateCategoryAndReturnSuccess()
     {
         // Arrange
-        var category = Category.Create("Bebidas", "Categoría de bebidas");
+        var category = Category.Create(Guid.NewGuid(), "Bebidas", "Categoría de bebidas");
         category.Deactivate();
         _categoryRepository.Categories.Add(category);
 
@@ -44,7 +44,7 @@ public class ActivateCategoryCommandHandlerTests
     public async Task HandleAsync_WhenCategoryIsAlreadyActive_ShouldReturnConflictResult()
     {
         // Arrange
-        var category = Category.Create("Bebidas", "Categoría de bebidas");
+        var category = Category.Create(Guid.NewGuid(), "Bebidas", "Categoría de bebidas");
         _categoryRepository.Categories.Add(category);
 
         var command = new ActivateCategoryCommand(category.Id);

@@ -167,7 +167,7 @@ public class OutboxProcessorResilienceTests
 
         using var db = _fixture.CreateDbContext(tenantId);
 
-        var cat = Pos.Domain.Entities.Category.Create($"Cat-Retry-{Guid.NewGuid()}", "Desc");
+        var cat = Pos.Domain.Entities.Category.Create(tenantId, $"Cat-Retry-{Guid.NewGuid()}", "Desc");
         db.Categories.Add(cat);
 
         // Primera llamada: guardado exitoso (el interceptor convierte DomainEvents → OutboxMessages)

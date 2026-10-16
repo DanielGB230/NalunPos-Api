@@ -48,7 +48,7 @@ public class SaleFullIntegrationTests
         var register = CashRegister.Create(tenantId, branch.Id, $"Caja Principal_{Guid.NewGuid()}", $"CR-{Guid.NewGuid().ToString()[..6]}");
         dbContext.CashRegisters.Add(register);
 
-        var category = Category.Create($"Bebidas_{Guid.NewGuid()}", "Categoría de prueba");
+        var category = Category.Create(tenantId, $"Bebidas_{Guid.NewGuid()}", "Categoría de prueba");
         dbContext.Categories.Add(category);
 
         var product = Product.Create(
@@ -146,7 +146,7 @@ public class SaleFullIntegrationTests
         var register = CashRegister.Create(tenantId, branch.Id, $"Caja Express_{Guid.NewGuid()}", $"CR-{Guid.NewGuid().ToString()[..6]}");
         dbContext.CashRegisters.Add(register);
 
-        var category = Category.Create($"Snacks_{Guid.NewGuid()}", "Categoría snacks");
+        var category = Category.Create(tenantId, $"Snacks_{Guid.NewGuid()}", "Categoría snacks");
         dbContext.Categories.Add(category);
 
         var product = Product.Create(
@@ -217,7 +217,7 @@ public class SaleFullIntegrationTests
         var register = CashRegister.Create(tenantId, branch.Id, $"Caja 03_{Guid.NewGuid()}", $"CR-{Guid.NewGuid().ToString()[..6]}");
         dbContext.CashRegisters.Add(register);
 
-        var category = Category.Create($"Limpieza_{Guid.NewGuid()}", "Categoría limpieza");
+        var category = Category.Create(tenantId, $"Limpieza_{Guid.NewGuid()}", "Categoría limpieza");
         dbContext.Categories.Add(category);
 
         var product = Product.Create(
@@ -291,7 +291,7 @@ public class SaleFullIntegrationTests
         dbA.Warehouses.Add(whA);
         var regA = CashRegister.Create(tenantA, branchA.Id, "Caja A", $"CRA-{Guid.NewGuid().ToString()[..4]}");
         dbA.CashRegisters.Add(regA);
-        var catA = Category.Create($"CatA_{Guid.NewGuid()}", "Cat Tenant A");
+        var catA = Category.Create(tenantA, $"CatA_{Guid.NewGuid()}", "Cat Tenant A");
         dbA.Categories.Add(catA);
         var prodA = Product.Create($"ProdA_{Guid.NewGuid()}", Sku.Create($"SKUA-{Guid.NewGuid().ToString()[..6]}"), Money.Create(10m, "USD"), catA.Id);
         dbA.Products.Add(prodA);
@@ -309,7 +309,7 @@ public class SaleFullIntegrationTests
         dbB.Branches.Add(branchB);
         var whB = Warehouse.Create(tenantB, branchB.Id, "Almacén B", isDefault: true);
         dbB.Warehouses.Add(whB);
-        var catB = Category.Create($"CatB_{Guid.NewGuid()}", "Cat Tenant B");
+        var catB = Category.Create(tenantB, $"CatB_{Guid.NewGuid()}", "Cat Tenant B");
         dbB.Categories.Add(catB);
         var prodB = Product.Create($"ProdB_{Guid.NewGuid()}", Sku.Create($"SKUB-{Guid.NewGuid().ToString()[..6]}"), Money.Create(20m, "USD"), catB.Id);
         dbB.Products.Add(prodB);

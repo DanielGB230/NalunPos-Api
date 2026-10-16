@@ -22,8 +22,9 @@ public class Category : AggregateRoot<Guid>, ITenantOwnedEntity
     {
     }
 
-    private Category(Guid id, string name, string? description) : base(id)
+    private Category(Guid id, Guid tenantId, string name, string? description) : base(id)
     {
+        TenantId = TenantGuard.RequireTenantId(tenantId, "una categoría");
         SetName(name);
         Description = description?.Trim();
         IsActive = true;
@@ -32,14 +33,9 @@ public class Category : AggregateRoot<Guid>, ITenantOwnedEntity
         RaiseDomainEvent(new CategoryCreatedDomainEvent(Id, Name, CreatedAtUtc));
     }
 
-    public static Category Create(string name, string? description = null)
+    public static Category Create(Guid tenantId, string name, string? description = null)
     {
-        return new Category(Guid.NewGuid(), name, description);
-    }
-
-    public static Category Create(Guid id, string name, string? description = null)
-    {
-        return new Category(id, name, description);
+        return new Category(Guid.NewGuid(), tenantId, name, description);
     }
 
     public void Update(string name, string? description)

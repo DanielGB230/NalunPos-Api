@@ -32,8 +32,8 @@ public class TenantIsolationIntegrationTests
         // Seed Tenant A Data
         using (var dbA = _fixture.CreateDbContext(tenantAId))
         {
-            var catA1 = Category.Create("Cat A1 Active", "Active cat for Tenant A");
-            var catA2 = Category.Create("Cat A2 Inactive", "Inactive cat for Tenant A");
+            var catA1 = Category.Create(tenantAId, "Cat A1 Active", "Active cat for Tenant A");
+            var catA2 = Category.Create(tenantAId, "Cat A2 Inactive", "Inactive cat for Tenant A");
             catA2.Deactivate();
 
             var prodA1 = Product.Create("Prod A1 Active", Sku.Create("SKU-A1"), Money.Create(10.0m), catA1.Id);
@@ -48,8 +48,8 @@ public class TenantIsolationIntegrationTests
         // Seed Tenant B Data
         using (var dbB = _fixture.CreateDbContext(tenantBId))
         {
-            var catB1 = Category.Create("Cat B1 Active", "Active cat for Tenant B");
-            var catB2 = Category.Create("Cat B2 Inactive", "Inactive cat for Tenant B");
+            var catB1 = Category.Create(tenantBId, "Cat B1 Active", "Active cat for Tenant B");
+            var catB2 = Category.Create(tenantBId, "Cat B2 Inactive", "Inactive cat for Tenant B");
             catB2.Deactivate();
 
             var prodB1 = Product.Create("Prod B1 Active", Sku.Create("SKU-B1"), Money.Create(30.0m), catB1.Id);
@@ -287,7 +287,7 @@ public class TenantIsolationIntegrationTests
 
         using (var db = _fixture.CreateDbContext(tenantId))
         {
-            var cat = Pos.Domain.Entities.Category.Create("Test Cat", "Desc");
+            var cat = Pos.Domain.Entities.Category.Create(tenantId, "Test Cat", "Desc");
             db.Categories.Add(cat);
 
             string json = System.Text.Json.JsonSerializer.Serialize(dummyEvent);
