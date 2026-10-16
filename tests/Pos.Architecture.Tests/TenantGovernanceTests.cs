@@ -577,6 +577,9 @@ public class TenantGovernanceTests
         Assert.True(
             obsoletePending.Count == 0,
             $"Entrada(s) obsoleta(s) en la lista ratchet de factorías pendientes (ya cumplen la regla y deben retirarse de PendingEntities):\n{string.Join(", ", obsoletePending)}");
+
+        // 3. Cierre definitivo de ratchet: 100% de entidades de tenant gobernadas; prohibido reabrir o añadir nuevas excepciones
+        Assert.Empty(TenantEntityFactoryRatchetScanner.PendingEntities);
     }
 
     [Fact]

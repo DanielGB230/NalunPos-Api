@@ -289,4 +289,41 @@ public class RowLevelSecurityIntegrationTests
         Assert.DoesNotContain(roleA.Id, rolesList);
         Assert.Empty(salesList);
     }
+
+    [Fact]
+    public async Task CashRegisters_BranchId_PersistenceAndCheckConstraint_MustEnforceValidBranch()
+    {
+        // 1. Arrange
+        Guid tenantId = Guid.NewGuid();
+        using var db = _fixture.CreateDbContext(tenantId);
+
+        var address = Address.Create("Av. Central 123", "Lima", "15001", "PE");
+        var branch = Branch.Create(tenantId, $"Branch_{Guid.NewGuid()}", address, "123456789");
+        db.Branches.Add(branch);
+        await db.SaveChangesAsync();
+
+        var cashRegister = CashRegister.Create(tenantId, branch.Id, $"CR_{Guid.NewGuid()}", "CR-101");
+        db.CashRegisters.Add(cashRegister);
+        await db.SaveChangesAsync();
+
+        // 2. Act: Consulta con filtro y navegación
+        var fetched = await db.CashRegisters.FirstOrDefaultAsync(c => c.Id == cashRegister.Id);
+        Assert.NotNull(fetched);
+        Assert.Equal(branch.Id, fetched.BranchId);
+        Assert.Equal(tenantId, fetched.TenantId);
+
+        // 3. Assert Check Constraint: Intento de insertar Guid.Empty en BranchId directamente vía RAW SQL debe ser rechazado por CK_CashRegisters_BranchId_NotEmpty
+        await db.Database.OpenConnectionAsync();
+        var conn = db.Database.GetDbConnection();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = $@"
+            INSERT INTO [dbo].[CashRegisters] 
+                ([Id], [TenantId], [BranchId], [Name], [SerialNumber], [IsActive], [CreatedAtUtc])
+            VALUES 
+                ('{Guid.NewGuid()}', '{tenantId}', '00000000-0000-0000-0000-000000000000', 'Huérfana', 'CR-000', 1, GETUTCDATE());
+        ";
+
+        var ex = await Assert.ThrowsAnyAsync<DbException>(async () => await cmd.ExecuteNonQueryAsync());
+        Assert.Contains("CK_CashRegisters_BranchId_NotEmpty", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
 }
