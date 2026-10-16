@@ -54,4 +54,37 @@ public class CreatedResultIntegrationTests : IClassFixture<CustomWebApplicationF
 
         locationUri.Should().EndWith(categoryId);
     }
+
+    [Fact]
+    public async Task CreateCategory_WhenDuplicateName_Returns409Conflict_WithoutThrowing_AndLocationHeaderIsNull()
+    {
+        // Arrange
+        var (client, _, _) = await AuthenticatedClientFactory.CreateAuthenticatedClientAsync(_factory, permissions: RequiredTestPermissions);
+        var uniqueName = $"Duplicate_{Guid.NewGuid():N}"[..18];
+        var requestBody = new
+        {
+            name = uniqueName,
+            description = "Initial category creation"
+        };
+
+        var firstResponse = await client.PostAsJsonAsync("/api/v1/categories", requestBody);
+        firstResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        // Act - Attempt duplicate category creation to trigger Conflict (409)
+        var duplicateResponse = await client.PostAsJsonAsync("/api/v1/categories", requestBody);
+
+        // Assert
+        duplicateResponse.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        duplicateResponse.Headers.Location.Should().BeNull("un endpoint con fallo no debe incluir cabecera Location");
+
+        var json = await duplicateResponse.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+
+        root.TryGetProperty("status", out var statusProp).Should().BeTrue();
+        statusProp.GetInt32().Should().Be(409);
+
+        root.TryGetProperty("title", out var titleProp).Should().BeTrue();
+        titleProp.GetString().Should().NotBeNullOrWhiteSpace();
+    }
 }

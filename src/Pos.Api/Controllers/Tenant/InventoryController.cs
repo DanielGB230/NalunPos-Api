@@ -25,7 +25,7 @@ public class InventoryController : ControllerBase
     }
 
     [HttpPost("movements")]
-    [ProducesResponseType(typeof(InventoryMovementDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(InventoryMovementDto), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> RecordMovement(
@@ -41,7 +41,7 @@ public class InventoryController : ControllerBase
             request.Notes);
 
         var result = await _dispatcher.SendAsync(command, cancellationToken);
-        return this.ToActionResult(result);
+        return this.ToCreatedResult(result, m => m.Id);
     }
 
     [HttpGet("products/{productId:guid}/stock")]

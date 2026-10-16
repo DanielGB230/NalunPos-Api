@@ -38,7 +38,7 @@ public class AiGovernanceController : ControllerBase
     }
 
     [HttpPost("propose")]
-    [ProducesResponseType(typeof(AgentActionRecordDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(AgentActionRecordDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> ProposeAction(
@@ -52,7 +52,7 @@ public class AiGovernanceController : ControllerBase
             request.RiskLevel);
 
         var result = await _dispatcher.SendAsync(command, cancellationToken);
-        return this.ToActionResult(result);
+        return this.ToCreatedResult(result, a => a.Id);
     }
 
     [HttpPatch("{id:guid}/review")]

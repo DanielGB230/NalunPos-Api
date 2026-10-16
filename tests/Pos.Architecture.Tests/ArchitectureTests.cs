@@ -614,5 +614,74 @@ public class ArchitectureTests
             $"Se detectaron llamadas no autorizadas a 'SetSuperAdmin()'. Solo el OutboxProcessorBackgroundService tiene permiso para establecer el contexto de SuperAdmin en código de producción:\n{string.Join("\n", violations)}"
         );
     }
+
+    [Fact]
+    public void ResourceCreationEndpoints_Must_Use_ToCreatedResult_And_Declare_201Created()
+    {
+        var apiDir = SolutionDirectory.PosApi;
+        var controllersDir = Path.Combine(apiDir, "Controllers");
+        Assert.True(Directory.Exists(controllersDir), $"El directorio de controladores '{controllersDir}' no existe.");
+
+        var creationControllerFiles = Directory.GetFiles(controllersDir, "*Controller.cs", SearchOption.AllDirectories)
+            .Where(f => !f.EndsWith("AuthController.cs", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        Assert.NotEmpty(creationControllerFiles);
+
+        var violations = new List<string>();
+
+        // Acciones HTTP POST de creación de recursos direccionables
+        var creationMethodNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "CreateCategory",
+            "CreateProduct",
+            "CreateCustomer",
+            "CreateSupplier",
+            "CreateBranch",
+            "CreateWarehouse",
+            "CreateCashRegister",
+            "RegisterPosDevice",
+            "CreateNotification",
+            "ProcessPayment",
+            "IssueInvoice",
+            "CreateSale",
+            "CreatePurchaseOrder",
+            "CreateTransfer",
+            "CreateAdjustment",
+            "CreateRole",
+            "CreateUser",
+            "CreateTenant",
+            "ProposeAction",
+            "RecordMovement"
+        };
+
+        foreach (var file in creationControllerFiles)
+        {
+            var content = File.ReadAllText(file);
+            var relativePath = Path.GetRelativePath(SolutionDirectory.Root, file);
+
+            foreach (var methodName in creationMethodNames)
+            {
+                if (!content.Contains($" {methodName}("))
+                    continue;
+
+                // Extraer el cuerpo del método o verificar que contenga ToCreatedResult
+                if (!content.Contains("ToCreatedResult"))
+                {
+                    violations.Add($"{relativePath}: El método '{methodName}' debe retornar usando 'this.ToCreatedResult'.");
+                }
+
+                if (!content.Contains("StatusCodes.Status201Created"))
+                {
+                    violations.Add($"{relativePath}: El método '{methodName}' debe declarar [ProducesResponseType(..., StatusCodes.Status201Created)].");
+                }
+            }
+        }
+
+        Assert.True(
+            violations.Count == 0,
+            $"Se detectaron endpoints de creación que no cumplen con el contrato HTTP 201 Created + ToCreatedResult:\n{string.Join("\n", violations)}"
+        );
+    }
 }
 
