@@ -38,8 +38,9 @@ public class CreateCashRegisterCommandHandler : ICommandHandler<CreateCashRegist
 
     public async Task<Result<CashRegisterDto>> HandleAsync(CreateCashRegisterCommand request, CancellationToken cancellationToken)
     {
+        var tenantId = _tenantContext.RequireTenantId();
         var branch = await _branchRepository.GetByIdAsync(request.BranchId, cancellationToken);
-        if (branch == null)
+        if (branch == null || branch.TenantId != tenantId)
         {
             return Result.Fail<CashRegisterDto>(DomainError.NotFound("Branch.NotFound", $"No se encontró la sucursal con el ID '{request.BranchId}'."));
         }
@@ -47,7 +48,7 @@ public class CreateCashRegisterCommandHandler : ICommandHandler<CreateCashRegist
         CashRegister register;
         try
         {
-            register = CashRegister.Create(_tenantContext.RequireTenantId(), request.BranchId, request.Name, request.SerialNumber);
+            register = CashRegister.Create(tenantId, request.BranchId, request.Name, request.SerialNumber);
         }
         catch (DomainException ex)
         {

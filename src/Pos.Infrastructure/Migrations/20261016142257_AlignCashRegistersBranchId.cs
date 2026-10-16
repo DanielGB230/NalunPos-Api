@@ -20,7 +20,8 @@ namespace Pos.Infrastructure.Migrations
                     WHERE b.TenantId = cr.TenantId
                 )
                 FROM CashRegisters cr
-                WHERE cr.BranchId = '00000000-0000-0000-0000-000000000000';
+                WHERE cr.BranchId = '00000000-0000-0000-0000-000000000000'
+                  AND EXISTS (SELECT 1 FROM Branches b WHERE b.TenantId = cr.TenantId);
             ");
 
             // Si existen cajas huérfanas en un tenant sin ninguna sucursal registrada y sin sesiones asociadas, eliminarlas para sanear

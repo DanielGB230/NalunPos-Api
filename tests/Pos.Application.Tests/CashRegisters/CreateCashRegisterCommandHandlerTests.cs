@@ -69,4 +69,35 @@ public class CreateCashRegisterCommandHandlerTests
         Assert.Empty(_cashRegisterRepository.Registers);
         Assert.Equal(0, _unitOfWork.SaveChangesCount);
     }
+
+    [Fact]
+    public async Task CreateCashRegister_WhenBranchBelongsToDifferentTenant_ShouldReturnNotFoundWithoutPersisting()
+    {
+        // Arrange: Sucursal perteneciente a otro inquilino (Tenant B)
+        var otherTenantId = Guid.NewGuid();
+        var branchOfOtherTenant = Branch.Create(
+            otherTenantId,
+            "Sucursal Tenant B",
+            Address.Create("Av. Otra 456", "Lima", "15002", "PE"),
+            "+511222333");
+        _branchRepository.Branches.Add(branchOfOtherTenant);
+
+        // Request intentando asociar una caja de Tenant A a la sucursal de Tenant B
+        var command = new CreateCashRegisterCommand(branchOfOtherTenant.Id, "Caja Cross Tenant", "CR-CROSS");
+        var handler = new CreateCashRegisterCommandHandler(
+            _cashRegisterRepository,
+            _branchRepository,
+            _unitOfWork,
+            _tenantContext);
+
+        // Act
+        var result = await handler.HandleAsync(command, CancellationToken.None);
+
+        // Assert: Debe fallar como NotFound por aislamiento de tenant
+        Assert.True(result.IsFailure);
+        Assert.Equal(ErrorType.NotFound, result.Error.Type);
+        Assert.Equal("Branch.NotFound", result.Error.Code);
+        Assert.Empty(_cashRegisterRepository.Registers);
+        Assert.Equal(0, _unitOfWork.SaveChangesCount);
+    }
 }
