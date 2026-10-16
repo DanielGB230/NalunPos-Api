@@ -22,11 +22,14 @@ public class SaleLineItem : Entity<Guid>, ITenantOwnedEntity
 
     internal SaleLineItem(
         Guid id,
+        Guid tenantId,
         Guid productId,
         string productName,
         decimal quantity,
         Money unitPrice) : base(id)
     {
+        TenantId = TenantGuard.RequireTenantId(tenantId, "una línea de venta");
+
         if (productId == Guid.Empty)
         {
             throw new DomainException("El ID del producto es requerido en la línea de venta.");
@@ -50,11 +53,12 @@ public class SaleLineItem : Entity<Guid>, ITenantOwnedEntity
     }
 
     public static SaleLineItem Create(
+        Guid tenantId,
         Guid productId,
         string productName,
         decimal quantity,
         Money unitPrice)
     {
-        return new SaleLineItem(Guid.NewGuid(), productId, productName, quantity, unitPrice);
+        return new SaleLineItem(Guid.NewGuid(), tenantId, productId, productName, quantity, unitPrice);
     }
 }

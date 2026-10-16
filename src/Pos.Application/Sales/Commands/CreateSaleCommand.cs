@@ -153,7 +153,10 @@ public class CreateSaleCommandHandler : ICommandHandler<CreateSaleCommand, Resul
         Sale sale;
         try
         {
+            var tenantId = _tenantContext.RequireTenantId();
+
             var lineItems = request.LineItems.Select(item => SaleLineItem.Create(
+                tenantId,
                 item.ProductId,
                 item.ProductName,
                 item.Quantity,
@@ -161,6 +164,7 @@ public class CreateSaleCommandHandler : ICommandHandler<CreateSaleCommand, Resul
             )).ToList();
 
             sale = Sale.Create(
+                tenantId,
                 request.ReceiptNumber,
                 request.SessionId,
                 request.CustomerId,

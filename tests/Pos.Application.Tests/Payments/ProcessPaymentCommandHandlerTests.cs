@@ -36,8 +36,9 @@ public class ProcessPaymentCommandHandlerTests
     public async Task HandleAsync_WithValidSaleAndSuccessfulGateway_ShouldProcessPaymentAndReturnSuccess()
     {
         // Arrange
-        var lineItem = SaleLineItem.Create(Guid.NewGuid(), "Producto Test", 1m, Money.Create(50m, "USD"));
-        var sale = Sale.Create("V-001-0001", Guid.NewGuid(), null, new[] { lineItem }, 0m, "USD");
+        var tenantId = _tenantContext.TenantId!.Value;
+        var lineItem = SaleLineItem.Create(tenantId, Guid.NewGuid(), "Producto Test", 1m, Money.Create(50m, "USD"));
+        var sale = Sale.Create(tenantId, "V-001-0001", Guid.NewGuid(), null, new[] { lineItem }, 0m, "USD");
         _saleRepository.Sales.Add(sale);
         _paymentGateway.Approve();
 

@@ -1,3 +1,4 @@
+using Pos.Domain.Common;
 using Pos.Domain.Entities;
 using Pos.Domain.Enums;
 using Pos.Domain.Exceptions;
@@ -12,20 +13,22 @@ public class SaleTests
     public void CreateSaleWithValidItemsShouldCalculateTotalsAndEmitSaleCompletedDomainEvent()
     {
         // Arrange
+        Guid tenantId = Guid.NewGuid();
         string receiptNumber = "REC-2026-0001";
         Guid sessionId = Guid.NewGuid();
         Guid productId1 = Guid.NewGuid();
         Guid productId2 = Guid.NewGuid();
 
-        var item1 = SaleLineItem.Create(productId1, "Teclado Mecánico", 2m, Money.Create(100m, "USD"));
-        var item2 = SaleLineItem.Create(productId2, "Mouse Gamer", 1m, Money.Create(50m, "USD"));
+        var item1 = SaleLineItem.Create(tenantId, productId1, "Teclado Mecánico", 2m, Money.Create(100m, "USD"));
+        var item2 = SaleLineItem.Create(tenantId, productId2, "Mouse Gamer", 1m, Money.Create(50m, "USD"));
         var items = new List<SaleLineItem> { item1, item2 };
 
         // Act
-        var sale = Sale.Create(receiptNumber, sessionId, null, items, taxRatePercentage: 18m, currency: "USD");
+        var sale = Sale.Create(tenantId, receiptNumber, sessionId, null, items, taxRatePercentage: 18m, currency: "USD");
 
         // Assert
         Assert.NotEqual(Guid.Empty, sale.Id);
+        Assert.Equal(tenantId, sale.TenantId);
         Assert.Equal(receiptNumber, sale.ReceiptNumber);
         Assert.Equal(SaleStatus.Completed, sale.Status);
         Assert.Equal(250m, sale.SubTotal.Amount); // (2*100) + (1*50) = 250
@@ -39,10 +42,58 @@ public class SaleTests
     }
 
     [Fact]
+    public void CreateSale_WithItemsFromDifferentTenant_ShouldThrowDomainException()
+    {
+        // Arrange
+        Guid saleTenantId = Guid.NewGuid();
+        Guid otherTenantId = Guid.NewGuid();
+        var itemOfOtherTenant = SaleLineItem.Create(otherTenantId, Guid.NewGuid(), "Producto Foráneo", 1m, Money.Create(50m, "USD"));
+
+        // Act & Assert
+        var ex = Assert.Throws<DomainException>(() =>
+            Sale.Create(saleTenantId, "REC-001", Guid.NewGuid(), null, new[] { itemOfOtherTenant }));
+
+        Assert.Equal("La venta y sus líneas no pueden pertenecer a tenants distintos.", ex.Message);
+    }
+
+    [Fact]
+    public void CreateSale_WithPlatformScopeTenantId_ShouldThrowDomainException()
+    {
+        // Arrange
+        var item = SaleLineItem.Create(Guid.NewGuid(), Guid.NewGuid(), "Producto", 1m, Money.Create(50m, "USD"));
+
+        // Act & Assert
+        var ex = Assert.Throws<DomainException>(() =>
+            Sale.Create(PlatformScope.TenantId, "REC-001", Guid.NewGuid(), null, new[] { item }));
+
+        Assert.Equal("El ID del tenant es requerido para crear una venta.", ex.Message);
+    }
+
+    [Fact]
+    public void CreateSaleLineItem_WithPlatformScopeTenantId_ShouldThrowDomainException()
+    {
+        // Act & Assert
+        var ex = Assert.Throws<DomainException>(() =>
+            SaleLineItem.Create(PlatformScope.TenantId, Guid.NewGuid(), "Producto", 1m, Money.Create(50m, "USD")));
+
+        Assert.Equal("El ID del tenant es requerido para crear una línea de venta.", ex.Message);
+    }
+
+    [Fact]
+    public void CreateSaleLineItem_WithEmptyTenantId_ShouldThrowDomainException()
+    {
+        // Act & Assert
+        var ex = Assert.Throws<DomainException>(() =>
+            SaleLineItem.Create(Guid.Empty, Guid.NewGuid(), "Producto", 1m, Money.Create(50m, "USD")));
+
+        Assert.Equal("El ID del tenant es requerido para crear una línea de venta.", ex.Message);
+    }
+
+    [Fact]
     public void CreateSaleWithNoItemsShouldThrowDomainException()
     {
         // Arrange & Act & Assert
         Assert.Throws<DomainException>(() =>
-            Sale.Create("REC-001", Guid.NewGuid(), null, new List<SaleLineItem>()));
+            Sale.Create(Guid.NewGuid(), "REC-001", Guid.NewGuid(), null, new List<SaleLineItem>()));
     }
 }

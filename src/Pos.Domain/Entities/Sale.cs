@@ -31,6 +31,7 @@ public class Sale : AggregateRoot<Guid>, ITenantOwnedEntity
 
     private Sale(
         Guid id,
+        Guid tenantId,
         string receiptNumber,
         Guid sessionId,
         Guid? customerId,
@@ -38,6 +39,8 @@ public class Sale : AggregateRoot<Guid>, ITenantOwnedEntity
         decimal taxRatePercentage = 0m,
         string currency = "USD") : base(id)
     {
+        TenantId = TenantGuard.RequireTenantId(tenantId, "una venta");
+
         if (string.IsNullOrWhiteSpace(receiptNumber))
         {
             throw new DomainException("El número de comprobante es requerido.");
@@ -54,6 +57,11 @@ public class Sale : AggregateRoot<Guid>, ITenantOwnedEntity
             throw new DomainException("La venta debe contener al menos una línea de producto.");
         }
 
+        if (itemsList.Any(i => i.TenantId != TenantId))
+        {
+            throw new DomainException("La venta y sus líneas no pueden pertenecer a tenants distintos.");
+        }
+
         ReceiptNumber = receiptNumber.Trim().ToUpperInvariant();
         SessionId = sessionId;
         CustomerId = customerId;
@@ -65,6 +73,7 @@ public class Sale : AggregateRoot<Guid>, ITenantOwnedEntity
     }
 
     public static Sale Create(
+        Guid tenantId,
         string receiptNumber,
         Guid sessionId,
         Guid? customerId,
@@ -72,7 +81,7 @@ public class Sale : AggregateRoot<Guid>, ITenantOwnedEntity
         decimal taxRatePercentage = 0m,
         string currency = "USD")
     {
-        var sale = new Sale(Guid.NewGuid(), receiptNumber, sessionId, customerId, lineItems, taxRatePercentage, currency);
+        var sale = new Sale(Guid.NewGuid(), tenantId, receiptNumber, sessionId, customerId, lineItems, taxRatePercentage, currency);
         sale.Complete();
         return sale;
     }
