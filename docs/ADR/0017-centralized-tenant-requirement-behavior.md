@@ -62,23 +62,11 @@ Hemos decidido implementar un esquema estricto de **Default-Deny** en el pipelin
 
 7. **Invariante de Dominio en Creación de Entidades de Tenant y Helper Compartido `TenantGuard`:**
    - Una entidad de tenant (`ITenantOwnedEntity` no plataforma) no puede nacer con `tenantId == PlatformScope.TenantId` (que equivale al valor vacío `Guid.Empty`).
-   - Se introduce el helper compartido de dominio `Pos.Domain.Common.TenantGuard` como **único lugar canónico** para aplicar y hacer cumplir esta invariante:
-     ```csharp
-     namespace Pos.Domain.Common;
-     public static class TenantGuard
-     {
-         public static Guid RequireTenantId(Guid tenantId, string entityDescription)
-         {
-             if (tenantId == PlatformScope.TenantId)
-             {
-                 throw new DomainException($"El ID del tenant es requerido para crear {entityDescription}.");
-             }
-             return tenantId;
-         }
-     }
-     ```
+   - Se introduce el helper compartido de dominio `TenantGuard` (implementado en `src/Pos.Domain/Common/TenantGuard.cs`) como **único lugar canónico** para aplicar y hacer cumplir esta invariante.
    - Cada factoría canónica recibe `Guid tenantId` como **primer parámetro** y delega la validación exclusivamente en `TenantGuard.RequireTenantId(tenantId, ...)`.
    - Las sobrecargas de factoría sin `tenantId` se eliminan por completo.
+   - Para entidades con riesgo de colisión de firmas de factoría previas (como `Customer` y `Supplier`, que disponían de sobrecargas `Create(Guid id, ...)` colisionantes con `Create(Guid tenantId, ...)`), se aplicó el procedimiento seguro de renombramiento preliminar a `CreateWithId` para auditar y verificar la inexistencia o actualización de llamadores reales antes de consolidar la factoría canónica.
+   - En agregados compuestos con líneas de detalle (`Sale` y `SaleLineItem`), se impone la invariante de aislamiento relacional: todas las líneas de venta (`SaleLineItem`) deben pertenecer estrictamente al mismo `TenantId` que la venta raíz (`Sale`), arrojando `DomainException` en caso de discrepancia.
 
 ## Consecuencias
 
@@ -91,6 +79,6 @@ Hemos decidido implementar un esquema estricto de **Default-Deny** en el pipelin
 - **Invariante Unificada de Tenant en Dominio**: `TenantGuard` erradica duplicaciones de validación en constructores o factorías de entidades de tenant.
 
 ### Límites Conocidos Aceptados (Diferidos)
-- **Avance Ratchet de Factorías en Dominio (Paso 10.2)**: 6 entidades han sido resueltas satisfactoriamente (`Branch`, `CashRegister`, `Payment`, `Invoice`, `PosDevice`, `SystemNotification`). Restan 6 entidades de tenant pendientes en la lista ratchet (`Category`, `Customer`, `Product`, `Sale`, `SaleLineItem`, `Supplier`), a resolverse en los lotes posteriores.
+- **Avance Ratchet de Factorías en Dominio (Paso 10.2)**: 10 entidades han sido resueltas satisfactoriamente (`Branch`, `CashRegister`, `Payment`, `Invoice`, `PosDevice`, `SystemNotification`, `Customer`, `Supplier`, `Sale`, `SaleLineItem`). Restan únicamente 2 entidades de tenant pendientes en la lista ratchet (`Category`, `Product`), a resolverse en el lote posterior.
 - **Configuración de `CashRegisters.BranchId` en EF Core (Paso 10.2a-bis)**: `CashRegisters.BranchId` se valida ahora en el dominio (`branchId != Guid.Empty`) y en el caso de uso (`IBranchRepository.GetByIdAsync`), pero no cuenta aún con configuración EF explícita, clave foránea ni índice en `CashRegisterConfiguration`. Asimismo, pueden existir filas con `BranchId` vacío en bases de datos de desarrollo previas a esta migración (resolución programada para 10.2a-bis).
 
