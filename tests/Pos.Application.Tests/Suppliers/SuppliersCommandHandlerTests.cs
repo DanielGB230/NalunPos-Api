@@ -1,4 +1,4 @@
-﻿using Pos.Application.Tests.Support.Fakes;
+using Pos.Application.Tests.Support.Fakes;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Suppliers.Commands;
 using Pos.Domain.Common;
@@ -13,6 +13,7 @@ public class SuppliersCommandHandlerTests
 {
     private readonly FakeSupplierRepository _supplierRepository = new();
     private readonly FakeUnitOfWork _unitOfWork = new();
+    private readonly FakeCurrentTenantContext _tenantContext = new() { TenantId = Guid.NewGuid() };
 
     [Fact]
     public async Task CreateSupplier_WithValidData_ShouldCreateSupplierAndReturnSuccess()
@@ -30,7 +31,7 @@ public class SuppliersCommandHandlerTests
             "contacto@distperu.com",
             "+51988776655"
         );
-        var handler = new CreateSupplierCommandHandler(_supplierRepository, _unitOfWork);
+        var handler = new CreateSupplierCommandHandler(_supplierRepository, _unitOfWork, _tenantContext);
 
         // Act
         var result = await handler.HandleAsync(command, CancellationToken.None);
@@ -49,6 +50,7 @@ public class SuppliersCommandHandlerTests
         // Arrange
         var existingAddress = Address.Create("Calle A 100", "Lima", "15001", "PE");
         var existingSupplier = Supplier.Create(
+            _tenantContext.TenantId!.Value,
             "Proveedor A",
             TaxId.Create("20111222333", "PE"),
             existingAddress,
@@ -70,7 +72,7 @@ public class SuppliersCommandHandlerTests
             "b@supplier.com",
             "+51900000002"
         );
-        var handler = new CreateSupplierCommandHandler(_supplierRepository, _unitOfWork);
+        var handler = new CreateSupplierCommandHandler(_supplierRepository, _unitOfWork, _tenantContext);
 
         // Act
         var result = await handler.HandleAsync(command, CancellationToken.None);

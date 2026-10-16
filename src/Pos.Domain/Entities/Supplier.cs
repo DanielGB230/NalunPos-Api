@@ -29,6 +29,7 @@ public class Supplier : AggregateRoot<Guid>, ITenantOwnedEntity
 
     private Supplier(
         Guid id,
+        Guid tenantId,
         string name,
         TaxId taxId,
         Address address,
@@ -36,6 +37,7 @@ public class Supplier : AggregateRoot<Guid>, ITenantOwnedEntity
         string email,
         string phone) : base(id)
     {
+        TenantId = TenantGuard.RequireTenantId(tenantId, "un proveedor");
         SetName(name);
         TaxId = taxId ?? throw new ArgumentNullException(nameof(taxId));
         Address = address ?? throw new ArgumentNullException(nameof(address));
@@ -47,6 +49,7 @@ public class Supplier : AggregateRoot<Guid>, ITenantOwnedEntity
     }
 
     public static Supplier Create(
+        Guid tenantId,
         string name,
         TaxId taxId,
         Address address,
@@ -54,19 +57,7 @@ public class Supplier : AggregateRoot<Guid>, ITenantOwnedEntity
         string email,
         string phone)
     {
-        return new Supplier(Guid.NewGuid(), name, taxId, address, contactName, email, phone);
-    }
-
-    public static Supplier Create(
-        Guid id,
-        string name,
-        TaxId taxId,
-        Address address,
-        string contactName,
-        string email,
-        string phone)
-    {
-        return new Supplier(id, name, taxId, address, contactName, email, phone);
+        return new Supplier(Guid.NewGuid(), tenantId, name, taxId, address, contactName, email, phone);
     }
 
     public void UpdateDetails(

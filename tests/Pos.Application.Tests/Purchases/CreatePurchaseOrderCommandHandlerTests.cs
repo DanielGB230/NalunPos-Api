@@ -41,6 +41,7 @@ public class CreatePurchaseOrderCommandHandlerTests
         _tenantContext.TenantId = tenantId;
 
         var supplier = Supplier.Create(
+            tenantId,
             "Proveedor",
             TaxId.Create("12345678"),
             Address.Create("Calle 1", "Ciudad", "0000", "País"),
@@ -82,6 +83,7 @@ public class CreatePurchaseOrderCommandHandlerTests
         _tenantContext.TenantId = tenantId;
 
         var supplier = Supplier.Create(
+            tenantId,
             "Proveedor",
             TaxId.Create("12345678"),
             Address.Create("Calle 1", "Ciudad", "0000", "País"),

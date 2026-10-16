@@ -507,7 +507,7 @@ public class OutboxInterceptorIntegrationTests
             var product = Product.Create("Product", Sku.Create("SKU-1"), Money.Create(10, "USD"), category.Id);
             dbSetup.Products.Add(product);
             
-            var supplier = Supplier.Create("Supplier", TaxId.Create("TAX-001"), Address.Create("Street", "City", "Zip", "Country"), "Contact", "email@sup.com", "123456");
+            var supplier = Supplier.Create(tenantId, "Supplier", TaxId.Create("TAX-001"), Address.Create("Street", "City", "Zip", "Country"), "Contact", "email@sup.com", "123456");
             dbSetup.Suppliers.Add(supplier);
             supplierId = supplier.Id;
 
@@ -569,7 +569,7 @@ public class OutboxInterceptorIntegrationTests
             var product = Product.Create("Product Admin PO", Sku.Create("SKU-ADM-PO"), Money.Create(10, "USD"), category.Id);
             dbSetup.Products.Add(product);
             
-            var supplier = Supplier.Create("Supplier Admin", TaxId.Create("TAX-002"), Address.Create("Street", "City", "Zip", "Country"), "Contact", "email2@sup.com", "123456");
+            var supplier = Supplier.Create(tenantId, "Supplier Admin", TaxId.Create("TAX-002"), Address.Create("Street", "City", "Zip", "Country"), "Contact", "email2@sup.com", "123456");
             dbSetup.Suppliers.Add(supplier);
             supplierId = supplier.Id;
 
@@ -637,7 +637,7 @@ public class OutboxInterceptorIntegrationTests
             var product = Product.Create("Product Cancel", Sku.Create("SKU-CANCEL"), Money.Create(10, "USD"), category.Id);
             dbSetup.Products.Add(product);
             
-            var supplier = Supplier.Create("Supplier Cancel", TaxId.Create("TAX-CANCEL"), Address.Create("Street", "City", "Zip", "Country"), "Contact", "email3@sup.com", "123456");
+            var supplier = Supplier.Create(tenantId, "Supplier Cancel", TaxId.Create("TAX-CANCEL"), Address.Create("Street", "City", "Zip", "Country"), "Contact", "email3@sup.com", "123456");
             dbSetup.Suppliers.Add(supplier);
             supplierId = supplier.Id;
 
@@ -700,7 +700,7 @@ public class OutboxInterceptorIntegrationTests
             var product = Product.Create("Product Cancel Admin", Sku.Create("SKU-CANCEL-ADM"), Money.Create(10, "USD"), category.Id);
             dbSetup.Products.Add(product);
             
-            var supplier = Supplier.Create("Supplier Cancel Admin", TaxId.Create("TAX-CANCEL2"), Address.Create("Street", "City", "Zip", "Country"), "Contact", "email4@sup.com", "123456");
+            var supplier = Supplier.Create(tenantId, "Supplier Cancel Admin", TaxId.Create("TAX-CANCEL2"), Address.Create("Street", "City", "Zip", "Country"), "Contact", "email4@sup.com", "123456");
             dbSetup.Suppliers.Add(supplier);
             supplierId = supplier.Id;
 

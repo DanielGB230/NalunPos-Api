@@ -1,4 +1,4 @@
-﻿using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Attributes;
 using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Suppliers.DTOs;
@@ -30,11 +30,16 @@ public class CreateSupplierCommandHandler : ICommandHandler<CreateSupplierComman
 {
     private readonly ISupplierRepository _supplierRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ICurrentTenantContext _tenantContext;
 
-    public CreateSupplierCommandHandler(ISupplierRepository supplierRepository, IUnitOfWork unitOfWork)
+    public CreateSupplierCommandHandler(
+        ISupplierRepository supplierRepository,
+        IUnitOfWork unitOfWork,
+        ICurrentTenantContext tenantContext)
     {
         _supplierRepository = supplierRepository ?? throw new ArgumentNullException(nameof(supplierRepository));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _tenantContext = tenantContext ?? throw new ArgumentNullException(nameof(tenantContext));
     }
 
     public async Task<Result<SupplierDto>> HandleAsync(CreateSupplierCommand request, CancellationToken cancellationToken)
@@ -61,6 +66,7 @@ public class CreateSupplierCommandHandler : ICommandHandler<CreateSupplierComman
         {
             addressVo = Address.Create(request.Street, request.City, request.ZipCode, request.Country);
             supplier = Supplier.Create(
+                _tenantContext.RequireTenantId(),
                 request.Name,
                 taxIdVo,
                 addressVo,

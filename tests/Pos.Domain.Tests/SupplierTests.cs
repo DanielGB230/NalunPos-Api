@@ -1,3 +1,4 @@
+using Pos.Domain.Common;
 using Pos.Domain.Entities;
 using Pos.Domain.Exceptions;
 using Pos.Domain.ValueObjects;
@@ -11,20 +12,50 @@ public class SupplierTests
     public void CreateWithValidParametersShouldInstantiateSupplierAndEmitEvent()
     {
         // Arrange
+        Guid tenantId = Guid.NewGuid();
         string name = "Distribuidora Tech SAC";
         var taxId = TaxId.Create("20123456789", "PE");
         var address = Address.Create("Av. Principal 123", "Lima", "15001", "Perú");
 
         // Act
-        var supplier = Supplier.Create(name, taxId, address, "Juan Pérez", "juan@tech.com", "999888777");
+        var supplier = Supplier.Create(tenantId, name, taxId, address, "Juan Pérez", "juan@tech.com", "999888777");
 
         // Assert
         Assert.NotEqual(Guid.Empty, supplier.Id);
+        Assert.Equal(tenantId, supplier.TenantId);
         Assert.Equal(name, supplier.Name);
         Assert.Equal(taxId, supplier.TaxId);
         Assert.Equal(address, supplier.Address);
         Assert.True(supplier.IsActive);
         Assert.Single(supplier.DomainEvents);
+    }
+
+    [Fact]
+    public void Create_WithPlatformScopeTenantId_ShouldThrowDomainException()
+    {
+        // Arrange
+        var taxId = TaxId.Create("20123456789", "PE");
+        var address = Address.Create("Calle 1", "Lima", "15001", "Perú");
+
+        // Act & Assert
+        var ex = Assert.Throws<DomainException>(() =>
+            Supplier.Create(PlatformScope.TenantId, "Proveedor", taxId, address, "Contacto", "test@test.com", "123"));
+
+        Assert.Equal("El ID del tenant es requerido para crear un proveedor.", ex.Message);
+    }
+
+    [Fact]
+    public void Create_WithEmptyTenantId_ShouldThrowDomainException()
+    {
+        // Arrange
+        var taxId = TaxId.Create("20123456789", "PE");
+        var address = Address.Create("Calle 1", "Lima", "15001", "Perú");
+
+        // Act & Assert
+        var ex = Assert.Throws<DomainException>(() =>
+            Supplier.Create(Guid.Empty, "Proveedor", taxId, address, "Contacto", "test@test.com", "123"));
+
+        Assert.Equal("El ID del tenant es requerido para crear un proveedor.", ex.Message);
     }
 
     [Fact]
@@ -36,6 +67,6 @@ public class SupplierTests
 
         // Act & Assert
         Assert.Throws<DomainException>(() =>
-            Supplier.Create("", taxId, address, "Contacto", "test@test.com", "123"));
+            Supplier.Create(Guid.NewGuid(), "", taxId, address, "Contacto", "test@test.com", "123"));
     }
 }
