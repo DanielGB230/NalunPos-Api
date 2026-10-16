@@ -76,8 +76,7 @@ public class MsSqlTestFixture : IAsyncLifetime, IDisposable
     {
         try
         {
-            _msSqlContainer = new MsSqlBuilder()
-                .WithImage("mcr.microsoft.com/mssql/server:2022-latest")
+            _msSqlContainer = new MsSqlBuilder("mcr.microsoft.com/mssql/server:2022-latest")
                 .Build();
         }
         catch
@@ -90,7 +89,17 @@ public class MsSqlTestFixture : IAsyncLifetime, IDisposable
 
     public async Task InitializeAsync()
     {
-        if (_msSqlContainer != null)
+        // 1. Si existe variable de entorno explícita (p. ej. en GitHub Actions / CI), tiene prioridad
+        var envConn = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
+            ?? Environment.GetEnvironmentVariable("IntegrationTests__ConnectionString")
+            ?? Environment.GetEnvironmentVariable("MSSQL_CONNECTION_STRING");
+
+        if (!string.IsNullOrWhiteSpace(envConn))
+        {
+            _connectionString = envConn;
+            _useContainer = false;
+        }
+        else if (_msSqlContainer != null)
         {
             try
             {
@@ -104,13 +113,14 @@ public class MsSqlTestFixture : IAsyncLifetime, IDisposable
             }
         }
 
-        if (!_useContainer)
+        if (string.IsNullOrWhiteSpace(_connectionString))
         {
             var config = new ConfigurationBuilder()
-                .AddJsonFile("appsettings.IntegrationTests.json", optional: false)
+                .AddJsonFile("appsettings.IntegrationTests.json", optional: true)
+                .AddEnvironmentVariables()
                 .Build();
             _connectionString = config["IntegrationTests:ConnectionString"]
-                ?? throw new InvalidOperationException("IntegrationTests:ConnectionString no está configurado en appsettings.IntegrationTests.json");
+                ?? "Server=localhost,1433;Database=PosIntegrationTests;User Id=sa;Password=Your_password123;TrustServerCertificate=True;";
         }
 
         using var dbContext = CreateDbContext(tenantId: null, isSuperAdmin: true);

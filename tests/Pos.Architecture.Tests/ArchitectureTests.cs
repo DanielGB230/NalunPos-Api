@@ -683,5 +683,86 @@ public class ArchitectureTests
             $"Se detectaron endpoints de creación que no cumplen con el contrato HTTP 201 Created + ToCreatedResult:\n{string.Join("\n", violations)}"
         );
     }
+
+    [Fact]
+    public void FreeFirst_Policy_And_Production_Providers_Must_Comply_With_ADR0013()
+    {
+        var rootDir = SolutionDirectory.Root;
+        var directoryPackagesFile = Path.Combine(rootDir, "Directory.Packages.props");
+        Assert.True(File.Exists(directoryPackagesFile), $"No se encontró '{directoryPackagesFile}'.");
+
+        var packagesDoc = System.Xml.Linq.XDocument.Load(directoryPackagesFile);
+        var packageVersions = packagesDoc.Descendants("PackageVersion")
+            .Select(x => new
+            {
+                Name = x.Attribute("Include")?.Value ?? string.Empty,
+                Version = x.Attribute("Version")?.Value ?? string.Empty
+            })
+            .Where(x => !string.IsNullOrEmpty(x.Name))
+            .ToDictionary(x => x.Name, x => x.Version, StringComparer.OrdinalIgnoreCase);
+
+        // a) FluentAssertions debe ser < 7.0.0 (fijado en 6.12.2 por licencia comercial en v7+)
+        if (packageVersions.TryGetValue("FluentAssertions", out var faVersion))
+        {
+            if (System.Version.TryParse(faVersion.Split('-')[0], out var semVer))
+            {
+                Assert.True(
+                    semVer.Major < 7,
+                    $"FluentAssertions debe ser < 7.0.0 para mantener licencia Apache 2.0 gratuita (ADR 0013). Versión detectada: {faVersion}"
+                );
+            }
+        }
+
+        // b) Proyectos en src/ NO deben referenciar librerías con licenciamiento comercial restringido
+        var restrictedPackages = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "MediatR",
+            "AutoMapper",
+            "MassTransit",
+            "Duende.IdentityServer"
+        };
+
+        // c) Proyectos en src/ NO deben referenciar InMemory ni Sqlite (Hallazgo H11)
+        var forbiddenSrcProviders = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "Microsoft.EntityFrameworkCore.InMemory",
+            "Microsoft.EntityFrameworkCore.Sqlite"
+        };
+
+        var srcDir = Path.Combine(rootDir, "src");
+        var csprojFiles = Directory.GetFiles(srcDir, "*.csproj", SearchOption.AllDirectories);
+        Assert.NotEmpty(csprojFiles);
+
+        var violations = new List<string>();
+
+        foreach (var csproj in csprojFiles)
+        {
+            var projectDoc = System.Xml.Linq.XDocument.Load(csproj);
+            var packageRefs = projectDoc.Descendants("PackageReference")
+                .Select(x => x.Attribute("Include")?.Value ?? string.Empty)
+                .Where(x => !string.IsNullOrEmpty(x))
+                .ToList();
+
+            var relativePath = Path.GetRelativePath(rootDir, csproj);
+
+            foreach (var pkg in packageRefs)
+            {
+                if (restrictedPackages.Contains(pkg))
+                {
+                    violations.Add($"{relativePath}: Referencia prohibida a librería con licenciamiento comercial restringido '{pkg}'.");
+                }
+
+                if (forbiddenSrcProviders.Contains(pkg))
+                {
+                    violations.Add($"{relativePath}: Referencia prohibida a proveedor de base de datos no autorizado para producción '{pkg}' (H11).");
+                }
+            }
+        }
+
+        Assert.True(
+            violations.Count == 0,
+            $"Violaciones de política Free-First y proveedores de producción detectadas:\n{string.Join("\n", violations)}"
+        );
+    }
 }
 

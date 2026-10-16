@@ -13,8 +13,12 @@
     <!-- Tratar warnings como errores — arquitectura que se degrada silenciosamente no es arquitectura -->
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 
-    <!-- Ignorar vulnerabilidades conocidas, guiones bajos en tests (CA1707) y llamadas directas a ILogger (CA1848) -->
-    <NoWarn>$(NoWarn);NU1903;NU1902;CA1707;CA1848</NoWarn>
+    <!-- Habilitar auditoría completa de vulnerabilidades NuGet -->
+    <NuGetAudit>true</NuGetAudit>
+    <NuGetAuditMode>all</NuGetAuditMode>
+
+    <!-- Ignorar guiones bajos en tests (CA1707) y llamadas directas a ILogger (CA1848) -->
+    <NoWarn>$(NoWarn);CA1707;CA1848</NoWarn>
 
     <!-- Configuración de análisis de código -->
     <EnableNETAnalyzers>true</EnableNETAnalyzers>

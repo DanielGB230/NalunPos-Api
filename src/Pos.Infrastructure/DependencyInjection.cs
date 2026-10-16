@@ -46,20 +46,16 @@ public static class DependencyInjection
         // (y por ende de IHttpContextAccessor), mejorando la testabilidad.
         services.AddDbContext<PosDbContext>((provider, options) =>
         {
-            if (!string.IsNullOrWhiteSpace(connectionString))
+            if (string.IsNullOrWhiteSpace(connectionString))
             {
-                options.UseSqlServer(connectionString,
-                    sql => sql
-                        .MigrationsAssembly(typeof(PosDbContext).Assembly.FullName)
-                        .CommandTimeout(30)
-                        .EnableRetryOnFailure(maxRetryCount: 3));
-            }
-            else
-            {
-                // InMemory para tests de integración (nunca en producción)
-                options.UseInMemoryDatabase("NalunPosDb_Test");
+                throw new InvalidOperationException("La cadena de conexión 'DefaultConnection' es obligatoria para PosDbContext. InMemory no está permitido en producción ni infraestructura (H11 / ADR 0013).");
             }
 
+            options.UseSqlServer(connectionString,
+                sql => sql
+                    .MigrationsAssembly(typeof(PosDbContext).Assembly.FullName)
+                    .CommandTimeout(30)
+                    .EnableRetryOnFailure(maxRetryCount: 3));
         });
 
         // Factory override para inyectar el currentTenantId en cada instancia de PosDbContext.
