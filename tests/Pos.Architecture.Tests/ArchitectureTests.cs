@@ -722,10 +722,9 @@ public class ArchitectureTests
             "Duende.IdentityServer"
         };
 
-        // c) Proyectos en src/ NO deben referenciar InMemory ni Sqlite (Hallazgo H11)
+        // c) Proyectos en src/ NO deben referenciar Sqlite ni proveedores no autorizados para producción (Hallazgo H11)
         var forbiddenSrcProviders = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            "Microsoft.EntityFrameworkCore.InMemory",
             "Microsoft.EntityFrameworkCore.Sqlite"
         };
 

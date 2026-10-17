@@ -38,7 +38,8 @@ public class CreatedResultIntegrationTests : IClassFixture<CustomWebApplicationF
         var response = await client.PostAsJsonAsync("/api/v1/categories", requestBody);
 
         // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var errorBody = await response.Content.ReadAsStringAsync();
+        response.StatusCode.Should().Be(HttpStatusCode.Created, because: $"el servidor devolvió: {errorBody}");
         response.Headers.Location.Should().NotBeNull("un endpoint de alta exitoso debe devolver la cabecera HTTP Location");
 
         var locationUri = response.Headers.Location!.ToString();
