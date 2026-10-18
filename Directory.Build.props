@@ -19,8 +19,6 @@
 
     <!-- Ignorar guiones bajos en tests (CA1707) y llamadas directas a ILogger (CA1848) -->
     <NoWarn>$(NoWarn);CA1707;CA1848</NoWarn>
-    <!-- Tratar vulnerabilidades de NuGetAudit transitivas como advertencias no bloqueantes para no romper build por paquetes internos de runtime -->
-    <WarningsNotAsErrors>$(WarningsNotAsErrors);NU1901;NU1902;NU1903;NU1904</WarningsNotAsErrors>
 
     <!-- Configuración de análisis de código -->
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
@@ -38,5 +36,10 @@
     <!-- Consistencia de versión de lenguaje -->
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Fijar transitivamente System.Security.Cryptography.Pkcs en versión segura (CPM) para resolver vulnerabilidad NU1902/NU1903 de Microsoft.Data.SqlClient -->
+    <PackageReference Include="System.Security.Cryptography.Pkcs" />
+  </ItemGroup>
 
 </Project>
