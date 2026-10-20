@@ -5,7 +5,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Pos.Infrastructure.Multitenancy;
 using Pos.Infrastructure.Persistence.Context;
+using Pos.Infrastructure.Persistence.Interceptors;
 
 namespace Pos.IntegrationTests.Fixtures;
 
@@ -51,6 +53,11 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
             services.AddDbContext<PosDbContext>((provider, options) =>
             {
                 options.UseInMemoryDatabase("NalunPosDb_Test");
+                options.AddInterceptors(
+                    provider.GetRequiredService<TenantSaveChangesInterceptor>(),
+                    provider.GetRequiredService<AuditSaveChangesInterceptor>(),
+                    provider.GetRequiredService<InsertOutboxMessagesInterceptor>()
+                );
             });
         });
     }
