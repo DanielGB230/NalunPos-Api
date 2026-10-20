@@ -33,7 +33,7 @@ public class OutboxPatternTests
         var message = OutboxMessage.Create(Guid.NewGuid(), null, "SampleType", "{}", DateTimeOffset.UtcNow);
 
         // Act
-        message.MarkAsProcessed();
+        message.MarkAsProcessed(TimeProvider.System);
 
         // Assert
         Assert.NotNull(message.ProcessedOnUtc);

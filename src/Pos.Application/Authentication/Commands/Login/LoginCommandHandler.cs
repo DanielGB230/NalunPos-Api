@@ -13,15 +13,18 @@ public class LoginCommandHandler : ICommandHandler<LoginCommand, Result<LoginRes
     private readonly IAuthUserLookup _authUserLookup;
     private readonly IPasswordHasher _passwordHasher;
     private readonly ITokenGenerator _tokenGenerator;
+    private readonly TimeProvider _timeProvider;
 
     public LoginCommandHandler(
         IAuthUserLookup authUserLookup,
         IPasswordHasher passwordHasher,
-        ITokenGenerator tokenGenerator)
+        ITokenGenerator tokenGenerator,
+        TimeProvider? timeProvider = null)
     {
         _authUserLookup = authUserLookup ?? throw new ArgumentNullException(nameof(authUserLookup));
         _passwordHasher = passwordHasher ?? throw new ArgumentNullException(nameof(passwordHasher));
         _tokenGenerator = tokenGenerator ?? throw new ArgumentNullException(nameof(tokenGenerator));
+        _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
     public async Task<Result<LoginResponse>> HandleAsync(LoginCommand command, CancellationToken cancellationToken = default)
@@ -49,7 +52,7 @@ public class LoginCommandHandler : ICommandHandler<LoginCommand, Result<LoginRes
         }
 
         string token = _tokenGenerator.GenerateToken(user);
-        DateTime expiresAtUtc = DateTime.UtcNow.AddHours(1);
+        DateTime expiresAtUtc = _timeProvider.GetUtcNow().UtcDateTime.AddHours(1);
 
         var response = new LoginResponse(
             Token: token,

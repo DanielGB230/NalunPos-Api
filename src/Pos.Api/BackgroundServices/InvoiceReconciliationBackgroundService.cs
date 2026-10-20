@@ -17,15 +17,18 @@ public class InvoiceReconciliationBackgroundService : BackgroundService
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<InvoiceReconciliationBackgroundService> _logger;
     private readonly InvoiceReconciliationSettings _settings;
+    private readonly TimeProvider _timeProvider;
 
     public InvoiceReconciliationBackgroundService(
         IServiceScopeFactory scopeFactory,
         ILogger<InvoiceReconciliationBackgroundService> logger,
-        IOptions<InvoiceReconciliationSettings> settings)
+        IOptions<InvoiceReconciliationSettings> settings,
+        TimeProvider? timeProvider = null)
     {
         _scopeFactory = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _settings = settings?.Value ?? throw new ArgumentNullException(nameof(settings));
+        _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -58,7 +61,7 @@ public class InvoiceReconciliationBackgroundService : BackgroundService
 
     private async Task ReconcilePendingInvoicesAsync(CancellationToken cancellationToken)
     {
-        var thresholdUtc = DateTime.UtcNow.AddMinutes(-Math.Abs(_settings.ThresholdMinutes));
+        var thresholdUtc = _timeProvider.GetUtcNow().UtcDateTime.AddMinutes(-Math.Abs(_settings.ThresholdMinutes));
         List<Invoice> pendingInvoices;
 
         using (var scope = _scopeFactory.CreateScope())

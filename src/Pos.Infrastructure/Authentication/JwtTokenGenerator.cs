@@ -15,10 +15,12 @@ namespace Pos.Infrastructure.Authentication;
 public class JwtTokenGenerator : IJwtTokenGenerator, ITokenGenerator
 {
     private readonly IConfiguration _configuration;
+    private readonly TimeProvider _timeProvider;
 
-    public JwtTokenGenerator(IConfiguration configuration)
+    public JwtTokenGenerator(IConfiguration configuration, TimeProvider? timeProvider = null)
     {
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+        _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
     public string GenerateToken(User user)
@@ -51,7 +53,7 @@ public class JwtTokenGenerator : IJwtTokenGenerator, ITokenGenerator
         var tokenDescriptor = new SecurityTokenDescriptor
         {
             Subject = new ClaimsIdentity(claims),
-            Expires = DateTime.UtcNow.AddMinutes(60), // Expiración corta (60 min)
+            Expires = _timeProvider.GetUtcNow().UtcDateTime.AddMinutes(60), // Expiración corta (60 min)
             Issuer = issuer,
             Audience = audience,
             SigningCredentials = credentials

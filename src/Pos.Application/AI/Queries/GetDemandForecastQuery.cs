@@ -15,13 +15,16 @@ public class GetDemandForecastQueryHandler : IQueryHandler<GetDemandForecastQuer
 {
     private readonly IDemandForecastCapability _forecastCapability;
     private readonly IProductRepository _productRepository;
+    private readonly TimeProvider _timeProvider;
 
     public GetDemandForecastQueryHandler(
         IDemandForecastCapability forecastCapability,
-        IProductRepository productRepository)
+        IProductRepository productRepository,
+        TimeProvider? timeProvider = null)
     {
         _forecastCapability = forecastCapability ?? throw new ArgumentNullException(nameof(forecastCapability));
         _productRepository = productRepository ?? throw new ArgumentNullException(nameof(productRepository));
+        _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
     public async Task<Result<DemandForecastDto>> HandleAsync(GetDemandForecastQuery request, CancellationToken cancellationToken)
@@ -41,7 +44,7 @@ public class GetDemandForecastQueryHandler : IQueryHandler<GetDemandForecastQuer
             request.ProductId,
             request.DaysAhead,
             predictedQuantity,
-            DateTime.UtcNow
+            _timeProvider.GetUtcNow().UtcDateTime
         );
 
         return Result.Ok(dto);

@@ -47,9 +47,16 @@ public class OutboxMessage
         return new OutboxMessage(id, tenantId, type, content, occurredOnUtc);
     }
 
-    public void MarkAsProcessed()
+    public void MarkAsProcessed(DateTimeOffset processedOnUtc)
     {
-        ProcessedOnUtc = DateTimeOffset.UtcNow;
+        ProcessedOnUtc = processedOnUtc;
+        Error = null;
+    }
+
+    public void MarkAsProcessed(TimeProvider timeProvider)
+    {
+        ArgumentNullException.ThrowIfNull(timeProvider);
+        ProcessedOnUtc = timeProvider.GetUtcNow();
         Error = null;
     }
 

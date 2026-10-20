@@ -13,6 +13,9 @@ public static class DependencyInjection
     {
         var assembly = typeof(DependencyInjection).Assembly;
 
+        // Proveedor de tiempo estándar del sistema (.NET 8/10)
+        services.AddSingleton(TimeProvider.System);
+
         // Dispatcher CQRS propio — reemplaza MediatR (ADR 0014: solo software libre/gratuito)
         services.AddScoped<IDispatcher, Dispatcher>();
 

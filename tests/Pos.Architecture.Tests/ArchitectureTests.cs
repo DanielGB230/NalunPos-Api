@@ -805,5 +805,47 @@ public class ArchitectureTests
             $"Se encontraron usos directos de Configure<T>() en Pos.Api sin ValidateOnStart:\n{string.Join("\n", violations)}"
         );
     }
+
+    [Fact]
+    public void All_Layers_Must_Use_TimeProvider_With_Domain_Ratchet_Guard()
+    {
+        var rootDir = SolutionDirectory.Root;
+        var srcDir = Path.Combine(rootDir, "src");
+        var csFiles = Directory.GetFiles(srcDir, "*.cs", SearchOption.AllDirectories);
+
+        var violations = new List<string>();
+
+        foreach (var file in csFiles)
+        {
+            var relativePath = Path.GetRelativePath(rootDir, file).Replace('\\', '/');
+            var fileName = Path.GetFileName(file);
+            var tree = Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree.ParseText(File.ReadAllText(file));
+            var root = tree.GetRoot();
+
+            var findings = SystemClockRatchetScanner.Scan(root, relativePath);
+
+            foreach (var finding in findings)
+            {
+                // En Pos.Domain, se permite únicamente la lista ratchet explícita de 23 entidades
+                if (relativePath.StartsWith("src/Pos.Domain/", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (!SystemClockRatchetScanner.AllowedDomainEntitiesRatchet.Contains(fileName))
+                    {
+                        violations.Add($"{finding.FilePath}:{finding.LineNumber} -> {finding.MemberAccess} ({finding.LineSnippet}) no está permitido en Pos.Domain fuera de la lista ratchet.");
+                    }
+                }
+                else
+                {
+                    // En Pos.Api, Pos.Application y Pos.Infrastructure: TOLERANCIA CERO (0)
+                    violations.Add($"{finding.FilePath}:{finding.LineNumber} -> {finding.MemberAccess} ({finding.LineSnippet}) prohibido en capas externas. Debe inyectarse TimeProvider.");
+                }
+            }
+        }
+
+        Assert.True(
+            violations.Count == 0,
+            $"Violaciones de reloj del sistema detectadas (debe usarse TimeProvider):\n{string.Join("\n", violations)}"
+        );
+    }
 }
 

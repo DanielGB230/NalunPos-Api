@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Pos.Application.AI.Abstractions;
 using Pos.Application.Common.Interfaces;
 using Pos.Domain.Interfaces;
@@ -25,6 +26,8 @@ public static class DependencyInjection
         IConfiguration configuration)
     {
         string? connectionString = configuration.GetConnectionString("DefaultConnection");
+
+        services.TryAddSingleton(TimeProvider.System);
 
         // ── HTTP / Multitenancy ───────────────────────────────────────────────
         services.AddHttpContextAccessor();

@@ -19,15 +19,18 @@ public class OutboxProcessorBackgroundService : BackgroundService
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<OutboxProcessorBackgroundService> _logger;
     private readonly OutboxSettings _options;
+    private readonly TimeProvider _timeProvider;
 
     public OutboxProcessorBackgroundService(
         IServiceScopeFactory scopeFactory,
         ILogger<OutboxProcessorBackgroundService> logger,
-        IOptions<OutboxSettings> options)
+        IOptions<OutboxSettings> options,
+        TimeProvider? timeProvider = null)
     {
         _scopeFactory = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
+        _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -137,7 +140,7 @@ public class OutboxProcessorBackgroundService : BackgroundService
 
                 if (message.Error == null)
                 {
-                    message.MarkAsProcessed();
+                    message.MarkAsProcessed(_timeProvider);
                 }
             }
             catch (Exception ex)
