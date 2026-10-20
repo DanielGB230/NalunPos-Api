@@ -35,7 +35,8 @@ public class User : AggregateRoot<Guid>, IOptionalTenantOwnedEntity
         Guid roleId,
         Guid? tenantId,
         string firstName = "",
-        string lastName = "") : base(id)
+        string lastName = "",
+        TimeProvider? timeProvider = null) : base(id)
     {
         Email = email ?? throw new DomainException("El correo electrónico es requerido.");
         PasswordHash = passwordHash ?? throw new DomainException("El hash de la contraseña es requerido.");
@@ -46,7 +47,8 @@ public class User : AggregateRoot<Guid>, IOptionalTenantOwnedEntity
         FirstName = firstName?.Trim() ?? string.Empty;
         LastName = lastName?.Trim() ?? string.Empty;
         IsActive = true;
-        CreatedAtUtc = DateTime.UtcNow;
+        var utcNow = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        CreatedAtUtc = utcNow;
 
         RaiseDomainEvent(new UserCreatedDomainEvent(Id, Email.Value, RoleId, TenantId, CreatedAtUtc));
     }
@@ -57,9 +59,10 @@ public class User : AggregateRoot<Guid>, IOptionalTenantOwnedEntity
         Guid roleId,
         Guid? tenantId,
         string firstName = "",
-        string lastName = "")
+        string lastName = "",
+        TimeProvider? timeProvider = null)
     {
-        return new User(Guid.CreateVersion7(), email, passwordHash, roleId, tenantId, firstName, lastName);
+        return new User(Guid.CreateVersion7(), email, passwordHash, roleId, tenantId, firstName, lastName, timeProvider);
     }
 
     public static User Create(
@@ -68,31 +71,32 @@ public class User : AggregateRoot<Guid>, IOptionalTenantOwnedEntity
         Guid roleId,
         Guid? tenantId,
         string firstName = "",
-        string lastName = "")
+        string lastName = "",
+        TimeProvider? timeProvider = null)
     {
-        return Create(new Email(email), new PasswordHash(passwordHash), roleId, tenantId, firstName, lastName);
+        return Create(new Email(email), new PasswordHash(passwordHash), roleId, tenantId, firstName, lastName, timeProvider);
     }
 
-    public void UpdateDetails(string firstName, string lastName)
+    public void UpdateDetails(string firstName, string lastName, TimeProvider? timeProvider = null)
     {
         FirstName = firstName?.Trim() ?? string.Empty;
         LastName = lastName?.Trim() ?? string.Empty;
-        UpdatedAtUtc = DateTime.UtcNow;
+        UpdatedAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
     }
 
-    public void UpdateEmail(Email newEmail)
+    public void UpdateEmail(Email newEmail, TimeProvider? timeProvider = null)
     {
         Email = newEmail ?? throw new DomainException("El correo electrónico no puede ser nulo.");
-        UpdatedAtUtc = DateTime.UtcNow;
+        UpdatedAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
     }
 
-    public void UpdatePassword(PasswordHash newPasswordHash)
+    public void UpdatePassword(PasswordHash newPasswordHash, TimeProvider? timeProvider = null)
     {
         PasswordHash = newPasswordHash ?? throw new DomainException("El hash de la contraseña no puede ser nulo.");
-        UpdatedAtUtc = DateTime.UtcNow;
+        UpdatedAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
     }
 
-    public void ChangeRole(Guid newRoleId, Guid? newTenantId)
+    public void ChangeRole(Guid newRoleId, Guid? newTenantId, TimeProvider? timeProvider = null)
     {
         if (newRoleId == Guid.Empty) throw new DomainException("El RoleId no puede estar vacío.");
 
@@ -106,7 +110,8 @@ public class User : AggregateRoot<Guid>, IOptionalTenantOwnedEntity
 
         RoleId = newRoleId;
         TenantId = newTenantId;
-        UpdatedAtUtc = DateTime.UtcNow;
+        var utcNow = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        UpdatedAtUtc = utcNow;
 
         RaiseDomainEvent(new UserRoleChangedDomainEvent(
             Id,
@@ -117,21 +122,23 @@ public class User : AggregateRoot<Guid>, IOptionalTenantOwnedEntity
             UpdatedAtUtc.Value));
     }
 
-    public void Activate()
+    public void Activate(TimeProvider? timeProvider = null)
     {
         if (IsActive) return;
 
         IsActive = true;
-        UpdatedAtUtc = DateTime.UtcNow;
+        var utcNow = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        UpdatedAtUtc = utcNow;
         RaiseDomainEvent(new UserStatusChangedDomainEvent(Id, TenantId, IsActive, UpdatedAtUtc.Value));
     }
 
-    public void Deactivate()
+    public void Deactivate(TimeProvider? timeProvider = null)
     {
         if (!IsActive) return;
 
         IsActive = false;
-        UpdatedAtUtc = DateTime.UtcNow;
+        var utcNow = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        UpdatedAtUtc = utcNow;
         RaiseDomainEvent(new UserStatusChangedDomainEvent(Id, TenantId, IsActive, UpdatedAtUtc.Value));
     }
 }

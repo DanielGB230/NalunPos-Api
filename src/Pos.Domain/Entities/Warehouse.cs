@@ -35,7 +35,8 @@ public class Warehouse : AggregateRoot<Guid>, ITenantOwnedEntity
         Guid branchId,
         string name,
         string? description,
-        bool isDefault) : base(id)
+        bool isDefault,
+        TimeProvider? timeProvider = null) : base(id)
     {
         if (tenantId == Guid.Empty)
             throw new DomainException("El ID del tenant es requerido para crear un almacén.");
@@ -49,7 +50,8 @@ public class Warehouse : AggregateRoot<Guid>, ITenantOwnedEntity
         Description = description?.Trim();
         IsDefault = isDefault;
         IsActive = true;
-        CreatedAtUtc = DateTime.UtcNow;
+        var utcNow = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        CreatedAtUtc = utcNow;
 
         RaiseDomainEvent(new WarehouseCreatedDomainEvent(Id, TenantId, BranchId, Name, IsDefault, CreatedAtUtc));
     }
@@ -59,9 +61,10 @@ public class Warehouse : AggregateRoot<Guid>, ITenantOwnedEntity
         Guid branchId,
         string name,
         string? description = null,
-        bool isDefault = false)
+        bool isDefault = false,
+        TimeProvider? timeProvider = null)
     {
-        return new Warehouse(Guid.NewGuid(), tenantId, branchId, name, description, isDefault);
+        return new Warehouse(Guid.NewGuid(), tenantId, branchId, name, description, isDefault, timeProvider);
     }
 
     /// <summary>
@@ -69,41 +72,42 @@ public class Warehouse : AggregateRoot<Guid>, ITenantOwnedEntity
     /// Solo puede haber un IsDefault=true por tenant — la lógica de unicidad
     /// se garantiza en el caso de uso (application layer), no aquí.
     /// </summary>
-    public void SetAsDefault()
+    public void SetAsDefault(TimeProvider? timeProvider = null)
     {
         if (IsDefault) return;
         IsDefault = true;
-        UpdatedAtUtc = DateTime.UtcNow;
+        UpdatedAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
     }
 
-    public void UnsetDefault()
+    public void UnsetDefault(TimeProvider? timeProvider = null)
     {
+        if (!IsDefault) return;
         IsDefault = false;
-        UpdatedAtUtc = DateTime.UtcNow;
+        UpdatedAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
     }
 
-    public void UpdateDetails(string name, string? description)
+    public void UpdateDetails(string name, string? description, TimeProvider? timeProvider = null)
     {
         SetName(name);
         Description = description?.Trim();
-        UpdatedAtUtc = DateTime.UtcNow;
+        UpdatedAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
     }
 
-    public void Activate()
+    public void Activate(TimeProvider? timeProvider = null)
     {
         if (IsActive) return;
         IsActive = true;
-        UpdatedAtUtc = DateTime.UtcNow;
+        UpdatedAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
     }
 
-    public void Deactivate()
+    public void Deactivate(TimeProvider? timeProvider = null)
     {
         if (!IsActive) return;
         if (IsDefault)
             throw new DomainException("No se puede desactivar el almacén predeterminado. Asigne otro almacén por defecto primero.");
 
         IsActive = false;
-        UpdatedAtUtc = DateTime.UtcNow;
+        UpdatedAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
     }
 
     private void SetName(string name)

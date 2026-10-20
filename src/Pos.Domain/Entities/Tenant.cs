@@ -23,27 +23,28 @@ public class Tenant : AggregateRoot<Guid>
     {
     }
 
-    private Tenant(Guid id, string name, CompanyTaxId taxId) : base(id)
+    private Tenant(Guid id, string name, CompanyTaxId taxId, TimeProvider? timeProvider = null) : base(id)
     {
         SetName(name);
         TaxId = taxId ?? throw new DomainException("El identificador fiscal (TaxId) es requerido.");
         Status = TenantStatus.PendingProvisioning;
-        CreatedAtUtc = DateTime.UtcNow;
+        var utcNow = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        CreatedAtUtc = utcNow;
 
         RaiseDomainEvent(new TenantCreatedDomainEvent(Id, Name, TaxId.Value, CreatedAtUtc));
     }
 
-    public static Tenant Create(string name, CompanyTaxId taxId)
+    public static Tenant Create(string name, CompanyTaxId taxId, TimeProvider? timeProvider = null)
     {
-        return new Tenant(Guid.CreateVersion7(), name, taxId);
+        return new Tenant(Guid.CreateVersion7(), name, taxId, timeProvider);
     }
 
-    public static Tenant Create(string name, string taxId)
+    public static Tenant Create(string name, string taxId, TimeProvider? timeProvider = null)
     {
-        return Create(name, new CompanyTaxId(taxId));
+        return Create(name, new CompanyTaxId(taxId), timeProvider);
     }
 
-    public void Activate()
+    public void Activate(TimeProvider? timeProvider = null)
     {
         if (Status == TenantStatus.Active)
         {
@@ -52,12 +53,13 @@ public class Tenant : AggregateRoot<Guid>
 
         var oldStatus = Status;
         Status = TenantStatus.Active;
-        UpdatedAtUtc = DateTime.UtcNow;
+        var utcNow = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        UpdatedAtUtc = utcNow;
         
         RaiseDomainEvent(new TenantStatusChangedDomainEvent(Id, oldStatus, Status, UpdatedAtUtc.Value));
     }
 
-    public void Suspend()
+    public void Suspend(TimeProvider? timeProvider = null)
     {
         if (Status == TenantStatus.Suspended)
         {
@@ -66,15 +68,16 @@ public class Tenant : AggregateRoot<Guid>
 
         var oldStatus = Status;
         Status = TenantStatus.Suspended;
-        UpdatedAtUtc = DateTime.UtcNow;
+        var utcNow = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        UpdatedAtUtc = utcNow;
         
         RaiseDomainEvent(new TenantStatusChangedDomainEvent(Id, oldStatus, Status, UpdatedAtUtc.Value));
     }
 
-    public void UpdateName(string name)
+    public void UpdateName(string name, TimeProvider? timeProvider = null)
     {
         SetName(name);
-        UpdatedAtUtc = DateTime.UtcNow;
+        UpdatedAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
     }
 
     private void SetName(string name)

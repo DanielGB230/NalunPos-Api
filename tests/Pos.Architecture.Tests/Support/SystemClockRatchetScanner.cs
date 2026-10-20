@@ -16,16 +16,7 @@ public static class SystemClockRatchetScanner
     /// Lista ratchet explícita de archivos de entidad en Pos.Domain que tienen pendiente su migración
     /// a TimeProvider (se migrarán en los pasos 7.2, 7.3 y 7.4).
     /// </summary>
-    public static readonly HashSet<string> AllowedDomainEntitiesRatchet = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "StockAdjustment.cs",
-        "StockTransfer.cs",
-        "Supplier.cs",
-        "SystemNotification.cs",
-        "Tenant.cs",
-        "User.cs",
-        "Warehouse.cs"
-    };
+    public static readonly HashSet<string> AllowedDomainEntitiesRatchet = new(StringComparer.OrdinalIgnoreCase);
 
     public static IReadOnlyList<SystemClockFinding> Scan(SyntaxNode root, string filePath = "")
     {

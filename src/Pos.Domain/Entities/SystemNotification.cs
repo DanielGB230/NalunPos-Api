@@ -25,7 +25,8 @@ public class SystemNotification : AggregateRoot<Guid>, ITenantOwnedEntity
         Guid tenantId,
         Guid userId,
         string title,
-        string message) : base(id)
+        string message,
+        TimeProvider? timeProvider = null) : base(id)
     {
         TenantId = TenantGuard.RequireTenantId(tenantId, "una notificación");
 
@@ -48,14 +49,15 @@ public class SystemNotification : AggregateRoot<Guid>, ITenantOwnedEntity
         Title = title.Trim();
         Message = message.Trim();
         IsRead = false;
-        CreatedAtUtc = DateTime.UtcNow;
+        var utcNow = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        CreatedAtUtc = utcNow;
 
         RaiseDomainEvent(new NotificationCreatedDomainEvent(Id, UserId, Title, CreatedAtUtc));
     }
 
-    public static SystemNotification Create(Guid tenantId, Guid userId, string title, string message)
+    public static SystemNotification Create(Guid tenantId, Guid userId, string title, string message, TimeProvider? timeProvider = null)
     {
-        return new SystemNotification(Guid.NewGuid(), tenantId, userId, title, message);
+        return new SystemNotification(Guid.NewGuid(), tenantId, userId, title, message, timeProvider);
     }
 
     public void MarkAsRead()

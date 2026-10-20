@@ -111,4 +111,31 @@ public class TenantTests
     {
         Assert.Throws<DomainException>(() => Tenant.Create("", "20123456789"));
     }
+
+    [Fact]
+    public void CreateAndActivateTenant_WithDeterministicTimeProvider_ShouldSetExactTimestampsAndEmitEvents()
+    {
+        // Arrange
+        var createdTime = new DateTimeOffset(2026, 10, 20, 15, 0, 0, TimeSpan.Zero);
+        var activatedTime = new DateTimeOffset(2026, 10, 20, 15, 30, 0, TimeSpan.Zero);
+        var timeProvider = new Common.FakeTimeProvider(createdTime);
+
+        // Act - Create
+        var tenant = Tenant.Create("Retail Global SAC", "20112233445", timeProvider);
+
+        // Assert - Create
+        Assert.Equal(createdTime.UtcDateTime, tenant.CreatedAtUtc);
+        var createdEvent = Assert.IsType<DomainEvents.TenantCreatedDomainEvent>(Assert.Single(tenant.DomainEvents));
+        Assert.Equal(createdTime.UtcDateTime, createdEvent.OccurredOnUtc);
+
+        // Act - Activate
+        timeProvider.SetUtcNow(activatedTime);
+        tenant.Activate(timeProvider);
+
+        // Assert - Activate
+        Assert.Equal(TenantStatus.Active, tenant.Status);
+        Assert.Equal(activatedTime.UtcDateTime, tenant.UpdatedAtUtc);
+        var statusEvent = tenant.DomainEvents.OfType<DomainEvents.TenantStatusChangedDomainEvent>().Single();
+        Assert.Equal(activatedTime.UtcDateTime, statusEvent.OccurredOnUtc);
+    }
 }

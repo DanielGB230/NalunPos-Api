@@ -35,7 +35,8 @@ public class Supplier : AggregateRoot<Guid>, ITenantOwnedEntity
         Address address,
         string contactName,
         string email,
-        string phone) : base(id)
+        string phone,
+        TimeProvider? timeProvider = null) : base(id)
     {
         TenantId = TenantGuard.RequireTenantId(tenantId, "un proveedor");
         SetName(name);
@@ -43,7 +44,8 @@ public class Supplier : AggregateRoot<Guid>, ITenantOwnedEntity
         Address = address ?? throw new ArgumentNullException(nameof(address));
         SetContactDetails(contactName, email, phone);
         IsActive = true;
-        CreatedAtUtc = DateTime.UtcNow;
+        var utcNow = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        CreatedAtUtc = utcNow;
 
         RaiseDomainEvent(new SupplierCreatedDomainEvent(Id, Name, TaxId.Value, CreatedAtUtc));
     }
@@ -55,9 +57,10 @@ public class Supplier : AggregateRoot<Guid>, ITenantOwnedEntity
         Address address,
         string contactName,
         string email,
-        string phone)
+        string phone,
+        TimeProvider? timeProvider = null)
     {
-        return new Supplier(Guid.NewGuid(), tenantId, name, taxId, address, contactName, email, phone);
+        return new Supplier(Guid.NewGuid(), tenantId, name, taxId, address, contactName, email, phone, timeProvider);
     }
 
     public void UpdateDetails(
@@ -66,29 +69,32 @@ public class Supplier : AggregateRoot<Guid>, ITenantOwnedEntity
         Address address,
         string contactName,
         string email,
-        string phone)
+        string phone,
+        TimeProvider? timeProvider = null)
     {
         SetName(name);
         TaxId = taxId ?? throw new ArgumentNullException(nameof(taxId));
         Address = address ?? throw new ArgumentNullException(nameof(address));
         SetContactDetails(contactName, email, phone);
-        UpdatedAtUtc = DateTime.UtcNow;
+        var utcNow = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        UpdatedAtUtc = utcNow;
 
         RaiseDomainEvent(new SupplierUpdatedDomainEvent(Id, Name, UpdatedAtUtc.Value));
     }
 
-    public void Activate()
+    public void Activate(TimeProvider? timeProvider = null)
     {
         if (IsActive) return;
         IsActive = true;
-        UpdatedAtUtc = DateTime.UtcNow;
+        UpdatedAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
     }
 
-    public void Deactivate()
+    public void Deactivate(TimeProvider? timeProvider = null)
     {
         if (!IsActive) return;
         IsActive = false;
-        UpdatedAtUtc = DateTime.UtcNow;
+        var utcNow = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        UpdatedAtUtc = utcNow;
 
         RaiseDomainEvent(new SupplierDeactivatedDomainEvent(Id, UpdatedAtUtc.Value));
     }

@@ -842,6 +842,8 @@ public class ArchitectureTests
             }
         }
 
+        Assert.Empty(SystemClockRatchetScanner.AllowedDomainEntitiesRatchet);
+
         Assert.True(
             violations.Count == 0,
             $"Violaciones de reloj del sistema detectadas (debe usarse TimeProvider):\n{string.Join("\n", violations)}"

@@ -185,4 +185,34 @@ public class UserTests
         Assert.False(user.IsActive);
         Assert.Empty(user.DomainEvents.OfType<DomainEvents.UserStatusChangedDomainEvent>());
     }
+
+    [Fact]
+    public void CreateAndUpdateUser_WithDeterministicTimeProvider_ShouldSetExactTimestampsAndEmitEvents()
+    {
+        // Arrange
+        var createdTime = new DateTimeOffset(2026, 10, 20, 16, 0, 0, TimeSpan.Zero);
+        var roleChangedTime = new DateTimeOffset(2026, 10, 20, 16, 30, 0, TimeSpan.Zero);
+        var timeProvider = new Common.FakeTimeProvider(createdTime);
+
+        var oldRoleId = Guid.NewGuid();
+        var newRoleId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+
+        // Act - Create
+        var user = User.Create(new ValueObjects.Email("cajero@pos.com"), new ValueObjects.PasswordHash("HASH123"), oldRoleId, tenantId, "Carlos", "Gómez", timeProvider);
+
+        // Assert - Create
+        Assert.Equal(createdTime.UtcDateTime, user.CreatedAtUtc);
+        var createdEvent = Assert.IsType<DomainEvents.UserCreatedDomainEvent>(Assert.Single(user.DomainEvents));
+        Assert.Equal(createdTime.UtcDateTime, createdEvent.OccurredOnUtc);
+
+        // Act - ChangeRole
+        timeProvider.SetUtcNow(roleChangedTime);
+        user.ChangeRole(newRoleId, tenantId, timeProvider);
+
+        // Assert - ChangeRole
+        Assert.Equal(roleChangedTime.UtcDateTime, user.UpdatedAtUtc);
+        var roleEvent = user.DomainEvents.OfType<DomainEvents.UserRoleChangedDomainEvent>().Single();
+        Assert.Equal(roleChangedTime.UtcDateTime, roleEvent.OccurredOnUtc);
+    }
 }

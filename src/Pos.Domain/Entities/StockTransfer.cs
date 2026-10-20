@@ -39,7 +39,8 @@ public class StockTransfer : AggregateRoot<Guid>, ITenantOwnedEntity
         Guid sourceWarehouseId,
         Guid destinationWarehouseId,
         IEnumerable<StockTransferLine> lines,
-        string? notes) : base(id)
+        string? notes,
+        TimeProvider? timeProvider = null) : base(id)
     {
         if (tenantId == Guid.Empty)
             throw new DomainException("El ID del tenant es requerido para registrar un traspaso.");
@@ -62,7 +63,8 @@ public class StockTransfer : AggregateRoot<Guid>, ITenantOwnedEntity
         DestinationWarehouseId = destinationWarehouseId;
         Notes = notes?.Trim();
         _lines = linesList;
-        CreatedAtUtc = DateTime.UtcNow;
+        var utcNow = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        CreatedAtUtc = utcNow;
 
         RaiseDomainEvent(new StockTransferCreatedDomainEvent(
             Id, TenantId, SourceWarehouseId, DestinationWarehouseId, CreatedAtUtc));
@@ -73,12 +75,13 @@ public class StockTransfer : AggregateRoot<Guid>, ITenantOwnedEntity
         Guid sourceWarehouseId,
         Guid destinationWarehouseId,
         IEnumerable<(Guid ProductId, decimal Quantity)> lineItems,
-        string? notes = null)
+        string? notes = null,
+        TimeProvider? timeProvider = null)
     {
         var lines = lineItems
             .Select(i => StockTransferLine.Create(i.ProductId, i.Quantity))
             .ToList();
 
-        return new StockTransfer(Guid.NewGuid(), tenantId, sourceWarehouseId, destinationWarehouseId, lines, notes);
+        return new StockTransfer(Guid.NewGuid(), tenantId, sourceWarehouseId, destinationWarehouseId, lines, notes, timeProvider);
     }
 }
