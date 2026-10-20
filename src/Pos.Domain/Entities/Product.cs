@@ -40,7 +40,8 @@ public class Product : AggregateRoot<Guid>, ITenantOwnedEntity
         string? description = null,
         Barcode? barcode = null,
         Money? cost = null,
-        UnitOfMeasure unitOfMeasure = UnitOfMeasure.Unit) : base(id)
+        UnitOfMeasure unitOfMeasure = UnitOfMeasure.Unit,
+        TimeProvider? timeProvider = null) : base(id)
     {
         TenantId = TenantGuard.RequireTenantId(tenantId, "un producto");
         SetName(name);
@@ -52,7 +53,8 @@ public class Product : AggregateRoot<Guid>, ITenantOwnedEntity
         Cost = cost;
         UnitOfMeasure = unitOfMeasure;
         IsActive = true;
-        CreatedAtUtc = DateTime.UtcNow;
+        var utcNow = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        CreatedAtUtc = utcNow;
 
         RaiseDomainEvent(new ProductCreatedDomainEvent(
             Id,
@@ -73,22 +75,24 @@ public class Product : AggregateRoot<Guid>, ITenantOwnedEntity
         string? description = null,
         Barcode? barcode = null,
         Money? cost = null,
-        UnitOfMeasure unitOfMeasure = UnitOfMeasure.Unit)
+        UnitOfMeasure unitOfMeasure = UnitOfMeasure.Unit,
+        TimeProvider? timeProvider = null)
     {
-        return new Product(Guid.NewGuid(), tenantId, name, sku, price, categoryId, description, barcode, cost, unitOfMeasure);
+        return new Product(Guid.NewGuid(), tenantId, name, sku, price, categoryId, description, barcode, cost, unitOfMeasure, timeProvider);
     }
 
-    public void UpdateDetails(string name, string? description, Barcode? barcode)
+    public void UpdateDetails(string name, string? description, Barcode? barcode, TimeProvider? timeProvider = null)
     {
         SetName(name);
         Description = description?.Trim();
         Barcode = barcode;
-        UpdatedAtUtc = DateTime.UtcNow;
+        var utcNow = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        UpdatedAtUtc = utcNow;
 
         RaiseDomainEvent(new ProductUpdatedDomainEvent(Id, Name, UpdatedAtUtc.Value));
     }
 
-    public void UpdatePrice(Money newPrice, Money? newCost = null)
+    public void UpdatePrice(Money newPrice, Money? newCost = null, TimeProvider? timeProvider = null)
     {
         ArgumentNullException.ThrowIfNull(newPrice);
 
@@ -103,7 +107,8 @@ public class Product : AggregateRoot<Guid>, ITenantOwnedEntity
         {
             Cost = newCost;
         }
-        UpdatedAtUtc = DateTime.UtcNow;
+        var utcNow = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        UpdatedAtUtc = utcNow;
 
         RaiseDomainEvent(new ProductPriceUpdatedDomainEvent(
             Id,
@@ -113,7 +118,7 @@ public class Product : AggregateRoot<Guid>, ITenantOwnedEntity
             UpdatedAtUtc.Value));
     }
 
-    public void ChangeCategory(Guid newCategoryId)
+    public void ChangeCategory(Guid newCategoryId, TimeProvider? timeProvider = null)
     {
         if (newCategoryId == Guid.Empty)
         {
@@ -123,29 +128,31 @@ public class Product : AggregateRoot<Guid>, ITenantOwnedEntity
         if (CategoryId == newCategoryId) return;
 
         CategoryId = newCategoryId;
-        UpdatedAtUtc = DateTime.UtcNow;
+        UpdatedAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
     }
 
-    public void ChangeUnitOfMeasure(UnitOfMeasure unitOfMeasure)
+    public void ChangeUnitOfMeasure(UnitOfMeasure unitOfMeasure, TimeProvider? timeProvider = null)
     {
         if (UnitOfMeasure == unitOfMeasure) return;
         UnitOfMeasure = unitOfMeasure;
-        UpdatedAtUtc = DateTime.UtcNow;
+        UpdatedAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
     }
 
-    public void Activate()
+    public void Activate(TimeProvider? timeProvider = null)
     {
         if (IsActive) return;
         IsActive = true;
-        UpdatedAtUtc = DateTime.UtcNow;
+        var utcNow = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        UpdatedAtUtc = utcNow;
         RaiseDomainEvent(new ProductStatusChangedDomainEvent(Id, TenantId, IsActive, UpdatedAtUtc.Value));
     }
 
-    public void Deactivate()
+    public void Deactivate(TimeProvider? timeProvider = null)
     {
         if (!IsActive) return;
         IsActive = false;
-        UpdatedAtUtc = DateTime.UtcNow;
+        var utcNow = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        UpdatedAtUtc = utcNow;
         RaiseDomainEvent(new ProductStatusChangedDomainEvent(Id, TenantId, IsActive, UpdatedAtUtc.Value));
     }
 

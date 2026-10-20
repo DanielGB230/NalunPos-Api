@@ -18,14 +18,6 @@ public static class SystemClockRatchetScanner
     /// </summary>
     public static readonly HashSet<string> AllowedDomainEntitiesRatchet = new(StringComparer.OrdinalIgnoreCase)
     {
-        "InventoryMovement.cs",
-        "Invoice.cs",
-        "Payment.cs",
-        "PosDevice.cs",
-        "Product.cs",
-        "PurchaseOrder.cs",
-        "Role.cs",
-        "Sale.cs",
         "StockAdjustment.cs",
         "StockTransfer.cs",
         "Supplier.cs",

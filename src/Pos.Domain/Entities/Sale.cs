@@ -37,7 +37,8 @@ public class Sale : AggregateRoot<Guid>, ITenantOwnedEntity
         Guid? customerId,
         IEnumerable<SaleLineItem> lineItems,
         decimal taxRatePercentage = 0m,
-        string currency = "USD") : base(id)
+        string currency = "USD",
+        TimeProvider? timeProvider = null) : base(id)
     {
         TenantId = TenantGuard.RequireTenantId(tenantId, "una venta");
 
@@ -67,7 +68,8 @@ public class Sale : AggregateRoot<Guid>, ITenantOwnedEntity
         CustomerId = customerId;
         _lineItems = itemsList;
         Status = SaleStatus.Completed;
-        CreatedAtUtc = DateTime.UtcNow;
+        var utcNow = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        CreatedAtUtc = utcNow;
 
         CalculateTotals(taxRatePercentage, currency);
     }
@@ -79,9 +81,10 @@ public class Sale : AggregateRoot<Guid>, ITenantOwnedEntity
         Guid? customerId,
         IEnumerable<SaleLineItem> lineItems,
         decimal taxRatePercentage = 0m,
-        string currency = "USD")
+        string currency = "USD",
+        TimeProvider? timeProvider = null)
     {
-        var sale = new Sale(Guid.NewGuid(), tenantId, receiptNumber, sessionId, customerId, lineItems, taxRatePercentage, currency);
+        var sale = new Sale(Guid.NewGuid(), tenantId, receiptNumber, sessionId, customerId, lineItems, taxRatePercentage, currency, timeProvider);
         sale.Complete();
         return sale;
     }
@@ -108,7 +111,7 @@ public class Sale : AggregateRoot<Guid>, ITenantOwnedEntity
             CreatedAtUtc));
     }
 
-    public void Cancel()
+    public void Cancel(TimeProvider? timeProvider = null)
     {
         if (Status == SaleStatus.Cancelled)
         {
@@ -116,10 +119,11 @@ public class Sale : AggregateRoot<Guid>, ITenantOwnedEntity
         }
 
         Status = SaleStatus.Cancelled;
-        RaiseDomainEvent(new SaleCancelledDomainEvent(Id, ReceiptNumber, DateTime.UtcNow));
+        var utcNow = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        RaiseDomainEvent(new SaleCancelledDomainEvent(Id, ReceiptNumber, utcNow));
     }
 
-    public void MarkAsPaid()
+    public void MarkAsPaid(TimeProvider? timeProvider = null)
     {
         if (Status == SaleStatus.Cancelled)
         {
@@ -127,7 +131,8 @@ public class Sale : AggregateRoot<Guid>, ITenantOwnedEntity
         }
 
         Status = SaleStatus.Paid;
-        RaiseDomainEvent(new SalePaidDomainEvent(Id, ReceiptNumber, DateTime.UtcNow));
+        var utcNow = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        RaiseDomainEvent(new SalePaidDomainEvent(Id, ReceiptNumber, utcNow));
     }
 
     private void CalculateTotals(decimal taxRatePercentage, string currency)

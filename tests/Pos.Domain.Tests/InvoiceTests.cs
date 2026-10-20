@@ -60,4 +60,35 @@ public class InvoiceTests
 
         Assert.Equal("El ID del tenant es requerido para crear una factura.", ex.Message);
     }
+
+    [Fact]
+    public void CreateAndMarkAsSent_WithDeterministicTimeProvider_ShouldSetExactTimestampsAndEmitEvents()
+    {
+        // Arrange
+        var issueTime = new DateTimeOffset(2026, 10, 20, 10, 30, 0, TimeSpan.Zero);
+        var sentTime = new DateTimeOffset(2026, 10, 20, 10, 45, 0, TimeSpan.Zero);
+        var timeProvider = new Common.FakeTimeProvider(issueTime);
+
+        var tenantId = Guid.NewGuid();
+        var saleId = Guid.NewGuid();
+        var taxId = TaxId.Create("20123456789", "PE");
+        var amount = Money.Create(295m, "USD");
+
+        // Act - Create
+        var invoice = Invoice.Create(tenantId, saleId, InvoiceDocumentType.Invoice, "F001-00002", taxId, amount, timeProvider);
+
+        // Assert - Create
+        Assert.Equal(issueTime.UtcDateTime, invoice.IssueDateUtc);
+        var issuedEvent = Assert.IsType<Pos.Domain.DomainEvents.InvoiceIssuedDomainEvent>(Assert.Single(invoice.DomainEvents));
+        Assert.Equal(issueTime.UtcDateTime, issuedEvent.OccurredOnUtc);
+
+        // Act - MarkAsSent
+        timeProvider.SetUtcNow(sentTime);
+        invoice.MarkAsSent(timeProvider);
+
+        // Assert - MarkAsSent
+        Assert.Equal(InvoiceStatus.Sent, invoice.Status);
+        var statusEvent = invoice.DomainEvents.OfType<Pos.Domain.DomainEvents.InvoiceStatusUpdatedDomainEvent>().Single();
+        Assert.Equal(sentTime.UtcDateTime, statusEvent.OccurredOnUtc);
+    }
 }

@@ -73,4 +73,34 @@ public class PosDeviceTests
 
         Assert.Equal("El ID del tenant es requerido para crear un dispositivo POS.", ex.Message);
     }
+
+    [Fact]
+    public void CreateAndRecordPing_WithDeterministicTimeProvider_ShouldSetExactTimestampsAndEmitEvents()
+    {
+        // Arrange
+        var registerTime = new DateTimeOffset(2026, 10, 20, 11, 0, 0, TimeSpan.Zero);
+        var pingTime = new DateTimeOffset(2026, 10, 20, 11, 15, 0, TimeSpan.Zero);
+        var timeProvider = new Common.FakeTimeProvider(registerTime);
+
+        var tenantId = Guid.NewGuid();
+        var branchId = Guid.NewGuid();
+
+        // Act - Create
+        var device = PosDevice.Create(tenantId, branchId, "Caja Determinista", "MAC-TIME-001", timeProvider);
+
+        // Assert - Create
+        Assert.Equal(registerTime.UtcDateTime, device.CreatedAtUtc);
+        var regEvent = Assert.IsType<Pos.Domain.DomainEvents.PosDeviceRegisteredDomainEvent>(Assert.Single(device.DomainEvents));
+        Assert.Equal(registerTime.UtcDateTime, regEvent.OccurredOnUtc);
+
+        // Act - RecordPing
+        timeProvider.SetUtcNow(pingTime);
+        device.RecordPing(timeProvider);
+
+        // Assert - RecordPing
+        Assert.Equal(pingTime, device.LastPingUtc);
+        var pingEvent = device.DomainEvents.OfType<Pos.Domain.DomainEvents.PosDevicePingedDomainEvent>().Single();
+        Assert.Equal(pingTime, pingEvent.LastPingUtc);
+        Assert.Equal(pingTime.UtcDateTime, pingEvent.OccurredOnUtc);
+    }
 }

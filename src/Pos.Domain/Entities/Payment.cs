@@ -30,7 +30,8 @@ public class Payment : AggregateRoot<Guid>, ITenantOwnedEntity
         Guid saleId,
         Money amount,
         PaymentMethod method,
-        string? externalReference) : base(id)
+        string? externalReference,
+        TimeProvider? timeProvider = null) : base(id)
     {
         TenantId = TenantGuard.RequireTenantId(tenantId, "un pago");
 
@@ -44,7 +45,7 @@ public class Payment : AggregateRoot<Guid>, ITenantOwnedEntity
         Method = method;
         ExternalReference = externalReference?.Trim();
         Status = PaymentStatus.Pending;
-        CreatedAtUtc = DateTime.UtcNow;
+        CreatedAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
     }
 
     public static Payment Create(
@@ -52,12 +53,13 @@ public class Payment : AggregateRoot<Guid>, ITenantOwnedEntity
         Guid saleId,
         Money amount,
         PaymentMethod method,
-        string? externalReference = null)
+        string? externalReference = null,
+        TimeProvider? timeProvider = null)
     {
-        return new Payment(Guid.NewGuid(), tenantId, saleId, amount, method, externalReference);
+        return new Payment(Guid.NewGuid(), tenantId, saleId, amount, method, externalReference, timeProvider);
     }
 
-    public void Process(string? externalVoucherReference = null)
+    public void Process(string? externalVoucherReference = null, TimeProvider? timeProvider = null)
     {
         if (Status == PaymentStatus.Processed)
         {
@@ -70,6 +72,7 @@ public class Payment : AggregateRoot<Guid>, ITenantOwnedEntity
         }
 
         Status = PaymentStatus.Processed;
+        var utcNow = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
 
         RaiseDomainEvent(new PaymentProcessedDomainEvent(
             Id,
@@ -78,17 +81,18 @@ public class Payment : AggregateRoot<Guid>, ITenantOwnedEntity
             Amount.Currency,
             Method.ToString(),
             ExternalReference,
-            DateTime.UtcNow));
+            utcNow));
     }
 
-    public void Fail(string reason)
+    public void Fail(string reason, TimeProvider? timeProvider = null)
     {
         Status = PaymentStatus.Failed;
+        var utcNow = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
 
         RaiseDomainEvent(new PaymentFailedDomainEvent(
             Id,
             SaleId,
             reason ?? "Error indeterminado en la pasarela de pagos.",
-            DateTime.UtcNow));
+            utcNow));
     }
 }

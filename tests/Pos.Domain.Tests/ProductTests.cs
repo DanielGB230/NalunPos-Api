@@ -145,4 +145,55 @@ public class ProductTests
         Assert.False(product.IsActive);
         Assert.Empty(product.DomainEvents.OfType<DomainEvents.ProductStatusChangedDomainEvent>());
     }
+
+    [Fact]
+    public void CreateAndUpdateProduct_WithDeterministicTimeProvider_ShouldSetExactTimestampsAndEmitEvents()
+    {
+        // Arrange
+        var createdTime = new DateTimeOffset(2026, 10, 20, 12, 0, 0, TimeSpan.Zero);
+        var updatedTime = new DateTimeOffset(2026, 10, 20, 12, 30, 0, TimeSpan.Zero);
+        var priceUpdatedTime = new DateTimeOffset(2026, 10, 20, 13, 0, 0, TimeSpan.Zero);
+        var deactivatedTime = new DateTimeOffset(2026, 10, 20, 13, 30, 0, TimeSpan.Zero);
+        var timeProvider = new Common.FakeTimeProvider(createdTime);
+
+        var tenantId = Guid.NewGuid();
+        var categoryId = Guid.NewGuid();
+        var sku = Sku.Create("MON-4K-01");
+        var initialPrice = Money.Create(499.99m, "USD");
+
+        // Act - Create
+        var product = Product.Create(tenantId, "Monitor 4K", sku, initialPrice, categoryId, timeProvider: timeProvider);
+
+        // Assert - Create
+        Assert.Equal(createdTime.UtcDateTime, product.CreatedAtUtc);
+        var createdEvent = Assert.IsType<DomainEvents.ProductCreatedDomainEvent>(Assert.Single(product.DomainEvents));
+        Assert.Equal(createdTime.UtcDateTime, createdEvent.OccurredOnUtc);
+
+        // Act - UpdateDetails
+        timeProvider.SetUtcNow(updatedTime);
+        product.UpdateDetails("Monitor 4K UHD Pro", "Pantalla IPS 144Hz", null, timeProvider);
+
+        // Assert - UpdateDetails
+        Assert.Equal(updatedTime.UtcDateTime, product.UpdatedAtUtc);
+        var updatedEvent = product.DomainEvents.OfType<DomainEvents.ProductUpdatedDomainEvent>().Single();
+        Assert.Equal(updatedTime.UtcDateTime, updatedEvent.OccurredOnUtc);
+
+        // Act - UpdatePrice
+        timeProvider.SetUtcNow(priceUpdatedTime);
+        product.UpdatePrice(Money.Create(449.99m, "USD"), timeProvider: timeProvider);
+
+        // Assert - UpdatePrice
+        Assert.Equal(priceUpdatedTime.UtcDateTime, product.UpdatedAtUtc);
+        var priceEvent = product.DomainEvents.OfType<DomainEvents.ProductPriceUpdatedDomainEvent>().Single();
+        Assert.Equal(priceUpdatedTime.UtcDateTime, priceEvent.OccurredOnUtc);
+
+        // Act - Deactivate
+        timeProvider.SetUtcNow(deactivatedTime);
+        product.Deactivate(timeProvider);
+
+        // Assert - Deactivate
+        Assert.Equal(deactivatedTime.UtcDateTime, product.UpdatedAtUtc);
+        var statusEvent = product.DomainEvents.OfType<DomainEvents.ProductStatusChangedDomainEvent>().Single();
+        Assert.Equal(deactivatedTime.UtcDateTime, statusEvent.OccurredOnUtc);
+    }
 }

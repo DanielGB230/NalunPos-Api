@@ -52,7 +52,8 @@ public class PurchaseOrder : AggregateRoot<Guid>, ITenantOwnedEntity
         Guid warehouseId,
         string orderNumber,
         IEnumerable<PurchaseOrderLine> lines,
-        string? notes) : base(id)
+        string? notes,
+        TimeProvider? timeProvider = null) : base(id)
     {
         if (tenantId == Guid.Empty)
             throw new DomainException("El ID del tenant es requerido.");
@@ -77,7 +78,8 @@ public class PurchaseOrder : AggregateRoot<Guid>, ITenantOwnedEntity
         Notes = notes?.Trim();
         _lines = linesList;
         Status = PurchaseOrderStatus.Draft;
-        CreatedAtUtc = DateTime.UtcNow;
+        var utcNow = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        CreatedAtUtc = utcNow;
 
         RaiseDomainEvent(new PurchaseOrderCreatedDomainEvent(Id, TenantId, SupplierId, WarehouseId, OrderNumber, CreatedAtUtc));
     }
@@ -88,26 +90,28 @@ public class PurchaseOrder : AggregateRoot<Guid>, ITenantOwnedEntity
         Guid warehouseId,
         string orderNumber,
         IEnumerable<(Guid ProductId, decimal Quantity, Money UnitCost)> lineItems,
-        string? notes = null)
+        string? notes = null,
+        TimeProvider? timeProvider = null)
     {
         var lines = lineItems
             .Select(i => PurchaseOrderLine.Create(i.ProductId, i.Quantity, i.UnitCost))
             .ToList();
 
-        return new PurchaseOrder(Guid.NewGuid(), tenantId, supplierId, warehouseId, orderNumber, lines, notes);
+        return new PurchaseOrder(Guid.NewGuid(), tenantId, supplierId, warehouseId, orderNumber, lines, notes, timeProvider);
     }
 
     /// <summary>
     /// Envía la orden al proveedor (Draft → Sent).
     /// No tiene efecto en el stock todavía.
     /// </summary>
-    public void Send()
+    public void Send(TimeProvider? timeProvider = null)
     {
         if (Status != PurchaseOrderStatus.Draft)
             throw new DomainException($"Solo se pueden enviar órdenes en estado Borrador. Estado actual: {Status}.");
 
         Status = PurchaseOrderStatus.Sent;
-        UpdatedAtUtc = DateTime.UtcNow;
+        var utcNow = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        UpdatedAtUtc = utcNow;
 
         RaiseDomainEvent(new PurchaseOrderSentDomainEvent(Id, TenantId, SupplierId, WarehouseId, OrderNumber, UpdatedAtUtc.Value));
     }
@@ -119,7 +123,8 @@ public class PurchaseOrder : AggregateRoot<Guid>, ITenantOwnedEntity
     /// Retorna las líneas efectivamente actualizadas para que el handler genere los movimientos.
     /// </summary>
     public IReadOnlyList<PurchaseOrderLine> ReceiveLines(
-        IEnumerable<(Guid ProductId, decimal ReceivedQuantity)> receivedItems)
+        IEnumerable<(Guid ProductId, decimal ReceivedQuantity)> receivedItems,
+        TimeProvider? timeProvider = null)
     {
         if (Status == PurchaseOrderStatus.Draft)
             throw new DomainException("No se puede recibir mercadería de una orden en estado Borrador. Primero envíe la orden.");
@@ -146,10 +151,11 @@ public class PurchaseOrder : AggregateRoot<Guid>, ITenantOwnedEntity
             ? PurchaseOrderStatus.Received
             : PurchaseOrderStatus.PartiallyReceived;
 
-        UpdatedAtUtc = DateTime.UtcNow;
+        var utcNow = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        UpdatedAtUtc = utcNow;
 
         if (Status == PurchaseOrderStatus.Received)
-            RaiseDomainEvent(new PurchaseOrderReceivedDomainEvent(Id, OrderNumber, WarehouseId, DateTime.UtcNow));
+            RaiseDomainEvent(new PurchaseOrderReceivedDomainEvent(Id, OrderNumber, WarehouseId, utcNow));
 
         return updatedLines.AsReadOnly();
     }
@@ -158,7 +164,7 @@ public class PurchaseOrder : AggregateRoot<Guid>, ITenantOwnedEntity
     /// Cancela la orden. No tiene efecto en el stock si no hubo recepciones previas.
     /// Si hubo recepciones parciales, el stock ya fue incrementado y se mantiene.
     /// </summary>
-    public void Cancel()
+    public void Cancel(TimeProvider? timeProvider = null)
     {
         if (Status is PurchaseOrderStatus.Received)
             throw new DomainException("No se puede cancelar una orden completamente recibida.");
@@ -168,7 +174,8 @@ public class PurchaseOrder : AggregateRoot<Guid>, ITenantOwnedEntity
 
         var previousStatus = Status;
         Status = PurchaseOrderStatus.Cancelled;
-        UpdatedAtUtc = DateTime.UtcNow;
+        var utcNow = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        UpdatedAtUtc = utcNow;
 
         RaiseDomainEvent(new PurchaseOrderCancelledDomainEvent(
             Id,

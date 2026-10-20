@@ -33,7 +33,8 @@ public class Invoice : AggregateRoot<Guid>, ITenantOwnedEntity
         InvoiceDocumentType documentType,
         string documentNumber,
         TaxId customerTaxId,
-        Money totalAmount) : base(id)
+        Money totalAmount,
+        TimeProvider? timeProvider = null) : base(id)
     {
         TenantId = TenantGuard.RequireTenantId(tenantId, "una factura");
 
@@ -47,13 +48,15 @@ public class Invoice : AggregateRoot<Guid>, ITenantOwnedEntity
             throw new DomainException("El número de documento de facturación es requerido.");
         }
 
+        var utcNow = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+
         SaleId = saleId;
         DocumentType = documentType;
         DocumentNumber = documentNumber.Trim().ToUpperInvariant();
         CustomerTaxId = customerTaxId ?? throw new ArgumentNullException(nameof(customerTaxId));
         TotalAmount = totalAmount ?? throw new ArgumentNullException(nameof(totalAmount));
         Status = InvoiceStatus.Pending;
-        IssueDateUtc = DateTime.UtcNow;
+        IssueDateUtc = utcNow;
 
         RaiseDomainEvent(new InvoiceIssuedDomainEvent(
             Id,
@@ -71,27 +74,31 @@ public class Invoice : AggregateRoot<Guid>, ITenantOwnedEntity
         InvoiceDocumentType documentType,
         string documentNumber,
         TaxId customerTaxId,
-        Money totalAmount)
+        Money totalAmount,
+        TimeProvider? timeProvider = null)
     {
-        return new Invoice(Guid.NewGuid(), tenantId, saleId, documentType, documentNumber, customerTaxId, totalAmount);
+        return new Invoice(Guid.NewGuid(), tenantId, saleId, documentType, documentNumber, customerTaxId, totalAmount, timeProvider);
     }
 
-    public void MarkAsSent()
+    public void MarkAsSent(TimeProvider? timeProvider = null)
     {
+        var utcNow = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
         Status = InvoiceStatus.Sent;
-        RaiseDomainEvent(new InvoiceStatusUpdatedDomainEvent(Id, DocumentNumber, Status.ToString(), DateTime.UtcNow));
+        RaiseDomainEvent(new InvoiceStatusUpdatedDomainEvent(Id, DocumentNumber, Status.ToString(), utcNow));
     }
 
-    public void MarkAsAccepted()
+    public void MarkAsAccepted(TimeProvider? timeProvider = null)
     {
+        var utcNow = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
         Status = InvoiceStatus.Accepted;
-        RaiseDomainEvent(new InvoiceStatusUpdatedDomainEvent(Id, DocumentNumber, Status.ToString(), DateTime.UtcNow));
+        RaiseDomainEvent(new InvoiceStatusUpdatedDomainEvent(Id, DocumentNumber, Status.ToString(), utcNow));
     }
 
-    public void MarkAsRejected()
+    public void MarkAsRejected(TimeProvider? timeProvider = null)
     {
+        var utcNow = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
         Status = InvoiceStatus.Rejected;
-        RaiseDomainEvent(new InvoiceStatusUpdatedDomainEvent(Id, DocumentNumber, Status.ToString(), DateTime.UtcNow));
+        RaiseDomainEvent(new InvoiceStatusUpdatedDomainEvent(Id, DocumentNumber, Status.ToString(), utcNow));
     }
 
     public void IncrementReconciliationAttempts()

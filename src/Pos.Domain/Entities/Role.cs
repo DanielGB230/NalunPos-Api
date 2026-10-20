@@ -24,7 +24,12 @@ public class Role : AggregateRoot<Guid>, IPlatformScopedEntity
     {
     }
 
-    private Role(Guid id, Guid tenantId, string name, string? description, IEnumerable<string>? permissions) : base(id)
+    private Role(Guid id, Guid tenantId, string name, string? description, IEnumerable<string>? permissions)
+        : this(id, tenantId, name, description, permissions, null)
+    {
+    }
+
+    private Role(Guid id, Guid tenantId, string name, string? description, IEnumerable<string>? permissions, TimeProvider? timeProvider) : base(id)
     {
         TenantId = tenantId;
         SetName(name);
@@ -34,12 +39,13 @@ public class Role : AggregateRoot<Guid>, IPlatformScopedEntity
             _permissions.AddRange(permissions.Where(p => !string.IsNullOrWhiteSpace(p)).Select(p => p.Trim()));
         }
 
-        RaiseDomainEvent(new RoleCreatedDomainEvent(Id, Name, DateTime.UtcNow));
+        var utcNow = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        RaiseDomainEvent(new RoleCreatedDomainEvent(Id, Name, utcNow));
     }
 
-    public static Role Create(Guid tenantId, string name, string? description = null, IEnumerable<string>? permissions = null)
+    public static Role Create(Guid tenantId, string name, string? description = null, IEnumerable<string>? permissions = null, TimeProvider? timeProvider = null)
     {
-        return new Role(Guid.NewGuid(), tenantId, name, description, permissions);
+        return new Role(Guid.NewGuid(), tenantId, name, description, permissions, timeProvider);
     }
 
     public void UpdatePermissions(IEnumerable<string> permissions)

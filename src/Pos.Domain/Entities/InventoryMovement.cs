@@ -46,7 +46,8 @@ public class InventoryMovement : AggregateRoot<Guid>, ITenantOwnedEntity
         string? notes,
         string? batchNumber,
         DateTime? expirationDate,
-        DateTime? occurredAtUtc) : base(id)
+        DateTime? occurredAtUtc,
+        TimeProvider? timeProvider = null) : base(id)
     {
         if (productId == Guid.Empty)
             throw new DomainException("El ID del producto es requerido para registrar un movimiento de inventario.");
@@ -66,8 +67,9 @@ public class InventoryMovement : AggregateRoot<Guid>, ITenantOwnedEntity
         Notes = notes?.Trim();
         BatchNumber = batchNumber?.Trim().ToUpperInvariant();
         ExpirationDate = expirationDate;
-        OccurredAtUtc = occurredAtUtc ?? DateTime.UtcNow;
-        CreatedAtUtc = DateTime.UtcNow;
+        var utcNow = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        OccurredAtUtc = occurredAtUtc ?? utcNow;
+        CreatedAtUtc = utcNow;
 
         RaiseDomainEvent(new InventoryMovementRecordedDomainEvent(
             Id,
@@ -92,7 +94,8 @@ public class InventoryMovement : AggregateRoot<Guid>, ITenantOwnedEntity
         Guid? containerId = null,
         string? batchNumber = null,
         DateTime? expirationDate = null,
-        DateTime? occurredAtUtc = null)
+        DateTime? occurredAtUtc = null,
+        TimeProvider? timeProvider = null)
     {
         return new InventoryMovement(
             Guid.NewGuid(),
@@ -105,6 +108,7 @@ public class InventoryMovement : AggregateRoot<Guid>, ITenantOwnedEntity
             notes,
             batchNumber,
             expirationDate,
-            occurredAtUtc);
+            occurredAtUtc,
+            timeProvider);
     }
 }
