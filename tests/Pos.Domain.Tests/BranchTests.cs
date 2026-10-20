@@ -67,5 +67,32 @@ public class BranchTests
 
         Assert.Equal("El ID del tenant es requerido para crear una sucursal.", ex.Message);
     }
+
+    [Fact]
+    public void CreateAndUpdateBranch_WithDeterministicTimeProvider_ShouldSetExactTimestamps()
+    {
+        // Arrange
+        var createdTime = new DateTimeOffset(2026, 10, 20, 9, 0, 0, TimeSpan.Zero);
+        var updatedTime = new DateTimeOffset(2026, 10, 20, 11, 0, 0, TimeSpan.Zero);
+        var timeProvider = new Common.FakeTimeProvider(createdTime);
+
+        var tenantId = Guid.NewGuid();
+        var address = Address.Create("Av. Larco 456", "Lima", "15074", "PE");
+
+        // Act - Create
+        var branch = Branch.Create(tenantId, "Sucursal Miraflores", address, "+51 123456789", timeProvider);
+
+        // Assert - Create
+        Assert.Equal(createdTime.UtcDateTime, branch.CreatedAtUtc);
+        Assert.Null(branch.UpdatedAtUtc);
+
+        // Act - UpdateDetails
+        timeProvider.SetUtcNow(updatedTime);
+        var newAddress = Address.Create("Av. Benavides 789", "Lima", "15074", "PE");
+        branch.UpdateDetails("Sucursal Miraflores Premium", newAddress, "+51 999888777", timeProvider);
+
+        // Assert - Update
+        Assert.Equal(updatedTime.UtcDateTime, branch.UpdatedAtUtc);
+    }
 }
 

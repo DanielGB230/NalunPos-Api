@@ -32,7 +32,8 @@ public class Customer : AggregateRoot<Guid>, ITenantOwnedEntity
         TaxId taxId,
         string email,
         string phone,
-        Address? address) : base(id)
+        Address? address,
+        TimeProvider? timeProvider = null) : base(id)
     {
         TenantId = TenantGuard.RequireTenantId(tenantId, "un cliente");
         SetFullName(fullName);
@@ -41,7 +42,7 @@ public class Customer : AggregateRoot<Guid>, ITenantOwnedEntity
         Phone = phone?.Trim() ?? string.Empty;
         Address = address;
         IsActive = true;
-        CreatedAtUtc = DateTime.UtcNow;
+        CreatedAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
 
         RaiseDomainEvent(new CustomerCreatedDomainEvent(Id, FullName, TaxId.Value, CreatedAtUtc));
     }
@@ -52,9 +53,10 @@ public class Customer : AggregateRoot<Guid>, ITenantOwnedEntity
         TaxId taxId,
         string email = "",
         string phone = "",
-        Address? address = null)
+        Address? address = null,
+        TimeProvider? timeProvider = null)
     {
-        return new Customer(Guid.NewGuid(), tenantId, fullName, taxId, email, phone, address);
+        return new Customer(Guid.NewGuid(), tenantId, fullName, taxId, email, phone, address, timeProvider);
     }
 
     public void UpdateDetails(
@@ -62,30 +64,31 @@ public class Customer : AggregateRoot<Guid>, ITenantOwnedEntity
         TaxId taxId,
         string email,
         string phone,
-        Address? address)
+        Address? address,
+        TimeProvider? timeProvider = null)
     {
         SetFullName(fullName);
         TaxId = taxId ?? throw new ArgumentNullException(nameof(taxId));
         Email = email?.Trim() ?? string.Empty;
         Phone = phone?.Trim() ?? string.Empty;
         Address = address;
-        UpdatedAtUtc = DateTime.UtcNow;
+        UpdatedAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
 
         RaiseDomainEvent(new CustomerUpdatedDomainEvent(Id, FullName, UpdatedAtUtc.Value));
     }
 
-    public void Activate()
+    public void Activate(TimeProvider? timeProvider = null)
     {
         if (IsActive) return;
         IsActive = true;
-        UpdatedAtUtc = DateTime.UtcNow;
+        UpdatedAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
     }
 
-    public void Deactivate()
+    public void Deactivate(TimeProvider? timeProvider = null)
     {
         if (!IsActive) return;
         IsActive = false;
-        UpdatedAtUtc = DateTime.UtcNow;
+        UpdatedAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
     }
 
     private void SetFullName(string name)

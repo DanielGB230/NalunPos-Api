@@ -21,7 +21,7 @@ public class CashRegister : AggregateRoot<Guid>, ITenantOwnedEntity
     {
     }
 
-    private CashRegister(Guid id, Guid tenantId, Guid branchId, string name, string serialNumber) : base(id)
+    private CashRegister(Guid id, Guid tenantId, Guid branchId, string name, string serialNumber, TimeProvider? timeProvider = null) : base(id)
     {
         TenantId = TenantGuard.RequireTenantId(tenantId, "una caja");
 
@@ -31,22 +31,22 @@ public class CashRegister : AggregateRoot<Guid>, ITenantOwnedEntity
         SetName(name);
         SerialNumber = serialNumber?.Trim().ToUpperInvariant() ?? string.Empty;
         IsActive = true;
-        CreatedAtUtc = DateTime.UtcNow;
+        CreatedAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
     }
 
-    public static CashRegister Create(Guid tenantId, Guid branchId, string name, string serialNumber = "")
+    public static CashRegister Create(Guid tenantId, Guid branchId, string name, string serialNumber = "", TimeProvider? timeProvider = null)
     {
-        return new CashRegister(Guid.NewGuid(), tenantId, branchId, name, serialNumber);
+        return new CashRegister(Guid.NewGuid(), tenantId, branchId, name, serialNumber, timeProvider);
     }
 
-    public void UpdateDetails(string name, string serialNumber)
+    public void UpdateDetails(string name, string serialNumber, TimeProvider? timeProvider = null)
     {
         SetName(name);
         SerialNumber = serialNumber?.Trim().ToUpperInvariant() ?? string.Empty;
-        UpdatedAtUtc = DateTime.UtcNow;
+        UpdatedAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
     }
 
-    public void SetCurrentSession(Guid sessionId)
+    public void SetCurrentSession(Guid sessionId, TimeProvider? timeProvider = null)
     {
         if (CurrentSessionId.HasValue && CurrentSessionId.Value != sessionId)
         {
@@ -54,22 +54,22 @@ public class CashRegister : AggregateRoot<Guid>, ITenantOwnedEntity
         }
 
         CurrentSessionId = sessionId;
-        UpdatedAtUtc = DateTime.UtcNow;
+        UpdatedAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
     }
 
-    public void ClearCurrentSession()
+    public void ClearCurrentSession(TimeProvider? timeProvider = null)
     {
         CurrentSessionId = null;
-        UpdatedAtUtc = DateTime.UtcNow;
+        UpdatedAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
     }
 
-    public void Activate()
+    public void Activate(TimeProvider? timeProvider = null)
     {
         IsActive = true;
-        UpdatedAtUtc = DateTime.UtcNow;
+        UpdatedAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
     }
 
-    public void Deactivate()
+    public void Deactivate(TimeProvider? timeProvider = null)
     {
         if (CurrentSessionId.HasValue)
         {
@@ -77,7 +77,7 @@ public class CashRegister : AggregateRoot<Guid>, ITenantOwnedEntity
         }
 
         IsActive = false;
-        UpdatedAtUtc = DateTime.UtcNow;
+        UpdatedAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
     }
 
     private void SetName(string name)

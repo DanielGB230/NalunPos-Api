@@ -31,7 +31,8 @@ public class CashRegisterSession : AggregateRoot<Guid>, ITenantOwnedEntity
         Guid cashRegisterId,
         Guid userId,
         Money initialAmount,
-        string? notes) : base(id)
+        string? notes,
+        TimeProvider? timeProvider = null) : base(id)
     {
         if (cashRegisterId == Guid.Empty)
         {
@@ -47,7 +48,7 @@ public class CashRegisterSession : AggregateRoot<Guid>, ITenantOwnedEntity
         UserId = userId;
         InitialAmount = initialAmount ?? throw new ArgumentNullException(nameof(initialAmount));
         Status = SessionStatus.Open;
-        OpenedAtUtc = DateTime.UtcNow;
+        OpenedAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
         Notes = notes?.Trim();
 
         RaiseDomainEvent(new CashRegisterSessionOpenedDomainEvent(
@@ -63,12 +64,13 @@ public class CashRegisterSession : AggregateRoot<Guid>, ITenantOwnedEntity
         Guid cashRegisterId,
         Guid userId,
         Money initialAmount,
-        string? notes = null)
+        string? notes = null,
+        TimeProvider? timeProvider = null)
     {
-        return new CashRegisterSession(Guid.NewGuid(), cashRegisterId, userId, initialAmount, notes);
+        return new CashRegisterSession(Guid.NewGuid(), cashRegisterId, userId, initialAmount, notes, timeProvider);
     }
 
-    public void Close(Money actualFinalAmount, Money expectedFinalAmount, string? notes = null)
+    public void Close(Money actualFinalAmount, Money expectedFinalAmount, string? notes = null, TimeProvider? timeProvider = null)
     {
         if (Status == SessionStatus.Closed)
         {
@@ -78,7 +80,7 @@ public class CashRegisterSession : AggregateRoot<Guid>, ITenantOwnedEntity
         ActualFinalAmount = actualFinalAmount ?? throw new ArgumentNullException(nameof(actualFinalAmount));
         ExpectedFinalAmount = expectedFinalAmount ?? throw new ArgumentNullException(nameof(expectedFinalAmount));
         Status = SessionStatus.Closed;
-        ClosedAtUtc = DateTime.UtcNow;
+        ClosedAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
 
         if (!string.IsNullOrWhiteSpace(notes))
         {

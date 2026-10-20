@@ -34,7 +34,8 @@ public class Container : AggregateRoot<Guid>, ITenantOwnedEntity
         Guid tenantId,
         Guid warehouseId,
         string name,
-        Guid? parentContainerId) : base(id)
+        Guid? parentContainerId,
+        TimeProvider? timeProvider = null) : base(id)
     {
         if (tenantId == Guid.Empty)
             throw new DomainException("El ID del tenant es requerido para crear un contenedor.");
@@ -47,16 +48,17 @@ public class Container : AggregateRoot<Guid>, ITenantOwnedEntity
         SetName(name);
         ParentContainerId = parentContainerId;
         IsActive = true;
-        CreatedAtUtc = DateTime.UtcNow;
+        CreatedAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
     }
 
     public static Container Create(
         Guid tenantId,
         Guid warehouseId,
         string name,
-        Guid? parentContainerId = null)
+        Guid? parentContainerId = null,
+        TimeProvider? timeProvider = null)
     {
-        return new Container(Guid.NewGuid(), tenantId, warehouseId, name, parentContainerId);
+        return new Container(Guid.NewGuid(), tenantId, warehouseId, name, parentContainerId, timeProvider);
     }
 
     public bool IsRootContainer => ParentContainerId is null;

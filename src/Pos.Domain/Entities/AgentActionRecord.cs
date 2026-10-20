@@ -32,7 +32,8 @@ public class AgentActionRecord : AggregateRoot<Guid>, ITenantOwnedEntity
         string agentId,
         string proposedActionType,
         string payloadJson,
-        RiskLevel riskLevel) : base(id)
+        RiskLevel riskLevel,
+        TimeProvider? timeProvider = null) : base(id)
     {
         if (tenantId == Guid.Empty)
         {
@@ -60,7 +61,7 @@ public class AgentActionRecord : AggregateRoot<Guid>, ITenantOwnedEntity
         PayloadJson = payloadJson.Trim();
         RiskLevel = riskLevel;
         Status = AgentActionStatus.PendingApproval;
-        CreatedAtUtc = DateTime.UtcNow;
+        CreatedAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
 
         RaiseDomainEvent(new AgentActionProposedDomainEvent(
             Id, AgentId, ProposedActionType, RiskLevel, CreatedAtUtc));
@@ -71,12 +72,13 @@ public class AgentActionRecord : AggregateRoot<Guid>, ITenantOwnedEntity
         string agentId,
         string proposedActionType,
         string payloadJson,
-        RiskLevel riskLevel)
+        RiskLevel riskLevel,
+        TimeProvider? timeProvider = null)
     {
-        return new AgentActionRecord(Guid.NewGuid(), tenantId, agentId, proposedActionType, payloadJson, riskLevel);
+        return new AgentActionRecord(Guid.NewGuid(), tenantId, agentId, proposedActionType, payloadJson, riskLevel, timeProvider);
     }
 
-    public void Approve(Guid reviewerUserId)
+    public void Approve(Guid reviewerUserId, TimeProvider? timeProvider = null)
     {
         if (reviewerUserId == Guid.Empty)
         {
@@ -90,12 +92,12 @@ public class AgentActionRecord : AggregateRoot<Guid>, ITenantOwnedEntity
 
         Status = AgentActionStatus.Approved;
         ReviewedByUserId = reviewerUserId;
-        ReviewedAtUtc = DateTime.UtcNow;
+        ReviewedAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
 
         RaiseDomainEvent(new AgentActionApprovedDomainEvent(Id, reviewerUserId, ReviewedAtUtc.Value));
     }
 
-    public void Reject(Guid reviewerUserId)
+    public void Reject(Guid reviewerUserId, TimeProvider? timeProvider = null)
     {
         if (reviewerUserId == Guid.Empty)
         {
@@ -109,7 +111,7 @@ public class AgentActionRecord : AggregateRoot<Guid>, ITenantOwnedEntity
 
         Status = AgentActionStatus.Rejected;
         ReviewedByUserId = reviewerUserId;
-        ReviewedAtUtc = DateTime.UtcNow;
+        ReviewedAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
 
         RaiseDomainEvent(new AgentActionRejectedDomainEvent(Id, reviewerUserId, ReviewedAtUtc.Value));
     }

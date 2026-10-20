@@ -30,7 +30,8 @@ public class AuditLog : Entity<Guid>, IPlatformScopedEntity
         AuditAction action,
         Guid? userId,
         string? oldValues,
-        string? newValues) : base(id)
+        string? newValues,
+        TimeProvider? timeProvider = null) : base(id)
     {
         if (string.IsNullOrWhiteSpace(tableName))
         {
@@ -49,7 +50,7 @@ public class AuditLog : Entity<Guid>, IPlatformScopedEntity
         UserId = userId;
         OldValues = oldValues;
         NewValues = newValues;
-        TimestampUtc = DateTime.UtcNow;
+        TimestampUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
     }
 
     public static AuditLog Create(
@@ -59,8 +60,9 @@ public class AuditLog : Entity<Guid>, IPlatformScopedEntity
         AuditAction action,
         Guid? userId = null,
         string? oldValues = null,
-        string? newValues = null)
+        string? newValues = null,
+        TimeProvider? timeProvider = null)
     {
-        return new AuditLog(Guid.NewGuid(), tenantId, tableName, recordId, action, userId, oldValues, newValues);
+        return new AuditLog(Guid.NewGuid(), tenantId, tableName, recordId, action, userId, oldValues, newValues, timeProvider);
     }
 }

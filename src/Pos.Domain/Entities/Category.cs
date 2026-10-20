@@ -22,43 +22,43 @@ public class Category : AggregateRoot<Guid>, ITenantOwnedEntity
     {
     }
 
-    private Category(Guid id, Guid tenantId, string name, string? description) : base(id)
+    private Category(Guid id, Guid tenantId, string name, string? description, TimeProvider? timeProvider = null) : base(id)
     {
         TenantId = TenantGuard.RequireTenantId(tenantId, "una categoría");
         SetName(name);
         Description = description?.Trim();
         IsActive = true;
-        CreatedAtUtc = DateTime.UtcNow;
+        CreatedAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
 
         RaiseDomainEvent(new CategoryCreatedDomainEvent(Id, Name, CreatedAtUtc));
     }
 
-    public static Category Create(Guid tenantId, string name, string? description = null)
+    public static Category Create(Guid tenantId, string name, string? description = null, TimeProvider? timeProvider = null)
     {
-        return new Category(Guid.NewGuid(), tenantId, name, description);
+        return new Category(Guid.NewGuid(), tenantId, name, description, timeProvider);
     }
 
-    public void Update(string name, string? description)
+    public void Update(string name, string? description, TimeProvider? timeProvider = null)
     {
         SetName(name);
         Description = description?.Trim();
-        UpdatedAtUtc = DateTime.UtcNow;
+        UpdatedAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
 
         RaiseDomainEvent(new CategoryUpdatedDomainEvent(Id, Name, UpdatedAtUtc.Value));
     }
 
-    public void Activate()
+    public void Activate(TimeProvider? timeProvider = null)
     {
         if (IsActive) return;
         IsActive = true;
-        UpdatedAtUtc = DateTime.UtcNow;
+        UpdatedAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
     }
 
-    public void Deactivate()
+    public void Deactivate(TimeProvider? timeProvider = null)
     {
         if (!IsActive) return;
         IsActive = false;
-        UpdatedAtUtc = DateTime.UtcNow;
+        UpdatedAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
 
         RaiseDomainEvent(new CategoryDeactivatedDomainEvent(Id, UpdatedAtUtc.Value));
     }

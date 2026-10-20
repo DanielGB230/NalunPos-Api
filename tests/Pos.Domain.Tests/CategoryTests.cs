@@ -54,4 +54,38 @@ public class CategoryTests
         // Act & Assert
         Assert.Throws<DomainException>(() => category.Update("", "Descripción"));
     }
+
+    [Fact]
+    public void CreateAndUpdateCategory_WithDeterministicTimeProvider_ShouldSetExactTimestamps()
+    {
+        // Arrange
+        var createdTime = new DateTimeOffset(2026, 10, 20, 10, 0, 0, TimeSpan.Zero);
+        var updatedTime = new DateTimeOffset(2026, 10, 20, 12, 0, 0, TimeSpan.Zero);
+        var deactivatedTime = new DateTimeOffset(2026, 10, 20, 14, 0, 0, TimeSpan.Zero);
+        var timeProvider = new Common.FakeTimeProvider(createdTime);
+
+        var tenantId = Guid.NewGuid();
+
+        // Act - Create
+        var category = Category.Create(tenantId, "Bebidas", "Gaseosas y Jugos", timeProvider);
+
+        // Assert - Create
+        Assert.Equal(createdTime.UtcDateTime, category.CreatedAtUtc);
+        Assert.Null(category.UpdatedAtUtc);
+
+        // Act - Update
+        timeProvider.SetUtcNow(updatedTime);
+        category.Update("Bebidas y Refrescos", "Gaseosas, Aguas y Jugos", timeProvider);
+
+        // Assert - Update
+        Assert.Equal(updatedTime.UtcDateTime, category.UpdatedAtUtc);
+
+        // Act - Deactivate
+        timeProvider.SetUtcNow(deactivatedTime);
+        category.Deactivate(timeProvider);
+
+        // Assert - Deactivate
+        Assert.False(category.IsActive);
+        Assert.Equal(deactivatedTime.UtcDateTime, category.UpdatedAtUtc);
+    }
 }
