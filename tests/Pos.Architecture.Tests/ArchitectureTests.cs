@@ -777,5 +777,33 @@ public class ArchitectureTests
             $"Violaciones de política Free-First y proveedores de producción detectadas:\n{string.Join("\n", violations)}"
         );
     }
+
+    [Fact]
+    public void Options_In_Api_Must_Use_ValidateOnStart_And_Not_Direct_Configure()
+    {
+        var rootDir = SolutionDirectory.Root;
+        var apiDir = Path.Combine(rootDir, "src", "Pos.Api");
+        var csFiles = Directory.GetFiles(apiDir, "*.cs", SearchOption.AllDirectories);
+
+        var violations = new List<string>();
+
+        foreach (var file in csFiles)
+        {
+            var content = File.ReadAllText(file);
+            var relativePath = Path.GetRelativePath(rootDir, file);
+
+            // Detectar llamadas a .Configure<T>( sin ValidateOnStart
+            var matches = System.Text.RegularExpressions.Regex.Matches(content, @"\.Configure\s*<([^>]+)>\s*\(");
+            foreach (System.Text.RegularExpressions.Match match in matches)
+            {
+                violations.Add($"{relativePath}: Uso no autorizado de direct '.Configure<{match.Groups[1].Value}>()'. Debe usarse '.AddOptions<{match.Groups[1].Value}>().Bind(...).ValidateDataAnnotations().ValidateOnStart()'.");
+            }
+        }
+
+        Assert.True(
+            violations.Count == 0,
+            $"Se encontraron usos directos de Configure<T>() en Pos.Api sin ValidateOnStart:\n{string.Join("\n", violations)}"
+        );
+    }
 }
 

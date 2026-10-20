@@ -25,9 +25,16 @@ builder.Services
     .AddApplicationServices()
     .AddInfrastructureServices(builder.Configuration);
 
-// 5. Registro de configuración para OutboxWorker e InvoiceReconciliation
-builder.Services.Configure<OutboxSettings>(builder.Configuration.GetSection(OutboxSettings.SectionName));
-builder.Services.Configure<InvoiceReconciliationSettings>(builder.Configuration.GetSection("InvoiceReconciliation"));
+// 5. Registro de configuración para OutboxWorker e InvoiceReconciliation con ValidateOnStart
+builder.Services.AddOptions<OutboxSettings>()
+    .Bind(builder.Configuration.GetSection(OutboxSettings.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+
+builder.Services.AddOptions<InvoiceReconciliationSettings>()
+    .Bind(builder.Configuration.GetSection("InvoiceReconciliation"))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
 
 // 6. Registro de Background Workers
 builder.Services.AddHostedService<OutboxProcessorBackgroundService>();
