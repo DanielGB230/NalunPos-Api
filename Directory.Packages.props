@@ -1,6 +1,7 @@
 <Project>
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
   </PropertyGroup>
   <ItemGroup Label="API">
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.11" />
@@ -23,7 +24,7 @@
   <ItemGroup Label="Application">
     <PackageVersion Include="FluentValidation" Version="11.11.0" />
     <PackageVersion Include="FluentValidation.DependencyInjectionExtensions" Version="11.11.0" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.12" />
   </ItemGroup>
   <ItemGroup Label="Infrastructure / Persistence">
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.11" />
@@ -38,8 +39,8 @@
   <ItemGroup Label="Infrastructure / DI">
     <PackageVersion Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.11" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.11" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.11" />
-    <PackageVersion Include="Microsoft.Extensions.Options" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.12" />
+    <PackageVersion Include="Microsoft.Extensions.Options" Version="10.0.12" />
   </ItemGroup>
   <ItemGroup Label="Testing — shared">
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.13.0" />
@@ -51,7 +52,7 @@
   </ItemGroup>
   <ItemGroup Label="Testing — Architecture">
     <!-- Microsoft.CodeAnalysis.CSharp: Licencia MIT -->
-    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="5.9.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" />
     <PackageVersion Include="TngTech.ArchUnitNET.xUnit" Version="0.11.3" />
   </ItemGroup>
 </Project>

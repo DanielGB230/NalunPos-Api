@@ -37,9 +37,4 @@
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
 
-  <ItemGroup>
-    <!-- Fijar transitivamente System.Security.Cryptography.Pkcs en versión segura (CPM) para resolver vulnerabilidad NU1902/NU1903 de Microsoft.Data.SqlClient -->
-    <PackageReference Include="System.Security.Cryptography.Pkcs" />
-  </ItemGroup>
-
 </Project>

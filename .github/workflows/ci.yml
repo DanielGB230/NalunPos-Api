@@ -35,7 +35,7 @@ jobs:
         with:
           global-json-file: global.json
           cache: true
-          cache-dependency-path: '**/packages.lock.json'
+          cache-dependency-path: 'Directory.Packages.props'
 
       - name: Restore Dependencies
         run: dotnet restore Pos.slnx

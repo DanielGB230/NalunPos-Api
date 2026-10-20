@@ -54,12 +54,6 @@ public static class DependencyInjection
                         .CommandTimeout(30)
                         .EnableRetryOnFailure(maxRetryCount: 3));
             }
-            else
-            {
-                // InMemory para tests de integración (nunca en producción)
-                options.UseInMemoryDatabase("NalunPosDb_Test");
-            }
-
         });
 
         // Factory override para inyectar el currentTenantId en cada instancia de PosDbContext.

@@ -725,8 +725,22 @@ public class ArchitectureTests
         // c) Proyectos en src/ NO deben referenciar Sqlite ni proveedores no autorizados para producción (Hallazgo H11)
         var forbiddenSrcProviders = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            "Microsoft.EntityFrameworkCore.Sqlite"
+            "Microsoft.EntityFrameworkCore.Sqlite",
+            "Microsoft.EntityFrameworkCore.InMemory"
         };
+
+        // d) Pos.Domain y Directory.Build.props deben tener 0 PackageReference
+        var domainCsproj = Path.Combine(rootDir, "src", "Pos.Domain", "Pos.Domain.csproj");
+        Assert.True(File.Exists(domainCsproj), $"No se encontró '{domainCsproj}'.");
+        var domainDoc = System.Xml.Linq.XDocument.Load(domainCsproj);
+        var domainPackageRefs = domainDoc.Descendants("PackageReference").ToList();
+        Assert.True(domainPackageRefs.Count == 0, $"Pos.Domain.csproj no debe contener PackageReference (debe tener 0). Encontrados: {domainPackageRefs.Count}.");
+
+        var buildProps = Path.Combine(rootDir, "Directory.Build.props");
+        Assert.True(File.Exists(buildProps), $"No se encontró '{buildProps}'.");
+        var buildPropsDoc = System.Xml.Linq.XDocument.Load(buildProps);
+        var buildPropsPackageRefs = buildPropsDoc.Descendants("PackageReference").ToList();
+        Assert.True(buildPropsPackageRefs.Count == 0, $"Directory.Build.props no debe contener PackageReference (debe tener 0). Encontrados: {buildPropsPackageRefs.Count}.");
 
         var srcDir = Path.Combine(rootDir, "src");
         var csprojFiles = Directory.GetFiles(srcDir, "*.csproj", SearchOption.AllDirectories);
