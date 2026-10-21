@@ -1073,5 +1073,81 @@ public class ArchitectureTests
             $"Se detectaron archivos ADR con nombres inválidos (deben ser estrictamente minúsculas kebab-case):\n{string.Join("\n", violations)}"
         );
     }
+
+    [Fact]
+    public void No_Custom_Exception_Handling_Middleware_And_Must_Use_Native_IExceptionHandler()
+    {
+        var rootDir = SolutionDirectory.Root;
+        var apiDir = Path.Combine(rootDir, "src", "Pos.Api");
+        var csFiles = Directory.GetFiles(apiDir, "*.cs", SearchOption.AllDirectories);
+
+        var middlewareViolations = new List<string>();
+
+        foreach (var file in csFiles)
+        {
+            var fileName = Path.GetFileNameWithoutExtension(file);
+            if (fileName.Contains("Exception", StringComparison.OrdinalIgnoreCase) &&
+                fileName.Contains("Middleware", StringComparison.OrdinalIgnoreCase))
+            {
+                middlewareViolations.Add($"Se encontró un middleware artesanal de excepciones: {Path.GetRelativePath(rootDir, file)}");
+            }
+
+            var text = File.ReadAllText(file);
+            var classMatch = System.Text.RegularExpressions.Regex.Match(text, @"class\s+(\w*Exception\w*Middleware)\b");
+            if (classMatch.Success)
+            {
+                middlewareViolations.Add($"Se encontró la clase middleware artesanal '{classMatch.Groups[1].Value}' en: {Path.GetRelativePath(rootDir, file)}");
+            }
+        }
+
+        Assert.True(
+            middlewareViolations.Count == 0,
+            $"Violaciones de middleware artesanal de manejo de excepciones detectadas:\n{string.Join("\n", middlewareViolations)}"
+        );
+
+        var apiAssembly = typeof(Program).Assembly;
+        var exceptionHandlerTypes = apiAssembly.GetTypes()
+            .Where(t => !t.IsAbstract && typeof(Microsoft.AspNetCore.Diagnostics.IExceptionHandler).IsAssignableFrom(t))
+            .ToList();
+
+        Assert.True(
+            exceptionHandlerTypes.Count > 0,
+            "Pos.Api debe registrar al menos una implementación concreta de Microsoft.AspNetCore.Diagnostics.IExceptionHandler (.NET 10 nativo)."
+        );
+    }
+
+    [Fact]
+    public void All_Settings_And_Options_Classes_In_Api_Must_Reside_Exclusively_In_Options_Directory()
+    {
+        var rootDir = SolutionDirectory.Root;
+        var apiDir = Path.Combine(rootDir, "src", "Pos.Api");
+        var optionsDir = Path.GetFullPath(Path.Combine(apiDir, "Options"));
+        var csFiles = Directory.GetFiles(apiDir, "*.cs", SearchOption.AllDirectories);
+
+        var violations = new List<string>();
+
+        foreach (var file in csFiles)
+        {
+            var fullPath = Path.GetFullPath(file);
+            var isInsideOptions = fullPath.StartsWith(optionsDir, StringComparison.OrdinalIgnoreCase);
+
+            var text = File.ReadAllText(file);
+            var matches = System.Text.RegularExpressions.Regex.Matches(text, @"(?:public|internal|sealed)\s+(?:sealed\s+)?(?:class|record)\s+(\w*(?:Settings|Options))\b");
+
+            foreach (System.Text.RegularExpressions.Match match in matches)
+            {
+                var typeName = match.Groups[1].Value;
+                if (!isInsideOptions)
+                {
+                    violations.Add($"La clase/record de opciones '{typeName}' en '{Path.GetRelativePath(rootDir, file)}' no reside en 'src/Pos.Api/Options/'.");
+                }
+            }
+        }
+
+        Assert.True(
+            violations.Count == 0,
+            $"Se encontraron clases de Settings/Options fuera de 'src/Pos.Api/Options/':\n{string.Join("\n", violations)}"
+        );
+    }
 }
 

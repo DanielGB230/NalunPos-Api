@@ -27,7 +27,9 @@ public class AuthenticationEndpointTests : IClassFixture<CustomWebApplicationFac
     {
         "/api/v1/auth/login",
         "/api/v1/auth/refresh",
-        "/api/v1/auth/register"
+        "/api/v1/auth/register",
+        "/health/live",
+        "/health/ready"
     };
 
     [Fact]
@@ -133,5 +135,35 @@ public class AuthenticationEndpointTests : IClassFixture<CustomWebApplicationFac
         // Assert
         Assert.NotEqual(HttpStatusCode.Unauthorized, response.StatusCode);
         Assert.NotEqual(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task HealthLive_WhenCalledWithoutToken_ShouldReturn200Ok()
+    {
+        // Arrange
+        var client = _factory.CreateClient();
+
+        // Act
+        var response = await client.GetAsync("/health/live");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var content = await response.Content.ReadAsStringAsync();
+        Assert.Contains("Healthy", content);
+    }
+
+    [Fact]
+    public async Task HealthReady_WhenCalledWithoutToken_ShouldReturn200Ok()
+    {
+        // Arrange
+        var client = _factory.CreateClient();
+
+        // Act
+        var response = await client.GetAsync("/health/ready");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var content = await response.Content.ReadAsStringAsync();
+        Assert.Contains("Healthy", content);
     }
 }

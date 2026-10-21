@@ -29,4 +29,21 @@ public static class TenantGuard
 
         return tenantId;
     }
+
+    /// <summary>
+    /// Valida que el identificador de tenant no sea vacío (<see cref="Guid.Empty"/> ni centinela de plataforma).
+    /// Lanza <see cref="DomainException"/> si la validación falla.
+    /// </summary>
+    /// <param name="tenantId">Identificador del tenant a validar.</param>
+    /// <param name="paramName">Nombre del parámetro o contexto para el mensaje.</param>
+    /// <returns>El identificador de tenant validado.</returns>
+    public static Guid EnsureNotEmpty(Guid tenantId, string paramName = "tenantId")
+    {
+        if (tenantId == PlatformScope.TenantId)
+        {
+            throw new DomainException($"El identificador de tenant no puede estar vacío ({paramName}).");
+        }
+
+        return tenantId;
+    }
 }

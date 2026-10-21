@@ -63,6 +63,9 @@ builder.Services.AddCustomProblemDetails();
 // 10. Configuración de OpenAPI y Scalar
 builder.Services.AddCustomOpenApi();
 
+// 11. Health Checks nativos (.NET 10 / H13)
+builder.Services.AddCustomHealthChecks();
+
 var app = builder.Build();
 
 // Inicialización de Base de Datos y Seeder
@@ -113,6 +116,7 @@ app.UseAuthentication();
 app.UseMiddleware<TenantResolutionMiddleware>();
 app.UseAuthorization();
 app.UseRateLimiter();
+app.MapCustomHealthChecks();
 app.MapControllers();
 
 app.Run();

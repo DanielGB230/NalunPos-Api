@@ -6,6 +6,7 @@ using Microsoft.Extensions.Caching.Hybrid;
 using Pos.Application.Common.Authorization;
 using Pos.Domain.Entities;
 using Pos.Domain.Interfaces;
+using Pos.Infrastructure.Caching;
 
 namespace Pos.Infrastructure.Authentication;
 
@@ -22,7 +23,7 @@ public sealed class CurrentUserPermissions : ICurrentUserPermissions
 
     public async Task<IReadOnlySet<string>> GetPermissionsAsync(Guid? tenantId, Guid roleId, CancellationToken cancellationToken = default)
     {
-        string cacheKey = $"permissions:{tenantId?.ToString() ?? "global"}:{roleId}";
+        string cacheKey = TenantCacheKeys.PermissionsForRole(tenantId, roleId);
 
         var entryOptions = new HybridCacheEntryOptions
         {

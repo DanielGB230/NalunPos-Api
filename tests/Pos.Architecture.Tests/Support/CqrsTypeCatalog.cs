@@ -50,12 +50,8 @@ public static class CqrsTypeCatalog
 
     public static bool IsExemptQuery(Type queryType)
     {
-        var ctor = GetPrimaryConstructor(queryType);
-        if (ctor == null) return true;
-        var parameters = ctor.GetParameters();
-        if (parameters.Length == 0) return true;
-
-        return parameters.All(p => p.ParameterType == typeof(bool) || p.ParameterType == typeof(bool?));
+        // En Fase 7.6B: El 100% de los queries tienen validador. Cero excepciones autorizadas.
+        return false;
     }
 
     public static bool IsPaginatedQuery(Type queryType)
