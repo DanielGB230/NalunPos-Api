@@ -972,5 +972,106 @@ public class ArchitectureTests
             );
         }
     }
+
+    [Fact]
+    public void Src_Must_Not_Contain_Any_GitKeep_Files()
+    {
+        var srcDir = Path.Combine(SolutionDirectory.Root, "src");
+        var gitkeepFiles = Directory.GetFiles(srcDir, ".gitkeep", SearchOption.AllDirectories)
+            .Select(f => Path.GetRelativePath(SolutionDirectory.Root, f))
+            .ToList();
+
+        Assert.True(
+            gitkeepFiles.Count == 0,
+            $"Se encontraron archivos '.gitkeep' en 'src/':\n{string.Join("\n", gitkeepFiles)}"
+        );
+    }
+
+    [Fact]
+    public void Repository_Interfaces_Must_Reside_Only_In_PosDomain_Interfaces()
+    {
+        var rootDir = SolutionDirectory.Root;
+        var srcDir = Path.Combine(rootDir, "src");
+        var canonicalInterfacesDir = Path.GetFullPath(Path.Combine(srcDir, "Pos.Domain", "Interfaces"));
+
+        var allCsFiles = Directory.GetFiles(srcDir, "*.cs", SearchOption.AllDirectories);
+        var violations = new List<string>();
+
+        foreach (var file in allCsFiles)
+        {
+            var fileDir = Path.GetDirectoryName(file);
+            var isCanonicalDir = string.Equals(fileDir, canonicalInterfacesDir, StringComparison.OrdinalIgnoreCase);
+
+            var lines = File.ReadAllLines(file);
+            foreach (var line in lines)
+            {
+                var match = System.Text.RegularExpressions.Regex.Match(line, @"public\s+interface\s+(I\w+Repository)\b");
+                if (match.Success)
+                {
+                    var interfaceName = match.Groups[1].Value;
+                    if (!isCanonicalDir)
+                    {
+                        violations.Add($"Interfaz de repositorio '{interfaceName}' declarada fuera de 'Pos.Domain/Interfaces/' en: '{Path.GetRelativePath(rootDir, file)}'");
+                    }
+                }
+            }
+        }
+
+        Assert.True(
+            violations.Count == 0,
+            $"Se encontraron interfaces de repositorio fuera de Pos.Domain/Interfaces:\n{string.Join("\n", violations)}"
+        );
+    }
+
+    [Fact]
+    public void DomainEvents_Files_Must_Follow_Events_Convention()
+    {
+        var rootDir = SolutionDirectory.Root;
+        var domainEventsDir = Path.Combine(rootDir, "src", "Pos.Domain", "DomainEvents");
+
+        Assert.True(Directory.Exists(domainEventsDir), $"No existe el directorio '{domainEventsDir}'.");
+
+        var csFiles = Directory.GetFiles(domainEventsDir, "*.cs")
+            .Select(Path.GetFileName)
+            .ToList();
+
+        var nonConformingFiles = csFiles
+            .Where(f => !f!.EndsWith("Events.cs", StringComparison.Ordinal))
+            .ToList();
+
+        Assert.True(
+            nonConformingFiles.Count == 0,
+            $"Se encontraron archivos en DomainEvents que no siguen la convención '*Events.cs':\n{string.Join("\n", nonConformingFiles)}"
+        );
+    }
+
+    [Fact]
+    public void ADR_Files_Must_Be_Strictly_Lowercase_Kebab_Case()
+    {
+        var rootDir = SolutionDirectory.Root;
+        var adrDir = Path.Combine(rootDir, "docs", "architecture", "adr");
+
+        Assert.True(Directory.Exists(adrDir), $"No existe el directorio '{adrDir}'.");
+
+        var mdFiles = Directory.GetFiles(adrDir, "*.md")
+            .Select(Path.GetFileName)
+            .ToList();
+
+        var violations = new List<string>();
+        var kebabRegex = new System.Text.RegularExpressions.Regex(@"^[a-z0-9]+(-[a-z0-9]+)*\.md$");
+
+        foreach (var file in mdFiles)
+        {
+            if (file != null && !kebabRegex.IsMatch(file))
+            {
+                violations.Add($"El archivo ADR '{file}' no sigue la convención estricta en minúsculas kebab-case.");
+            }
+        }
+
+        Assert.True(
+            violations.Count == 0,
+            $"Se detectaron archivos ADR con nombres inválidos (deben ser estrictamente minúsculas kebab-case):\n{string.Join("\n", violations)}"
+        );
+    }
 }
 
