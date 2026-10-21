@@ -48,6 +48,11 @@ public class Role : AggregateRoot<Guid>, IPlatformScopedEntity
         return new Role(Guid.NewGuid(), tenantId, name, description, permissions, timeProvider);
     }
 
+    public static Role CreatePlatformRole(Guid id, Guid tenantId, string name, string? description = null, IEnumerable<string>? permissions = null, TimeProvider? timeProvider = null)
+    {
+        return new Role(id, tenantId, name, description, permissions, timeProvider);
+    }
+
     public void UpdatePermissions(IEnumerable<string> permissions)
     {
         _permissions.Clear();

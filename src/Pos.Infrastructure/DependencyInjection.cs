@@ -57,6 +57,7 @@ public static class DependencyInjection
                         .CommandTimeout(30)
                         .EnableRetryOnFailure(maxRetryCount: 3));
             }
+            options.AddPosSaveChangesInterceptors(provider);
         });
 
         // Factory override para inyectar el currentTenantId en cada instancia de PosDbContext.
@@ -65,16 +66,13 @@ public static class DependencyInjection
         services.AddScoped<PosDbContext>(provider =>
         {
             var options = provider.GetRequiredService<DbContextOptions<PosDbContext>>();
-            var auditInterceptor = provider.GetRequiredService<AuditSaveChangesInterceptor>();
-            var outboxInterceptor = provider.GetRequiredService<InsertOutboxMessagesInterceptor>();
-            var tenantInterceptor = provider.GetRequiredService<TenantSaveChangesInterceptor>();
             var sessionContextInterceptor = provider.GetRequiredService<TenantSessionContextInterceptor>();
             var tenantContext = provider.GetService<ICurrentTenantContext>();
 
             // Extracción del TenantId: desacopla PosDbContext de la infraestructura HTTP
             Guid? currentTenantId = tenantContext?.TenantId;
 
-            return new PosDbContext(options, auditInterceptor, outboxInterceptor, tenantInterceptor, sessionContextInterceptor, currentTenantId);
+            return new PosDbContext(options, sessionContextInterceptor: sessionContextInterceptor, currentTenantId: currentTenantId);
         });
 
         // ── Repositorios y UnitOfWork ─────────────────────────────────────────

@@ -53,11 +53,7 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
             services.AddDbContext<PosDbContext>((provider, options) =>
             {
                 options.UseInMemoryDatabase("NalunPosDb_Test");
-                options.AddInterceptors(
-                    provider.GetRequiredService<TenantSaveChangesInterceptor>(),
-                    provider.GetRequiredService<AuditSaveChangesInterceptor>(),
-                    provider.GetRequiredService<InsertOutboxMessagesInterceptor>()
-                );
+                options.AddPosSaveChangesInterceptors(provider);
             });
         });
     }

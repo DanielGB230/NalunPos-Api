@@ -873,5 +873,58 @@ public class ArchitectureTests
             Assert.True(exists, $"Falta el ADR requerido '{prefix}*.md' en '{canonicalAdrDir}'.");
         }
     }
+
+    [Fact]
+    public void SaveChanges_Interceptors_Must_Be_Registered_Only_Via_Canonical_Extension_And_Seeders_Must_Have_Zero_Reflection()
+    {
+        var rootDir = SolutionDirectory.Root;
+        var srcDir = Path.Combine(rootDir, "src");
+        var seedDir = Path.Combine(srcDir, "Pos.Infrastructure", "Persistence", "Seed");
+
+        // 1. src/Pos.Infrastructure/Persistence/Seed/ debe tener 0 usos de System.Reflection / BindingFlags
+        if (Directory.Exists(seedDir))
+        {
+            var seedFiles = Directory.GetFiles(seedDir, "*.cs", SearchOption.AllDirectories);
+            var seedViolations = new List<string>();
+
+            foreach (var file in seedFiles)
+            {
+                var text = File.ReadAllText(file);
+                if (text.Contains("BindingFlags") || text.Contains("System.Reflection") || text.Contains("GetConstructor(") || text.Contains("GetProperty("))
+                {
+                    seedViolations.Add($"Uso indebido de reflexión en seeder: {Path.GetFileName(file)}");
+                }
+            }
+
+            Assert.True(seedViolations.Count == 0,
+                $"Se detectó uso indebido de reflexión en seeders:\n{string.Join("\n", seedViolations)}");
+        }
+
+        // 2. Fuera de PosDbContextInterceptorExtensions.cs ningún archivo debe registrar manualmente la tripleta de interceptores
+        var allSourceFiles = Directory.GetFiles(srcDir, "*.cs", SearchOption.AllDirectories)
+            .Concat(Directory.GetFiles(Path.Combine(rootDir, "tests"), "*.cs", SearchOption.AllDirectories))
+            .Where(f => !Path.GetFileName(f).Equals("PosDbContextInterceptorExtensions.cs", StringComparison.OrdinalIgnoreCase))
+            .Where(f => !Path.GetFileName(f).Equals("ArchitectureTests.cs", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        var registrationViolations = new List<string>();
+        foreach (var file in allSourceFiles)
+        {
+            var text = File.ReadAllText(file);
+            if (text.Contains("AddInterceptors") &&
+                text.Contains("TenantSaveChangesInterceptor") &&
+                text.Contains("AuditSaveChangesInterceptor") &&
+                text.Contains("InsertOutboxMessagesInterceptor"))
+            {
+                if (Path.GetFileName(file).Equals("PosDbContext.cs", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                registrationViolations.Add($"Registro manual de la tripleta de interceptores en: {Path.GetFileName(file)}");
+            }
+        }
+
+        Assert.True(registrationViolations.Count == 0,
+            $"Fuera de PosDbContextInterceptorExtensions.cs ningún archivo debe registrar manualmente la tripleta de interceptores de SaveChanges:\n{string.Join("\n", registrationViolations)}");
+    }
 }
 

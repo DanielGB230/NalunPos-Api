@@ -85,23 +85,11 @@ public sealed partial class SuperAdminSeeder
             
         if (superAdminRole == null)
         {
-            var pType = typeof(Role);
-            var constructor = pType.GetConstructor(
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance,
-                null,
-                new[] { typeof(Guid), typeof(Guid), typeof(string), typeof(string), typeof(IEnumerable<string>) },
-                null);
-                
-            if (constructor != null)
-            {
-                superAdminRole = (Role)constructor.Invoke(new object[] { Role.SuperAdminRoleId, PlatformScope.TenantId, "SuperAdmin", "Administrador Global del Sistema", Array.Empty<string>() });
-            }
-            else
-            {
-                // Fallback if reflection fails, this shouldn't happen but just in case
-                superAdminRole = Role.Create(PlatformScope.TenantId, "SuperAdmin", "Administrador Global");
-                typeof(Role).GetProperty("Id")?.SetValue(superAdminRole, Role.SuperAdminRoleId);
-            }
+            superAdminRole = Role.CreatePlatformRole(
+                Role.SuperAdminRoleId,
+                PlatformScope.TenantId,
+                "SuperAdmin",
+                "Administrador Global del Sistema");
             await _context.Set<Role>().AddAsync(superAdminRole, cancellationToken);
         }
 
