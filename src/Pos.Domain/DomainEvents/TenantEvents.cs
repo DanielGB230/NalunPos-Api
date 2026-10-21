@@ -1,4 +1,5 @@
 using Pos.Domain.Common;
+using Pos.Domain.Enums;
 
 namespace Pos.Domain.DomainEvents;
 
@@ -11,3 +12,10 @@ public record TenantCreatedDomainEvent(
     string TaxId,
     DateTime OccurredOnUtc
 ) : IDomainEvent;
+
+public sealed record TenantStatusChangedDomainEvent(
+    Guid TenantId,
+    TenantStatus OldStatus,
+    TenantStatus NewStatus,
+    DateTime OccurredOnUtc
+) : ITenantTargetedDomainEvent;

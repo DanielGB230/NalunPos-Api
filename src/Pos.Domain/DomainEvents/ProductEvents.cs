@@ -1,5 +1,4 @@
 using Pos.Domain.Common;
-using Pos.Domain.ValueObjects;
 
 namespace Pos.Domain.DomainEvents;
 
@@ -27,4 +26,9 @@ public record ProductUpdatedDomainEvent(
     DateTime OccurredOnUtc
 ) : IDomainEvent;
 
-
+public sealed record ProductStatusChangedDomainEvent(
+    Guid ProductId,
+    Guid TenantId,
+    bool IsActive,
+    DateTime OccurredOnUtc
+) : IDomainEvent;

@@ -1,9 +1,7 @@
 using Microsoft.EntityFrameworkCore;
-using Pos.Application.Common.Interfaces;
 using Pos.Domain.Entities;
+using Pos.Domain.Interfaces;
 using Pos.Infrastructure.Persistence.Context;
-
-using Pos.Application.Platform.Tenants.DTOs;
 
 namespace Pos.Infrastructure.Persistence.Repositories;
 
@@ -38,7 +36,7 @@ public class TenantRepository : ITenantRepository
         _context.Tenants.Update(tenant);
     }
 
-    public async Task<(IReadOnlyList<TenantDto> Items, int TotalCount)> GetPagedAsync(
+    public async Task<(IReadOnlyList<Tenant> Items, int TotalCount)> GetPagedAsync(
         int pageNumber,
         int pageSize,
         string? searchTerm,
@@ -61,13 +59,6 @@ public class TenantRepository : ITenantRepository
             .OrderByDescending(t => t.CreatedAtUtc)
             .Skip((pageNumber - 1) * pageSize)
             .Take(pageSize)
-            .Select(t => new TenantDto(
-                t.Id,
-                t.Name,
-                t.TaxId.Value,
-                t.Status.ToString(),
-                t.CreatedAtUtc
-            ))
             .ToListAsync(cancellationToken);
 
         return (items, totalCount);

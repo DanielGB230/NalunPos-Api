@@ -1,4 +1,5 @@
 using Pos.Domain.Common;
+using Pos.Domain.Enums;
 
 namespace Pos.Domain.DomainEvents;
 
@@ -15,5 +16,24 @@ public record PurchaseOrderReceivedDomainEvent(
     Guid PurchaseOrderId,
     string OrderNumber,
     Guid WarehouseId,
+    DateTime OccurredOnUtc
+) : IDomainEvent;
+
+public record PurchaseOrderCancelledDomainEvent(
+    Guid PurchaseOrderId,
+    Guid TenantId,
+    Guid SupplierId,
+    Guid WarehouseId,
+    string OrderNumber,
+    PurchaseOrderStatus PreviousStatus,
+    DateTime OccurredOnUtc
+) : IDomainEvent;
+
+public sealed record PurchaseOrderSentDomainEvent(
+    Guid PurchaseOrderId,
+    Guid TenantId,
+    Guid SupplierId,
+    Guid WarehouseId,
+    string OrderNumber,
     DateTime OccurredOnUtc
 ) : IDomainEvent;

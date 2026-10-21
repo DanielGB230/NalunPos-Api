@@ -31,7 +31,7 @@ public sealed class FakeTenantRepository : ITenantRepository
     {
     }
 
-    public Task<(IReadOnlyList<TenantDto> Items, int TotalCount)> GetPagedAsync(
+    public Task<(IReadOnlyList<Tenant> Items, int TotalCount)> GetPagedAsync(
         int pageNumber,
         int pageSize,
         string? searchTerm,
@@ -45,9 +45,10 @@ public sealed class FakeTenantRepository : ITenantRepository
         }
 
         var list = query
-            .Select(t => new TenantDto(t.Id, t.Name, t.TaxId.Value, t.Status.ToString(), t.CreatedAtUtc))
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
             .ToList();
 
-        return Task.FromResult<(IReadOnlyList<TenantDto>, int)>((list, list.Count));
+        return Task.FromResult<(IReadOnlyList<Tenant>, int)>((list, query.Count()));
     }
 }

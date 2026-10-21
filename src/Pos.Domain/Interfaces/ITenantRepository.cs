@@ -1,10 +1,9 @@
-using Pos.Application.Platform.Tenants.DTOs;
 using Pos.Domain.Entities;
 
-namespace Pos.Application.Common.Interfaces;
+namespace Pos.Domain.Interfaces;
 
 /// <summary>
-/// Contrato del repositorio de Tenants para los casos de uso de Application.
+/// Contrato del repositorio de Tenants (Agregado de Dominio).
 /// </summary>
 public interface ITenantRepository
 {
@@ -12,7 +11,7 @@ public interface ITenantRepository
     Task<bool> ExistsByTaxIdAsync(string taxId, CancellationToken cancellationToken = default);
     Task AddAsync(Tenant tenant, CancellationToken cancellationToken = default);
     void Update(Tenant tenant);
-    Task<(IReadOnlyList<TenantDto> Items, int TotalCount)> GetPagedAsync(
+    Task<(IReadOnlyList<Tenant> Items, int TotalCount)> GetPagedAsync(
         int pageNumber,
         int pageSize,
         string? searchTerm,

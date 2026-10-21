@@ -3,6 +3,7 @@ using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Common.Models;
 using Pos.Application.Platform.Tenants.DTOs;
+using Pos.Domain.Interfaces;
 
 namespace Pos.Application.Platform.Tenants.Queries.GetTenants;
 
@@ -36,6 +37,14 @@ public class GetTenantsQueryHandler : IQueryHandler<GetTenantsQuery, PagedResult
             request.SearchTerm,
             cancellationToken);
 
-        return new PagedResult<TenantDto>(items, request.PageNumber, request.PageSize, totalCount);
+        var dtos = items.Select(t => new TenantDto(
+            t.Id,
+            t.Name,
+            t.TaxId.Value,
+            t.Status.ToString(),
+            t.CreatedAtUtc
+        )).ToList();
+
+        return new PagedResult<TenantDto>(dtos, request.PageNumber, request.PageSize, totalCount);
     }
 }

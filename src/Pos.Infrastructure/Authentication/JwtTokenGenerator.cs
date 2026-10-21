@@ -12,7 +12,7 @@ namespace Pos.Infrastructure.Authentication;
 /// Generador de tokens JWT utilizando System.IdentityModel.Tokens.Jwt.
 /// Emite los claims acordados: UserId (NameIdentifier), Email, Role, y TenantId (si aplica).
 /// </summary>
-public class JwtTokenGenerator : IJwtTokenGenerator, ITokenGenerator
+public class JwtTokenGenerator : ITokenGenerator
 {
     private readonly IConfiguration _configuration;
     private readonly TimeProvider _timeProvider;

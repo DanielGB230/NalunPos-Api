@@ -108,7 +108,6 @@ public static class DependencyInjection
 
         services.AddScoped<IPasswordHasher, PasswordHasher>();
         services.AddScoped<ITokenGenerator, JwtTokenGenerator>();
-        services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
         services.AddScoped<IAuthUserLookup, AuthUserLookup>();
         services.AddScoped<Pos.Application.Common.Authorization.ICurrentUserPermissions, CurrentUserPermissions>();
