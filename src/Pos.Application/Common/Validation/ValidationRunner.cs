@@ -5,8 +5,8 @@ namespace Pos.Application.Common.Validation;
 
 /// <summary>
 /// Helper estático para ejecutar validadores de FluentValidation de forma secuencial.
-/// Utilizado por <see cref="Behaviors.ValidationDecorator{TCommand, TResponse}"/> y
-/// <see cref="Behaviors.ValidationQueryDecorator{TQuery, TResponse}"/>.
+/// Utilizado por <see cref="Behaviors.ValidationBehavior{TCommand, TResponse}"/> y
+/// <see cref="Behaviors.ValidationQueryBehavior{TQuery, TResponse}"/>.
 /// </summary>
 public static class ValidationRunner
 {

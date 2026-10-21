@@ -104,13 +104,13 @@ public class ValidationResultFactoryTests
     }
 
     [Fact]
-    public async Task ValidationDecorator_ResultResponse_ReturnsFailedResultWithFieldErrors()
+    public async Task ValidationBehavior_ResultResponse_ReturnsFailedResultWithFieldErrors()
     {
         var command = new DummyCommand();
         var innerHandler = new DummyCommandHandler();
         var validator = new DummyCommandValidator();
 
-        var decorator = new ValidationDecorator<DummyCommand, Result<string>>(innerHandler, new[] { validator });
+        var decorator = new ValidationBehavior<DummyCommand, Result<string>>(innerHandler, new[] { validator });
 
         var result = await decorator.HandleAsync(command);
 
@@ -121,18 +121,18 @@ public class ValidationResultFactoryTests
     }
 
     [Fact]
-    public async Task ValidationDecorator_NonResultResponse_ThrowsValidationException()
+    public async Task ValidationBehavior_NonResultResponse_ThrowsValidationException()
     {
         var command = new NonResultCommand();
         var innerHandler = new NonResultCommandHandler();
         var validator = new NonResultCommandValidator();
 
-        var decorator = new ValidationDecorator<NonResultCommand, Guid>(innerHandler, new[] { validator });
+        var decorator = new ValidationBehavior<NonResultCommand, Guid>(innerHandler, new[] { validator });
 
         await Assert.ThrowsAsync<ValidationException>(() => decorator.HandleAsync(command));
     }
 
-    // ── Clases auxiliares para probar ValidationDecorator ────────────────────
+    // ── Clases auxiliares para probar ValidationBehavior ────────────────────
 
     public record DummyCommand : ICommand<Result<string>>;
 

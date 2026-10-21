@@ -25,10 +25,10 @@ public static class DependencyInjection
         RegisterOpenGenericHandlers(services, assembly, typeof(IDomainEventHandler<>));
         RegisterOpenGenericHandlers(services, assembly, typeof(IIntegrationEventHandler<>));
 
-        // Aplicar patrón Decorador (ValidationDecorator + LoggingDecorator + AuthorizationBehavior) sobre todos los ICommandHandler<,>
+        // Aplicar pipeline de Behaviors (ValidationBehavior + LoggingBehavior + AuthorizationBehavior) sobre todos los ICommandHandler<,>
         ApplyCommandHandlerDecorators(services);
         
-        // Aplicar patrón Decorador sobre IQueryHandler<,>
+        // Aplicar pipeline de Behaviors sobre IQueryHandler<,>
         ApplyQueryHandlerDecorators(services);
 
         // FluentValidation — MIT, permitido por ADR 0014
@@ -68,10 +68,10 @@ public static class DependencyInjection
             var commandType = serviceType.GetGenericArguments()[0];
             var responseType = serviceType.GetGenericArguments()[1];
 
-            var validationDecoratorType = typeof(ValidationDecorator<,>).MakeGenericType(commandType, responseType);
+            var validationBehaviorType = typeof(ValidationBehavior<,>).MakeGenericType(commandType, responseType);
             var tenantRequirementBehaviorType = typeof(TenantRequirementBehavior<,>).MakeGenericType(commandType, responseType);
             var authorizationBehaviorType = typeof(AuthorizationBehavior<,>).MakeGenericType(commandType, responseType);
-            var loggingDecoratorType = typeof(LoggingDecorator<,>).MakeGenericType(commandType, responseType);
+            var loggingBehaviorType = typeof(LoggingBehavior<,>).MakeGenericType(commandType, responseType);
 
             services.Remove(descriptor);
 
@@ -82,10 +82,10 @@ public static class DependencyInjection
                     : descriptor.ImplementationFactory!(provider);
 
                 // Pipeline execution order: Logging -> Authorization -> TenantRequirement -> Validation -> InnerHandler
-                object validatedHandler = ActivatorUtilities.CreateInstance(provider, validationDecoratorType, innerHandler);
+                object validatedHandler = ActivatorUtilities.CreateInstance(provider, validationBehaviorType, innerHandler);
                 object tenantCheckedHandler = ActivatorUtilities.CreateInstance(provider, tenantRequirementBehaviorType, validatedHandler);
                 object authorizedHandler = ActivatorUtilities.CreateInstance(provider, authorizationBehaviorType, tenantCheckedHandler);
-                object loggedHandler = ActivatorUtilities.CreateInstance(provider, loggingDecoratorType, authorizedHandler);
+                object loggedHandler = ActivatorUtilities.CreateInstance(provider, loggingBehaviorType, authorizedHandler);
 
                 return loggedHandler;
             });
@@ -105,7 +105,7 @@ public static class DependencyInjection
             var queryType = serviceType.GetGenericArguments()[0];
             var responseType = serviceType.GetGenericArguments()[1];
 
-            var validationDecoratorType = typeof(ValidationQueryDecorator<,>).MakeGenericType(queryType, responseType);
+            var validationBehaviorType = typeof(ValidationQueryBehavior<,>).MakeGenericType(queryType, responseType);
             var authorizationBehaviorType = typeof(AuthorizationQueryBehavior<,>).MakeGenericType(queryType, responseType);
 
             services.Remove(descriptor);
@@ -116,7 +116,7 @@ public static class DependencyInjection
                     ? ActivatorUtilities.CreateInstance(provider, descriptor.ImplementationType)
                     : descriptor.ImplementationFactory!(provider);
 
-                object validatedHandler = ActivatorUtilities.CreateInstance(provider, validationDecoratorType, innerHandler);
+                object validatedHandler = ActivatorUtilities.CreateInstance(provider, validationBehaviorType, innerHandler);
                 object authorizedHandler = ActivatorUtilities.CreateInstance(provider, authorizationBehaviorType, validatedHandler);
 
                 return authorizedHandler;

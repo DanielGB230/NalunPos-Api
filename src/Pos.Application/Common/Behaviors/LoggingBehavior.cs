@@ -5,18 +5,18 @@ using Pos.Application.Common.Interfaces;
 namespace Pos.Application.Common.Behaviors;
 
 /// <summary>
-/// Decorador CQRS que registra logs de entrada, salida y duración para cada Command.
+/// Behavior CQRS que registra logs de entrada, salida y duración para cada Command.
 /// </summary>
-public class LoggingDecorator<TCommand, TResponse> : ICommandHandler<TCommand, TResponse>
+public class LoggingBehavior<TCommand, TResponse> : ICommandHandler<TCommand, TResponse>
     where TCommand : ICommand<TResponse>
 {
     private static readonly string CommandName = typeof(TCommand).Name;
     private readonly ICommandHandler<TCommand, TResponse> _inner;
-    private readonly ILogger<LoggingDecorator<TCommand, TResponse>> _logger;
+    private readonly ILogger<LoggingBehavior<TCommand, TResponse>> _logger;
 
-    public LoggingDecorator(
+    public LoggingBehavior(
         ICommandHandler<TCommand, TResponse> inner,
-        ILogger<LoggingDecorator<TCommand, TResponse>> logger)
+        ILogger<LoggingBehavior<TCommand, TResponse>> logger)
     {
         _inner = inner ?? throw new ArgumentNullException(nameof(inner));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));

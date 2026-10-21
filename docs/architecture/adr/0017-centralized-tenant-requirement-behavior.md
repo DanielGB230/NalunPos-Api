@@ -17,7 +17,7 @@ Hemos decidido implementar un esquema estricto de **Default-Deny** en el pipelin
 
 2. **`TenantRequirementBehavior<,>` en Pipeline CQRS (Fail-Closed):**
    - Se ejecuta antes del validador de negocio y del handler:
-     `LoggingDecorator` → `AuthorizationBehavior` → `TenantRequirementBehavior` → `ValidationDecorator` → `InnerHandler`.
+     `LoggingBehavior` → `AuthorizationBehavior` → `TenantRequirementBehavior` → `ValidationBehavior` → `InnerHandler`.
    - Si el comando tiene `[RequiresTenant]` y el contexto actual `ICurrentTenantContext` no posee un `TenantId` válido (es `null` o `Guid.Empty`), interrumpe inmediatamente el pipeline sin invocar al handler y retorna un `Result` fallido con el error de dominio `tenant.required` (`ErrorType.Validation`).
 
 3. **Defensa en Profundidad en Handlers (`RequireTenantId()`):**

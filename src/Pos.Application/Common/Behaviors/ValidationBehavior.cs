@@ -6,15 +6,15 @@ using Pos.Domain.Common;
 namespace Pos.Application.Common.Behaviors;
 
 /// <summary>
-/// Decorador CQRS que ejecuta la validación con FluentValidation antes de invocar al ICommandHandler.
+/// Behavior CQRS que ejecuta la validación con FluentValidation antes de invocar al ICommandHandler.
 /// </summary>
-public class ValidationDecorator<TCommand, TResponse> : ICommandHandler<TCommand, TResponse>
+public class ValidationBehavior<TCommand, TResponse> : ICommandHandler<TCommand, TResponse>
     where TCommand : ICommand<TResponse>
 {
     private readonly ICommandHandler<TCommand, TResponse> _inner;
     private readonly IEnumerable<IValidator<TCommand>> _validators;
 
-    public ValidationDecorator(
+    public ValidationBehavior(
         ICommandHandler<TCommand, TResponse> inner,
         IEnumerable<IValidator<TCommand>> validators)
     {

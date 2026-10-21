@@ -1,4 +1,4 @@
-﻿using Pos.Application.Tests.Support.Fakes;
+using Pos.Application.Tests.Support.Fakes;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using Pos.Application.Common.Attributes;
@@ -12,7 +12,7 @@ using Xunit;
 
 namespace Pos.Application.Tests.Common.Validation;
 
-public class ValidationQueryDecoratorTests
+public class ValidationQueryBehaviorTests
 {
     [Fact]
     public async Task QueryHandler_ResolvedFromServiceCollection_InvalidAndUnauthorized_ThrowsUnauthorizedDomainException()

@@ -926,5 +926,51 @@ public class ArchitectureTests
         Assert.True(registrationViolations.Count == 0,
             $"Fuera de PosDbContextInterceptorExtensions.cs ningún archivo debe registrar manualmente la tripleta de interceptores de SaveChanges:\n{string.Join("\n", registrationViolations)}");
     }
+
+    [Fact]
+    public void Domain_And_Application_Must_Not_Have_Phase_Named_Files_Or_Mixed_Decorator_Names_In_Behaviors()
+    {
+        var rootDir = SolutionDirectory.Root;
+        var srcDir = Path.Combine(rootDir, "src");
+
+        // a) Existe algún archivo cuyo nombre empiece por Phase en src/
+        var phaseFiles = Directory.GetFiles(srcDir, "Phase*.*", SearchOption.AllDirectories)
+            .Select(f => Path.GetRelativePath(rootDir, f))
+            .ToList();
+
+        Assert.True(
+            phaseFiles.Count == 0,
+            $"Se encontraron archivos temporales nombrados con prefijo 'Phase' en src/:\n{string.Join("\n", phaseFiles)}"
+        );
+
+        // b) Existe alguna clase en src/Pos.Application/Common/Behaviors/ cuyo nombre termine en Decorator en vez de Behavior
+        var behaviorsDir = Path.Combine(srcDir, "Pos.Application", "Common", "Behaviors");
+        if (Directory.Exists(behaviorsDir))
+        {
+            var behaviorFiles = Directory.GetFiles(behaviorsDir, "*.cs");
+            var decoratorViolations = new List<string>();
+
+            foreach (var file in behaviorFiles)
+            {
+                var fileName = Path.GetFileNameWithoutExtension(file);
+                if (fileName.EndsWith("Decorator", StringComparison.OrdinalIgnoreCase))
+                {
+                    decoratorViolations.Add($"El archivo '{Path.GetFileName(file)}' termina en 'Decorator' en vez de 'Behavior'.");
+                }
+
+                var text = File.ReadAllText(file);
+                var match = System.Text.RegularExpressions.Regex.Match(text, @"public\s+class\s+(\w+Decorator)\b");
+                if (match.Success)
+                {
+                    decoratorViolations.Add($"La clase '{match.Groups[1].Value}' en '{Path.GetFileName(file)}' termina en 'Decorator' en vez de 'Behavior'.");
+                }
+            }
+
+            Assert.True(
+                decoratorViolations.Count == 0,
+                $"Se detectó nomenclatura no homologada 'Decorator' en Common/Behaviors:\n{string.Join("\n", decoratorViolations)}"
+            );
+        }
+    }
 }
 
