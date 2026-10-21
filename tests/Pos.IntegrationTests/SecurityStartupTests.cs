@@ -45,14 +45,14 @@ public class SecurityStartupTests
             .Build();
 
         var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
-        services.AddOptions<Pos.Api.BackgroundServices.OutboxSettings>()
-            .Bind(config.GetSection(Pos.Api.BackgroundServices.OutboxSettings.SectionName))
+        services.AddOptions<Pos.Api.Options.OutboxSettings>()
+            .Bind(config.GetSection(Pos.Api.Options.OutboxSettings.SectionName))
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
         var provider = services.BuildServiceProvider();
 
-        Action action = () => { _ = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<Pos.Api.BackgroundServices.OutboxSettings>>().Value; };
+        Action action = () => { _ = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<Pos.Api.Options.OutboxSettings>>().Value; };
         action.Should().Throw<Microsoft.Extensions.Options.OptionsValidationException>();
     }
 
@@ -70,14 +70,14 @@ public class SecurityStartupTests
             .Build();
 
         var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
-        services.AddOptions<Pos.Api.BackgroundServices.InvoiceReconciliationSettings>()
+        services.AddOptions<Pos.Api.Options.InvoiceReconciliationSettings>()
             .Bind(config.GetSection("InvoiceReconciliation"))
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
         var provider = services.BuildServiceProvider();
 
-        Action action = () => { _ = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<Pos.Api.BackgroundServices.InvoiceReconciliationSettings>>().Value; };
+        Action action = () => { _ = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<Pos.Api.Options.InvoiceReconciliationSettings>>().Value; };
         action.Should().Throw<Microsoft.Extensions.Options.OptionsValidationException>();
     }
 }

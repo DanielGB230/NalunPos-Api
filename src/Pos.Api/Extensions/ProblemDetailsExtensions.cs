@@ -45,4 +45,14 @@ public static class ProblemDetailsExtensions
 
         return problemDetailsService.WriteProblemDetailsAsync(context, problemDetails);
     }
+
+    /// <summary>
+    /// Registra IProblemDetailsService y el manejador global de excepciones nativo (RFC 9457).
+    /// </summary>
+    public static IServiceCollection AddCustomProblemDetails(this IServiceCollection services)
+    {
+        services.AddProblemDetails();
+        services.AddExceptionHandler<GlobalExceptionHandler>();
+        return services;
+    }
 }

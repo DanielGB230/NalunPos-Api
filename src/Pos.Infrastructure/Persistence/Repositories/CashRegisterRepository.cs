@@ -37,22 +37,11 @@ public class CashRegisterRepository : ICashRegisterRepository
 
     public async Task<CashRegisterSession?> GetSessionByIdAsync(Guid sessionId, CancellationToken cancellationToken = default)
     {
-        return await _context.CashRegisterSessions.FindAsync([sessionId], cancellationToken);
+        return await _context.CashRegisterSessions.FirstOrDefaultAsync(s => s.Id == sessionId, cancellationToken);
     }
 
     public async Task<CashRegisterSession?> GetActiveSessionByRegisterIdAsync(Guid registerId, CancellationToken cancellationToken = default)
     {
-        var localSession = _context.CashRegisterSessions.Local.FirstOrDefault(s => s.CashRegisterId == registerId && s.Status == SessionStatus.Open);
-        if (localSession != null)
-        {
-            return localSession;
-        }
-
-        if (_context.Database.ProviderName == "Microsoft.EntityFrameworkCore.InMemory")
-        {
-            return null;
-        }
-
         return await _context.CashRegisterSessions
             .FirstOrDefaultAsync(s => s.CashRegisterId == registerId && s.Status == SessionStatus.Open, cancellationToken);
     }

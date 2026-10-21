@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace Pos.Api.BackgroundServices;
+namespace Pos.Api.Options;
 
 public class OutboxSettings
 {

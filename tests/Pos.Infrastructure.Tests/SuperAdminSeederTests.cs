@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using Pos.Api.Options;
 using Pos.Domain.Entities;
 using Pos.Domain.Enums;
 using Pos.Infrastructure.Authentication;
@@ -22,20 +23,16 @@ public class SuperAdminSeederTests
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
             .Options;
 
-        var inMemoryConfig = new Dictionary<string, string?>
+        var settings = Options.Create(new SuperAdminSettings
         {
-            ["SuperAdminSettings:Email"] = "superadmin@nalunpos.com",
-            ["SuperAdminSettings:Password"] = "SuperPass123!",
-            ["SuperAdminSettings:FirstName"] = "Super",
-            ["SuperAdminSettings:LastName"] = "Admin"
-        };
-
-        IConfiguration config = new ConfigurationBuilder()
-            .AddInMemoryCollection(inMemoryConfig)
-            .Build();
+            Email = "superadmin@nalunpos.com",
+            Password = "SuperPass123!",
+            FirstName = "Super",
+            LastName = "Admin"
+        });
 
         await using var context = new PosDbContext(options);
-        var seeder = new SuperAdminSeeder(context, _passwordHasher, config, NullLogger<SuperAdminSeeder>.Instance);
+        var seeder = new SuperAdminSeeder(context, _passwordHasher, settings, NullLogger<SuperAdminSeeder>.Instance);
 
         // Act
         await seeder.SeedAsync();
@@ -56,18 +53,16 @@ public class SuperAdminSeederTests
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
             .Options;
 
-        var inMemoryConfig = new Dictionary<string, string?>
+        var settings = Options.Create(new SuperAdminSettings
         {
-            ["SuperAdminSettings:Email"] = "superadmin@nalunpos.com",
-            ["SuperAdminSettings:Password"] = "SuperPass123!"
-        };
-
-        IConfiguration config = new ConfigurationBuilder()
-            .AddInMemoryCollection(inMemoryConfig)
-            .Build();
+            Email = "superadmin@nalunpos.com",
+            Password = "SuperPass123!",
+            FirstName = "Super",
+            LastName = "Admin"
+        });
 
         await using var context = new PosDbContext(options);
-        var seeder = new SuperAdminSeeder(context, _passwordHasher, config, NullLogger<SuperAdminSeeder>.Instance);
+        var seeder = new SuperAdminSeeder(context, _passwordHasher, settings, NullLogger<SuperAdminSeeder>.Instance);
 
         // Act — primera ejecución
         await seeder.SeedAsync();

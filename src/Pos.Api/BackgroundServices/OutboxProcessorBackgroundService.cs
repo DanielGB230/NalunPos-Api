@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Pos.Api.Options;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.IntegrationEvents.Contracts;
 using Pos.Infrastructure.Multitenancy;

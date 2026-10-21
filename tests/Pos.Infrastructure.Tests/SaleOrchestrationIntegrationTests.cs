@@ -60,15 +60,15 @@ public class SaleOrchestrationIntegrationTests : IDisposable
         });
 
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<PosDbContext>());
-        services.AddScoped<IProductRepository, ProductRepository>();
+        services.AddScoped<IProductRepository, InMemoryProductRepository>();
         services.AddScoped<ICategoryRepository, CategoryRepository>();
         services.AddScoped<IBranchRepository, BranchRepository>();
         services.AddScoped<IWarehouseRepository, WarehouseRepository>();
         services.AddScoped<IStockLevelRepository, StockLevelRepository>();
-        services.AddScoped<ICashRegisterRepository, CashRegisterRepository>();
-        services.AddScoped<ISaleRepository, SaleRepository>();
+        services.AddScoped<ICashRegisterRepository, InMemoryCashRegisterRepository>();
+        services.AddScoped<ISaleRepository, InMemorySaleRepository>();
         services.AddScoped<IInventoryRepository, InventoryRepository>();
-        services.AddScoped<IPaymentRepository, PaymentRepository>();
+        services.AddScoped<IPaymentRepository, InMemoryPaymentRepository>();
         services.AddScoped<ICustomerRepository, CustomerRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IRoleRepository, RoleRepository>();
@@ -213,5 +213,35 @@ public class SaleOrchestrationIntegrationTests : IDisposable
     public void Dispose()
     {
         GC.SuppressFinalize(this);
+    }
+
+    private sealed class InMemoryProductRepository(PosDbContext context) : ProductRepository(context), IProductRepository
+    {
+        private readonly PosDbContext _db = context;
+        Task<Product?> IProductRepository.GetByIdAsync(Guid id, CancellationToken cancellationToken)
+            => _db.Products.FindAsync([id], cancellationToken).AsTask();
+    }
+
+    private sealed class InMemoryCashRegisterRepository(PosDbContext context) : CashRegisterRepository(context), ICashRegisterRepository
+    {
+        private readonly PosDbContext _db = context;
+        Task<CashRegisterSession?> ICashRegisterRepository.GetSessionByIdAsync(Guid sessionId, CancellationToken cancellationToken)
+            => _db.CashRegisterSessions.FindAsync([sessionId], cancellationToken).AsTask();
+        Task<CashRegisterSession?> ICashRegisterRepository.GetActiveSessionByRegisterIdAsync(Guid registerId, CancellationToken cancellationToken)
+            => Task.FromResult(_db.CashRegisterSessions.Local.FirstOrDefault(s => s.CashRegisterId == registerId && s.Status == SessionStatus.Open));
+    }
+
+    private sealed class InMemorySaleRepository(PosDbContext context) : SaleRepository(context), ISaleRepository
+    {
+        private readonly PosDbContext _db = context;
+        Task<Sale?> ISaleRepository.GetByIdAsync(Guid id, CancellationToken cancellationToken)
+            => _db.Sales.FindAsync([id], cancellationToken).AsTask();
+    }
+
+    private sealed class InMemoryPaymentRepository(PosDbContext context) : PaymentRepository(context), IPaymentRepository
+    {
+        private readonly PosDbContext _db = context;
+        Task<Payment?> IPaymentRepository.GetByIdAsync(Guid id, CancellationToken cancellationToken)
+            => _db.Payments.FindAsync([id], cancellationToken).AsTask();
     }
 }

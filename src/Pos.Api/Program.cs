@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Pos.Api.BackgroundServices;
 using Pos.Api.Extensions;
 using Pos.Api.Middleware;
+using Pos.Api.Options;
 using Pos.Application;
 using Pos.Infrastructure;
 using Pos.Infrastructure.Persistence.Context;
@@ -25,7 +26,7 @@ builder.Services
     .AddApplicationServices()
     .AddInfrastructureServices(builder.Configuration);
 
-// 5. Registro de configuración para OutboxWorker e InvoiceReconciliation con ValidateOnStart
+// 5. Registro de configuración para OutboxWorker, InvoiceReconciliation y SuperAdminSettings con ValidateOnStart
 builder.Services.AddOptions<OutboxSettings>()
     .Bind(builder.Configuration.GetSection(OutboxSettings.SectionName))
     .ValidateDataAnnotations()
@@ -33,6 +34,11 @@ builder.Services.AddOptions<OutboxSettings>()
 
 builder.Services.AddOptions<InvoiceReconciliationSettings>()
     .Bind(builder.Configuration.GetSection("InvoiceReconciliation"))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+
+builder.Services.AddOptions<SuperAdminSettings>()
+    .Bind(builder.Configuration.GetSection(SuperAdminSettings.SectionName))
     .ValidateDataAnnotations()
     .ValidateOnStart();
 
@@ -46,13 +52,13 @@ builder.Services.AddCustomAuthentication(builder.Configuration);
 // 8. Configuración de CORS
 builder.Services.AddCustomCors(builder.Configuration);
 
-// 9. Configuración de Controladores
+// 9. Configuración de Controladores y ProblemDetails
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
     });
-builder.Services.AddProblemDetails(); // Requerido para IProblemDetailsService en el middleware
+builder.Services.AddCustomProblemDetails();
 
 // 10. Configuración de OpenAPI y Scalar
 builder.Services.AddCustomOpenApi();
@@ -87,9 +93,9 @@ using (var scope = app.Services.CreateScope())
 // 1. ForwardedHeaders: PRIMERO, para que la IP real esté disponible desde el inicio
 app.UseCustomForwardedHeaders();
 
-// 2. CorrelationId: envuelve a ExceptionHandling para que los errores se logueen con el CorrelationId ya establecido
+// 2. CorrelationId y ExceptionHandler nativo (.NET 10 / RFC 9457)
 app.UseMiddleware<CorrelationIdMiddleware>();
-app.UseMiddleware<ExceptionHandlingMiddleware>();
+app.UseExceptionHandler();
 
 if (app.Environment.IsDevelopment())
 {

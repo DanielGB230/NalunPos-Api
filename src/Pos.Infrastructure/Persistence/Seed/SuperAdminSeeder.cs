@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using Pos.Api.Options;
 using Pos.Application.Common.Interfaces;
 using Pos.Domain.Common;
 using Pos.Domain.Entities;
@@ -17,25 +18,25 @@ public sealed partial class SuperAdminSeeder
 {
     private readonly PosDbContext _context;
     private readonly IPasswordHasher _passwordHasher;
-    private readonly IConfiguration _configuration;
+    private readonly SuperAdminSettings _settings;
     private readonly ILogger<SuperAdminSeeder> _logger;
 
     public SuperAdminSeeder(
         PosDbContext context,
         IPasswordHasher passwordHasher,
-        IConfiguration configuration,
+        IOptions<SuperAdminSettings> settings,
         ILogger<SuperAdminSeeder> logger)
     {
         _context = context ?? throw new ArgumentNullException(nameof(context));
         _passwordHasher = passwordHasher ?? throw new ArgumentNullException(nameof(passwordHasher));
-        _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+        _settings = settings?.Value ?? throw new ArgumentNullException(nameof(settings));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     public async Task SeedAsync(CancellationToken cancellationToken = default)
     {
-        string? email = _configuration["SuperAdminSettings:Email"];
-        string? rawPassword = _configuration["SuperAdminSettings:Password"];
+        string? email = _settings.Email;
+        string? rawPassword = _settings.Password;
 
         var existingSuperAdmin = await _context.Users
             .FirstOrDefaultAsync(u => u.RoleId == Role.SuperAdminRoleId, cancellationToken);
@@ -74,8 +75,8 @@ public sealed partial class SuperAdminSeeder
             throw new InvalidOperationException(
                 "[SuperAdminSeeder] La clave 'SuperAdminSettings:Password' no esta configurada.");
 
-        string firstName = _configuration["SuperAdminSettings:FirstName"] ?? "Super";
-        string lastName  = _configuration["SuperAdminSettings:LastName"]  ?? "Admin";
+        string firstName = string.IsNullOrWhiteSpace(_settings.FirstName) ? "Super" : _settings.FirstName;
+        string lastName  = string.IsNullOrWhiteSpace(_settings.LastName) ? "Admin" : _settings.LastName;
 
         string passwordHash = _passwordHasher.HashPassword(rawPassword);
 

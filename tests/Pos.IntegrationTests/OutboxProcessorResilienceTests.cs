@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Pos.Api.BackgroundServices;
+using Pos.Api.Options;
 using Pos.Application.IntegrationEvents.Contracts;
 using Pos.Infrastructure.Persistence.Context;
 using Pos.Infrastructure.Persistence.Outbox;
