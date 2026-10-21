@@ -849,5 +849,29 @@ public class ArchitectureTests
             $"Violaciones de reloj del sistema detectadas (debe usarse TimeProvider):\n{string.Join("\n", violations)}"
         );
     }
+
+    [Fact]
+    public void Adr_Files_Must_Live_Exclusively_In_Canonical_Directory()
+    {
+        var rootDir = SolutionDirectory.Root;
+        var obsoleteAdrDir = Path.Combine(rootDir, "docs", "ADR");
+        var canonicalAdrDir = Path.Combine(rootDir, "docs", "architecture", "adr");
+
+        Assert.False(Directory.Exists(obsoleteAdrDir), "La carpeta obsoleta 'docs/ADR' no debe existir; todos los ADRs deben residir en 'docs/architecture/adr/'.");
+        Assert.True(Directory.Exists(canonicalAdrDir), "La carpeta canónica 'docs/architecture/adr/' debe existir.");
+
+        var adrFiles = Directory.GetFiles(canonicalAdrDir, "*.md")
+            .Select(Path.GetFileName)
+            .Where(f => f is not null)
+            .Select(f => f!)
+            .ToList();
+
+        for (int i = 1; i <= 18; i++)
+        {
+            var prefix = $"{i:D4}-";
+            bool exists = adrFiles.Any(f => f.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
+            Assert.True(exists, $"Falta el ADR requerido '{prefix}*.md' en '{canonicalAdrDir}'.");
+        }
+    }
 }
 
