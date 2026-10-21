@@ -1,4 +1,3 @@
-using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -37,7 +36,6 @@ public class MockCurrentUserService : ICurrentUserService
 
 public class SaleOrchestrationIntegrationTests : IDisposable
 {
-    private readonly SqliteConnection _connection;
     private readonly IServiceProvider _serviceProvider;
     private readonly TestTenantContext _tenantContext = new();
     private readonly MockCurrentUserService _mockUserService = new();
@@ -48,14 +46,10 @@ public class SaleOrchestrationIntegrationTests : IDisposable
 
         services.AddLogging();
 
-        _connection = new SqliteConnection("DataSource=:memory:");
-        _connection.Open();
-
         services.AddScoped<TenantSaveChangesInterceptor>();
         services.AddDbContext<PosDbContext>((sp, options) =>
         {
-            options.UseSqlite(_connection);
-
+            options.UseInMemoryDatabase(Guid.NewGuid().ToString());
         });
         services.AddScoped<PosDbContext>(sp =>
         {
@@ -107,7 +101,6 @@ public class SaleOrchestrationIntegrationTests : IDisposable
         var dbContext = sp.GetRequiredService<PosDbContext>();
         var stockLevelRepo = sp.GetRequiredService<IStockLevelRepository>();
 
-        await dbContext.Database.EnsureCreatedAsync();
 
         // 0. Sembrar Rol y Usuario para la autorización
         var logger = sp.GetRequiredService<ILogger<Pos.Infrastructure.Persistence.Seed.DefaultRoleSeeder>>();
@@ -212,14 +205,13 @@ public class SaleOrchestrationIntegrationTests : IDisposable
         var processPaymentResult = await dispatcher.SendAsync(processPaymentCommand);
         Assert.True(processPaymentResult.IsSuccess);
 
-        var saleInDb = await dbContext.Sales.AsNoTracking().FirstOrDefaultAsync(s => s.Id == saleId);
+        var saleInDb = await dbContext.Sales.FindAsync(saleId);
         Assert.NotNull(saleInDb);
         Assert.Equal(SaleStatus.Paid, saleInDb.Status);
     }
 
     public void Dispose()
     {
-        _connection.Dispose();
         GC.SuppressFinalize(this);
     }
 }

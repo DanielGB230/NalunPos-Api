@@ -2,18 +2,17 @@ using Microsoft.Extensions.Logging;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.IntegrationEvents.Contracts;
 
-namespace Pos.Infrastructure.EventBus.RabbitMq;
+namespace Pos.Infrastructure.EventBus;
 
 /// <summary>
-/// Implementación conceptual del Event Bus para RabbitMQ (Sección 11).
-/// No instala SDKs pesados ni realiza conexiones reales en esta etapa,
-/// simulando la publicación mediante log de infraestructura sin contaminar las capas superiores.
+/// Implementación honesta en proceso del Event Bus mediante logging estructurado de infraestructura.
+/// Registra la publicación de eventos de integración sin depender de brokers externos.
 /// </summary>
-public class RabbitMqEventBus : IEventBus
+public class LoggingEventBus : IEventBus
 {
-    private readonly ILogger<RabbitMqEventBus> _logger;
+    private readonly ILogger<LoggingEventBus> _logger;
 
-    public RabbitMqEventBus(ILogger<RabbitMqEventBus> logger)
+    public LoggingEventBus(ILogger<LoggingEventBus> logger)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
@@ -25,7 +24,7 @@ public class RabbitMqEventBus : IEventBus
         if (_logger.IsEnabled(LogLevel.Information))
         {
             _logger.LogInformation(
-                "[EventBus RabbitMQ] Simulando publicación a RabbitMQ del evento {EventType} (ID: {EventId}) a las {OccurredOn}",
+                "[LoggingEventBus] Publicando evento {EventType} (ID: {EventId}) a las {OccurredOnUtc}",
                 integrationEvent.GetType().Name,
                 integrationEvent.Id,
                 integrationEvent.OccurredOnUtc);

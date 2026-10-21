@@ -17,8 +17,8 @@
     <NuGetAudit>true</NuGetAudit>
     <NuGetAuditMode>all</NuGetAuditMode>
 
-    <!-- Ignorar guiones bajos en tests (CA1707) y llamadas directas a ILogger (CA1848) -->
-    <NoWarn>$(NoWarn);CA1707;CA1848</NoWarn>
+    <!-- Ignorar llamadas directas a ILogger (CA1848) globalmente -->
+    <NoWarn>$(NoWarn);CA1848</NoWarn>
 
     <!-- Configuración de análisis de código -->
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
@@ -35,6 +35,11 @@
 
     <!-- Consistencia de versión de lenguaje -->
     <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+
+  <!-- Ignorar guiones bajos únicamente en proyectos de pruebas (CA1707) -->
+  <PropertyGroup Condition="$(MSBuildProjectName.EndsWith('.Tests')) Or $(MSBuildProjectName.EndsWith('IntegrationTests'))">
+    <NoWarn>$(NoWarn);CA1707</NoWarn>
   </PropertyGroup>
 
 </Project>

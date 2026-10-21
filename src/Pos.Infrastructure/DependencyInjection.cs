@@ -7,7 +7,7 @@ using Pos.Application.Common.Interfaces;
 using Pos.Domain.Interfaces;
 using Pos.Infrastructure.AiOrchestration.Adapters;
 using Pos.Infrastructure.Authentication;
-using Pos.Infrastructure.EventBus.RabbitMq;
+using Pos.Infrastructure.EventBus;
 using Pos.Infrastructure.ExternalServices.Dummy;
 using Pos.Infrastructure.Multitenancy;
 using Pos.Infrastructure.Notifications.Dummy;
@@ -117,7 +117,7 @@ public static class DependencyInjection
         services.AddScoped<Pos.Infrastructure.Persistence.Seed.DefaultRoleSeeder>();
 
         // ── Event Bus y ACL de servicios externos ─────────────────────────────
-        services.AddSingleton<IEventBus, RabbitMqEventBus>();
+        services.AddSingleton<IEventBus, LoggingEventBus>();
         services.AddScoped<IPaymentGateway, DummyPaymentGateway>();
         services.AddScoped<IElectronicInvoicingService, DummyElectronicInvoicingService>();
         services.AddScoped<IPushNotificationService, DummyPushNotificationService>();

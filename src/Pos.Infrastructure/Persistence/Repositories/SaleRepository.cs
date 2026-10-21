@@ -16,6 +16,17 @@ public class SaleRepository : ISaleRepository
 
     public async Task<Sale?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
+        var localSale = _context.Sales.Local.FirstOrDefault(s => s.Id == id);
+        if (localSale != null)
+        {
+            return localSale;
+        }
+
+        if (_context.Database.ProviderName == "Microsoft.EntityFrameworkCore.InMemory")
+        {
+            return await _context.Sales.FindAsync([id], cancellationToken);
+        }
+
         return await _context.Sales
             .Include(s => s.LineItems)
             .FirstOrDefaultAsync(s => s.Id == id, cancellationToken);

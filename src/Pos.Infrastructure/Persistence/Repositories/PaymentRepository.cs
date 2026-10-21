@@ -16,7 +16,7 @@ public class PaymentRepository : IPaymentRepository
 
     public async Task<Payment?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        return await _context.Payments.FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
+        return await _context.Payments.FindAsync([id], cancellationToken);
     }
 
     public async Task<IReadOnlyList<Payment>> GetBySaleIdAsync(Guid saleId, CancellationToken cancellationToken = default)
