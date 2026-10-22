@@ -86,6 +86,11 @@ public class InvoiceReconciliationBackgroundService : BackgroundService
                 var tenantSetter = tenantScope.ServiceProvider.GetRequiredService<ITenantSetter>();
                 tenantSetter.SetTenantId(pendingInvoice.TenantId);
 
+                var systemScope = tenantScope.ServiceProvider.GetRequiredService<ISystemExecutionScope>();
+                using var executionScope = systemScope.BeginScope(
+                    "InvoiceReconciliationBackgroundService",
+                    new[] { typeof(ReconcileInvoiceCommand) });
+
                 var dispatcher = tenantScope.ServiceProvider.GetRequiredService<IDispatcher>();
                 var result = await dispatcher.SendAsync(
                     new ReconcileInvoiceCommand(pendingInvoice.Id, _settings.MaxReconciliationAttempts),

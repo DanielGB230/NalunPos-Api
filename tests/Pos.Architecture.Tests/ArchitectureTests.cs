@@ -1221,5 +1221,69 @@ public class ArchitectureTests
             $"Se encontraron secretos o credenciales en archivos appsettings*.json dentro de 'src/':\n{string.Join("\n", violations)}"
         );
     }
+
+    [Fact]
+    public void SystemExecutionScope_BeginScope_Must_Only_Be_Invoked_By_Authorized_BackgroundWorkers()
+    {
+        var rootDir = SolutionDirectory.Root;
+        var srcDir = Path.Combine(rootDir, "src");
+        var csFiles = Directory.GetFiles(srcDir, "*.cs", SearchOption.AllDirectories);
+
+        var allowedFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "InvoiceReconciliationBackgroundService.cs",
+            "OutboxProcessorBackgroundService.cs",
+            "SystemExecutionScope.cs"
+        };
+
+        var violations = new List<string>();
+
+        foreach (var file in csFiles)
+        {
+            var fileName = Path.GetFileName(file);
+            var text = File.ReadAllText(file);
+            if (!text.Contains("BeginScope", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var tree = Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree.ParseText(text);
+            var root = tree.GetRoot();
+
+            var invocations = root.DescendantNodes()
+                .OfType<Microsoft.CodeAnalysis.CSharp.Syntax.InvocationExpressionSyntax>()
+                .Where(inv =>
+                {
+                    if (inv.Expression is Microsoft.CodeAnalysis.CSharp.Syntax.MemberAccessExpressionSyntax memberAccess)
+                    {
+                        var targetName = memberAccess.Expression.ToString();
+                        if (targetName.Contains("logger", StringComparison.OrdinalIgnoreCase) ||
+                            targetName.Contains("Logger", StringComparison.OrdinalIgnoreCase))
+                        {
+                            return false;
+                        }
+
+                        return memberAccess.Name.Identifier.Text == "BeginScope" &&
+                               inv.ArgumentList.Arguments.Count == 2;
+                    }
+                    return false;
+                });
+
+            foreach (var inv in invocations)
+            {
+                if (!allowedFiles.Contains(fileName))
+                {
+                    var lineSpan = inv.GetLocation().GetLineSpan();
+                    violations.Add($"{Path.GetRelativePath(rootDir, file)}:{lineSpan.StartLinePosition.Line + 1} -> Invocación a BeginScope no permitida fuera de los BackgroundWorkers autorizados.");
+                }
+            }
+        }
+
+        Assert.True(
+            violations.Count == 0,
+            $"Violaciones de activación de ISystemExecutionScope detectadas:\n{string.Join("\n", violations)}"
+        );
+    }
 }
+
 

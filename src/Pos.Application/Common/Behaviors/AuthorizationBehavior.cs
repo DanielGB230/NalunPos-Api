@@ -16,17 +16,20 @@ public class AuthorizationBehavior<TRequest, TResponse> : ICommandHandler<TReque
     private readonly ICurrentUserService _currentUserService;
     private readonly IUserRepository _userRepository;
     private readonly ICurrentUserPermissions _currentUserPermissions;
+    private readonly ISystemExecutionScope _systemExecutionScope;
     private readonly ICommandHandler<TRequest, TResponse> _inner;
 
     public AuthorizationBehavior(
         ICurrentUserService currentUserService,
         IUserRepository userRepository,
         ICurrentUserPermissions currentUserPermissions,
+        ISystemExecutionScope systemExecutionScope,
         ICommandHandler<TRequest, TResponse> inner)
     {
         _currentUserService = currentUserService ?? throw new ArgumentNullException(nameof(currentUserService));
         _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
         _currentUserPermissions = currentUserPermissions ?? throw new ArgumentNullException(nameof(currentUserPermissions));
+        _systemExecutionScope = systemExecutionScope ?? throw new ArgumentNullException(nameof(systemExecutionScope));
         _inner = inner ?? throw new ArgumentNullException(nameof(inner));
     }
 
@@ -49,9 +52,15 @@ public class AuthorizationBehavior<TRequest, TResponse> : ICommandHandler<TReque
             throw new UnauthorizedDomainException("Acceso denegado: el handler no declara reglas de autorización (Fail-Closed).");
         }
 
-        if (_currentUserService.IsSystemContext)
+        if (_systemExecutionScope.IsActive)
         {
-            return await _inner.HandleAsync(request, cancellationToken);
+            if (_systemExecutionScope.IsCommandAllowed(requestType))
+            {
+                return await _inner.HandleAsync(request, cancellationToken);
+            }
+
+            throw new ForbiddenDomainException(
+                $"El contexto de sistema '{_systemExecutionScope.WorkerName}' no tiene autorización para ejecutar el comando '{requestType.Name}' (Fail-Closed).");
         }
 
         if (!_currentUserService.UserId.HasValue)

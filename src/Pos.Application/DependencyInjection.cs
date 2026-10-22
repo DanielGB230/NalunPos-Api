@@ -1,6 +1,7 @@
 using System.Reflection;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Pos.Application.Common.Behaviors;
 using Pos.Application.Common.Dispatching;
 using Pos.Application.Common.Interfaces;
@@ -18,6 +19,9 @@ public static class DependencyInjection
 
         // Dispatcher CQRS propio — reemplaza MediatR (ADR 0014: solo software libre/gratuito)
         services.AddScoped<IDispatcher, Dispatcher>();
+
+        // Ámbito de sistema por defecto (inactivo / Fail-Closed)
+        services.TryAddScoped<ISystemExecutionScope, Pos.Application.Common.Authorization.DefaultSystemExecutionScope>();
 
         // Registrar todos los ICommandHandler<,>, IQueryHandler<,> e IDomainEventHandler<> del assembly via reflexión
         RegisterOpenGenericHandlers(services, assembly, typeof(ICommandHandler<,>));

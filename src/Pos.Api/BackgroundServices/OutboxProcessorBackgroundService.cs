@@ -87,10 +87,14 @@ public class OutboxProcessorBackgroundService : BackgroundService
         {
             try
             {
-                // Scope 2: Publicación del evento en el bus con su TenantId específico
                 using var messageScope = _scopeFactory.CreateScope();
                 var msgTenantSetter = messageScope.ServiceProvider.GetRequiredService<ITenantSetter>();
                 msgTenantSetter.SetTenantId(message.TenantId);
+
+                var systemScope = messageScope.ServiceProvider.GetRequiredService<ISystemExecutionScope>();
+                using var executionScope = systemScope.BeginScope(
+                    "OutboxProcessorBackgroundService",
+                    Type.EmptyTypes);
 
                 var eventBus = messageScope.ServiceProvider.GetRequiredService<IEventBus>();
                 var dispatcher = messageScope.ServiceProvider.GetRequiredService<IDispatcher>();

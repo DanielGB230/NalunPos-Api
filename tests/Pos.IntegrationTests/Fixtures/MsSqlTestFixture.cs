@@ -158,6 +158,7 @@ public class MsSqlTestFixture : IAsyncLifetime, IDisposable
         var testUserService = new TestCurrentUserService();
         services.AddScoped<ICurrentUserService>(_ => testUserService);
         services.AddScoped<TestCurrentUserService>(_ => testUserService);
+        services.AddScoped<ISystemExecutionScope, Pos.Infrastructure.Multitenancy.SystemExecutionScope>();
 
         services.AddScoped<AuditSaveChangesInterceptor>();
         services.AddScoped<InsertOutboxMessagesInterceptor>();
