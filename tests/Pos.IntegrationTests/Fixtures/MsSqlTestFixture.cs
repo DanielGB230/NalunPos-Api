@@ -13,7 +13,6 @@ using Pos.Infrastructure.Multitenancy;
 using Pos.Infrastructure.Persistence.Context;
 using Pos.Infrastructure.Persistence.Interceptors;
 using Pos.Infrastructure.Persistence.Repositories;
-using Testcontainers.MsSql;
 using Xunit;
 
 namespace Pos.IntegrationTests.Fixtures;
@@ -70,21 +69,10 @@ public class DummyTestEventBus : IEventBus
 
 public class MsSqlTestFixture : IAsyncLifetime, IDisposable
 {
-    private readonly MsSqlContainer? _msSqlContainer;
     private string _connectionString = string.Empty;
-    private bool _useContainer;
 
     public MsSqlTestFixture()
     {
-        try
-        {
-            _msSqlContainer = new MsSqlBuilder("mcr.microsoft.com/mssql/server:2022-latest")
-                .Build();
-        }
-        catch
-        {
-            _msSqlContainer = null;
-        }
     }
 
     public string ConnectionString => _connectionString;
@@ -99,23 +87,8 @@ public class MsSqlTestFixture : IAsyncLifetime, IDisposable
         if (!string.IsNullOrWhiteSpace(envConn))
         {
             _connectionString = envConn;
-            _useContainer = false;
         }
-        else if (_msSqlContainer != null)
-        {
-            try
-            {
-                await _msSqlContainer.StartAsync();
-                _connectionString = _msSqlContainer.GetConnectionString();
-                _useContainer = true;
-            }
-            catch
-            {
-                _useContainer = false;
-            }
-        }
-
-        if (string.IsNullOrWhiteSpace(_connectionString))
+        else
         {
             var config = new ConfigurationBuilder()
                 .AddJsonFile("appsettings.IntegrationTests.json", optional: true)
@@ -137,12 +110,9 @@ public class MsSqlTestFixture : IAsyncLifetime, IDisposable
         Console.ResetColor();
     }
 
-    public async Task DisposeAsync()
+    public Task DisposeAsync()
     {
-        if (_useContainer && _msSqlContainer != null)
-        {
-            await _msSqlContainer.DisposeAsync();
-        }
+        return Task.CompletedTask;
     }
 
     public void Dispose()

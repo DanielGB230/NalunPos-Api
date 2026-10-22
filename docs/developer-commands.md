@@ -75,14 +75,20 @@ dotnet clean
 dotnet build
 ```
 
-### Ejecutar Todas las Pruebas Unitarias y de Arquitectura
+### Ejecutar Todas las Pruebas (Unitarias, Arquitectura e Integración)
 ```bash
 dotnet test
+```
+
+### Ejecutar Pruebas de Integración con SQL Server
+Las pruebas de integración (`Pos.IntegrationTests`) se conectan directamente a la instancia de SQL Server configurada mediante variable de entorno o `tests/Pos.IntegrationTests/appsettings.IntegrationTests.json`, sin depender de Docker ni Testcontainers:
+```bash
+# Opcional: configurar cadena de conexión si difiere del valor por defecto
+$env:ConnectionStrings__DefaultConnection="Server=localhost,1433;Database=PosIntegrationTests;User Id=sa;Password=Your_password123;TrustServerCertificate=True;"
+dotnet test tests/Pos.IntegrationTests
 ```
 
 ### Ejecutar la API Forzando el Perfil HTTPS
 ```bash
 dotnet run --project src/Pos.Api --launch-profile "https"
-dotnet run --launch-profile "https"
-
 ```

@@ -17,7 +17,6 @@
     <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.19.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.19.0" />
     <PackageVersion Include="OpenTelemetry.Exporter.Console" Version="1.19.0" />
-    <PackageVersion Include="Testcontainers.MsSql" Version="4.16.0" />
   </ItemGroup>
   <!-- Application: solo paquetes MIT/Apache 2.0 (ADR 0014) -->
   <ItemGroup Label="Application">
