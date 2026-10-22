@@ -1,4 +1,4 @@
-﻿using Pos.Application.Tests.Support.Fakes;
+using Pos.Application.Tests.Support.Fakes;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Platform.Tenants.Commands.CreateTenant;
 using Pos.Domain.Common;
@@ -14,6 +14,7 @@ public class CreateTenantCommandHandlerTests
 {
     private readonly FakeTenantRepository _tenantRepository = new();
     private readonly FakeUserRepository _userRepository = new();
+    private readonly FakeAuthUserLookup _authUserLookup;
     private readonly FakeBranchRepository _branchRepository = new();
     private readonly FakeWarehouseRepository _warehouseRepository = new();
     private readonly FakeRoleRepository _roleRepository = new();
@@ -23,9 +24,11 @@ public class CreateTenantCommandHandlerTests
 
     public CreateTenantCommandHandlerTests()
     {
+        _authUserLookup = new FakeAuthUserLookup(_userRepository.Users);
         _handler = new CreateTenantCommandHandler(
             _tenantRepository,
             _userRepository,
+            _authUserLookup,
             _branchRepository,
             _warehouseRepository,
             _roleRepository,

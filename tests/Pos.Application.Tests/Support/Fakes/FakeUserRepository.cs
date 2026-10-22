@@ -21,12 +21,6 @@ public sealed class FakeUserRepository : IUserRepository
         return Task.FromResult(UserToReturn ?? Users.FirstOrDefault(u => u.Email.Value.Equals(normalized, StringComparison.OrdinalIgnoreCase)));
     }
 
-    public Task<bool> ExistsByEmailAsync(string email, Guid? excludeId = null, CancellationToken cancellationToken = default)
-    {
-        string normalized = email.Trim().ToLowerInvariant();
-        return Task.FromResult(Users.Any(u => u.Email.Value.Equals(normalized, StringComparison.OrdinalIgnoreCase) && (excludeId == null || u.Id != excludeId.Value)));
-    }
-
     public Task AddAsync(User user, CancellationToken cancellationToken = default)
     {
         Users.Add(user);

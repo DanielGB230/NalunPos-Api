@@ -637,6 +637,53 @@ public class TenantGovernanceTests
 
         Assert.Empty(findings);
     }
+
+    [Fact]
+    public void Only_Authorized_Ports_And_Platform_Components_May_Invoke_IgnoreQueryFilters()
+    {
+        // Lista CERRADA y sellada de componentes de infraestructura autorizados para omitir filtros de consulta globales.
+        // Queda estrictamente proscrito en cualquier repositorio de negocio (*Repository.cs).
+        var allowedFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "AuthUserLookup.cs",
+            "SuperAdminSeeder.cs",
+            "PosDbContext.cs",
+            "InvoiceReconciliationBackgroundService.cs",
+            "PendingInvoicePlatformReader.cs"
+        };
+
+        var violations = new List<string>();
+
+        foreach (var file in SourceTreeIndex.Src.Files)
+        {
+            var fileName = Path.GetFileName(file.FilePath);
+            var isRepository = fileName.EndsWith("Repository.cs", StringComparison.OrdinalIgnoreCase);
+
+            var invocations = file.Root.DescendantNodes()
+                .OfType<InvocationExpressionSyntax>()
+                .Where(inv => inv.Expression is MemberAccessExpressionSyntax memberAccess &&
+                              memberAccess.Name.Identifier.ValueText == "IgnoreQueryFilters")
+                .ToList();
+
+            if (invocations.Count > 0)
+            {
+                var relPath = Path.GetRelativePath(SolutionDirectory.Root, file.FilePath);
+
+                if (isRepository)
+                {
+                    violations.Add($"PROHIBICIÓN ESTRICTA: El repositorio '{relPath}' invoca 'IgnoreQueryFilters()'. Toda consulta global debe residir en puertos autorizados de plataforma (ej. IAuthUserLookup).");
+                }
+                else if (!allowedFiles.Contains(fileName))
+                {
+                    violations.Add($"ARCHIVO NO AUTORIZADO: '{relPath}' invoca 'IgnoreQueryFilters()'. Solo los archivos de la lista cerrada autorizada tienen permitido su uso: [{string.Join(", ", allowedFiles)}].");
+                }
+            }
+        }
+
+        Assert.True(
+            violations.Count == 0,
+            $"Violaciones a la gobernanza de IgnoreQueryFilters() detectadas:\n{string.Join("\n", violations)}");
+    }
 }
 
 

@@ -14,6 +14,7 @@ public class CreateTenantCommandHandler : ICommandHandler<CreateTenantCommand, R
 {
     private readonly ITenantRepository _tenantRepository;
     private readonly IUserRepository _userRepository;
+    private readonly IAuthUserLookup _authUserLookup;
     private readonly IBranchRepository _branchRepository;
     private readonly IWarehouseRepository _warehouseRepository;
     private readonly IRoleRepository _roleRepository;
@@ -23,6 +24,7 @@ public class CreateTenantCommandHandler : ICommandHandler<CreateTenantCommand, R
     public CreateTenantCommandHandler(
         ITenantRepository tenantRepository,
         IUserRepository userRepository,
+        IAuthUserLookup authUserLookup,
         IBranchRepository branchRepository,
         IWarehouseRepository warehouseRepository,
         IRoleRepository roleRepository,
@@ -31,6 +33,7 @@ public class CreateTenantCommandHandler : ICommandHandler<CreateTenantCommand, R
     {
         _tenantRepository = tenantRepository ?? throw new ArgumentNullException(nameof(tenantRepository));
         _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
+        _authUserLookup = authUserLookup ?? throw new ArgumentNullException(nameof(authUserLookup));
         _branchRepository = branchRepository ?? throw new ArgumentNullException(nameof(branchRepository));
         _warehouseRepository = warehouseRepository ?? throw new ArgumentNullException(nameof(warehouseRepository));
         _roleRepository = roleRepository ?? throw new ArgumentNullException(nameof(roleRepository));
@@ -50,7 +53,7 @@ public class CreateTenantCommandHandler : ICommandHandler<CreateTenantCommand, R
                 $"Ya existe una empresa registrada con el documento '{command.DocumentNumber}'."));
         }
 
-        bool emailExists = await _userRepository.ExistsByEmailAsync(command.AdminEmail, null, cancellationToken);
+        bool emailExists = await _authUserLookup.ExistsByEmailAsync(command.AdminEmail, null, cancellationToken);
         if (emailExists)
         {
             return Result.Fail<Guid>(DomainError.Conflict(
