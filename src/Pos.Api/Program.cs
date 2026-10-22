@@ -68,29 +68,8 @@ builder.Services.AddCustomHealthChecks();
 
 var app = builder.Build();
 
-// Inicialización de Base de Datos y Seeder
-using (var scope = app.Services.CreateScope())
-{
-    var services = scope.ServiceProvider;
-    var logger = services.GetRequiredService<ILogger<Program>>();
-
-    try
-    {
-        var dbContext = services.GetRequiredService<PosDbContext>();
-        if (app.Environment.IsDevelopment() && dbContext.Database.IsSqlServer())
-        {
-            logger.LogInformation("Aplicando migraciones de base de datos pendientes...");
-            await dbContext.Database.MigrateAsync();
-        }
-
-        var seeder = services.GetRequiredService<SuperAdminSeeder>();
-        await seeder.SeedAsync();
-    }
-    catch (Exception ex)
-    {
-        logger.LogError(ex, "Ocurrió un error al ejecutar la siembra del SuperAdmin en el inicio.");
-    }
-}
+// Inicialización determinista y fail-fast de Base de Datos y Seeder
+await app.InitializeDatabaseAsync();
 
 // Pipeline de middlewares (orden crítico):
 // 1. ForwardedHeaders: PRIMERO, para que la IP real esté disponible desde el inicio
