@@ -26,12 +26,12 @@ public class OutboxProcessorBackgroundService : BackgroundService
         IServiceScopeFactory scopeFactory,
         ILogger<OutboxProcessorBackgroundService> logger,
         IOptions<OutboxSettings> options,
-        TimeProvider? timeProvider = null)
+        TimeProvider timeProvider)
     {
         _scopeFactory = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
-        _timeProvider = timeProvider ?? TimeProvider.System;
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)

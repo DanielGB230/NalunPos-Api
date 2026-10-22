@@ -24,6 +24,7 @@ public sealed class PendingInvoicePlatformReader : IPendingInvoicePlatformReader
 
     public async Task<IReadOnlyList<PendingInvoiceSummary>> GetPendingInvoicesDueAsync(
         DateTime thresholdUtc,
+        int maxAttempts,
         int batchSize,
         CancellationToken cancellationToken = default)
     {
@@ -32,7 +33,9 @@ public sealed class PendingInvoicePlatformReader : IPendingInvoicePlatformReader
         {
             var invoices = await _dbContext.Invoices
                 .IgnoreQueryFilters()
-                .Where(i => i.Status == InvoiceStatus.Pending && i.IssueDateUtc <= thresholdUtc)
+                .Where(i => i.Status == InvoiceStatus.Pending &&
+                            i.ReconciliationAttempts < maxAttempts &&
+                            i.IssueDateUtc <= thresholdUtc)
                 .OrderBy(i => i.IssueDateUtc)
                 .Take(Math.Max(1, batchSize))
                 .Select(i => new PendingInvoiceSummary(

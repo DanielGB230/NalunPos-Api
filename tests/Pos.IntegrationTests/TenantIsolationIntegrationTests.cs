@@ -309,7 +309,8 @@ public class TenantIsolationIntegrationTests
         var outboxProcessor = new Pos.Api.BackgroundServices.OutboxProcessorBackgroundService(
             sp.GetRequiredService<Microsoft.Extensions.DependencyInjection.IServiceScopeFactory>(),
             sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<Pos.Api.BackgroundServices.OutboxProcessorBackgroundService>>(),
-            Microsoft.Extensions.Options.Options.Create(new Pos.Api.Options.OutboxSettings { PollingIntervalSeconds = 1 })
+            Microsoft.Extensions.Options.Options.Create(new Pos.Api.Options.OutboxSettings { PollingIntervalSeconds = 1 }),
+            TimeProvider.System
         );
 
         // 2. Act — invocación única. OccurredOnUtc anterior garantiza la ordenación en la consulta del Outbox.

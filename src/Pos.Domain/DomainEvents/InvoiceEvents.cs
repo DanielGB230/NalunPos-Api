@@ -18,3 +18,14 @@ public record InvoiceStatusUpdatedDomainEvent(
     string Status,
     DateTime OccurredOnUtc
 ) : IDomainEvent;
+
+public record InvoiceReconciliationExhaustedDomainEvent(
+    Guid InvoiceId,
+    Guid SaleId,
+    Guid TenantId,
+    string DocumentNumber,
+    int Attempts,
+    string Reason,
+    DateTime OccurredOnUtc
+) : IDomainEvent;
+

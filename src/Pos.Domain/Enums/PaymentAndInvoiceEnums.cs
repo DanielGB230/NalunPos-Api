@@ -30,7 +30,8 @@ public enum InvoiceStatus
     Pending = 1,
     Sent = 2,
     Accepted = 3,
-    Rejected = 4
+    Rejected = 4,
+    RequiresManualIntervention = 5
 }
 
 public enum ElectronicInvoiceProviderStatus

@@ -197,9 +197,160 @@ public class InvoiceReconciliationIntegrationTests
         }
     }
 
+    [Fact]
+    public async Task InvoiceReconciliation_WhenExhaustedInvoicesExist_ProcessesDueInvoicesInSameCycleAndNeverResendsExhausted()
+    {
+        // 1. Arrange: 60 facturas agotadas más antiguas (30 min) y 3 nuevas vencidas (10 min)
+        var tenantId = Guid.NewGuid();
+        var saleId = Guid.NewGuid();
+        var thirtyMinutesAgo = DateTime.UtcNow.AddMinutes(-30);
+        var tenMinutesAgo = DateTime.UtcNow.AddMinutes(-10);
+
+        var exhaustedInvoiceIds = new List<Guid>();
+        var newDueInvoiceIds = new List<Guid>();
+
+        using (var db = _fixture.CreateDbContext(tenantId))
+        {
+            // 60 facturas agotadas
+            for (int i = 0; i < 60; i++)
+            {
+                var exhaustedInv = Invoice.Create(
+                    tenantId,
+                    saleId,
+                    InvoiceDocumentType.Invoice,
+                    $"F060-{Guid.NewGuid().ToString()[..6]}",
+                    TaxId.Create("20123456789"),
+                    Money.Create(15m + i));
+                SetPrivateProperty(exhaustedInv, nameof(Invoice.IssueDateUtc), thirtyMinutesAgo);
+                SetPrivateProperty(exhaustedInv, nameof(Invoice.ReconciliationAttempts), 5); // Agotada
+                db.Invoices.Add(exhaustedInv);
+                exhaustedInvoiceIds.Add(exhaustedInv.Id);
+            }
+
+            // 3 facturas nuevas vencidas
+            for (int i = 0; i < 3; i++)
+            {
+                var dueInv = Invoice.Create(
+                    tenantId,
+                    saleId,
+                    InvoiceDocumentType.Invoice,
+                    $"F003-{Guid.NewGuid().ToString()[..6]}",
+                    TaxId.Create("20123456789"),
+                    Money.Create(100m + i));
+                SetPrivateProperty(dueInv, nameof(Invoice.IssueDateUtc), tenMinutesAgo);
+                SetPrivateProperty(dueInv, nameof(Invoice.ReconciliationAttempts), 0); // Nueva
+                db.Invoices.Add(dueInv);
+                newDueInvoiceIds.Add(dueInv.Id);
+            }
+
+            await db.SaveChangesAsync();
+        }
+
+        // Registrar Spy para vigilar que el proveedor tributario nunca reciba facturas agotadas
+        var spy = new SpyElectronicInvoicingService(new Pos.Infrastructure.ExternalServices.Dummy.DummyElectronicInvoicingService());
+        var sp = _fixture.CreateServiceProvider(
+            tenantId: tenantId,
+            configureServices: services =>
+            {
+                services.AddScoped<Pos.Application.Common.Interfaces.IElectronicInvoicingService>(_ => spy);
+            });
+
+        var scopeFactory = sp.GetRequiredService<IServiceScopeFactory>();
+        var logger = sp.GetRequiredService<ILogger<InvoiceReconciliationBackgroundService>>();
+
+        var settings = Options.Create(new InvoiceReconciliationSettings
+        {
+            IntervalSeconds = 5,
+            ThresholdMinutes = 5,
+            MaxReconciliationAttempts = 5,
+            BatchSize = 10
+        });
+
+        var worker = new InvoiceReconciliationBackgroundService(
+            scopeFactory,
+            logger,
+            settings,
+            TimeProvider.System);
+
+        // 2. Act: Ejecutar el ciclo de reconciliación
+        await worker.ReconcilePendingInvoicesAsync(CancellationToken.None);
+
+        // 3. Assert:
+        // (a) Las 3 nuevas vencidas fueron procesadas en este mismo ciclo a pesar de las 60 más antiguas
+        using (var verifyDb = _fixture.CreateDbContext(tenantId))
+        {
+            var processedInvoices = await verifyDb.Invoices
+                .Where(i => newDueInvoiceIds.Contains(i.Id))
+                .ToListAsync();
+
+            Assert.Equal(3, processedInvoices.Count);
+            Assert.All(processedInvoices, inv => Assert.Equal(InvoiceStatus.Accepted, inv.Status));
+
+            // (b) Las 60 agotadas nunca fueron enviadas al proveedor
+            foreach (var exhaustedId in exhaustedInvoiceIds)
+            {
+                Assert.DoesNotContain(exhaustedId, spy.InvoicesSent);
+            }
+
+            // Solo los 3 IDs de las nuevas vencidas llegaron al proveedor
+            Assert.Equal(3, spy.InvoicesSent.Count);
+            foreach (var dueId in newDueInvoiceIds)
+            {
+                Assert.Contains(dueId, spy.InvoicesSent);
+            }
+        }
+
+        // (c) Si intentamos ejecutar directamente ReconcileInvoiceCommand sobre una factura agotada,
+        // el caso de uso rechaza con DomainError.Conflict ("Invoice.ReconciliationExhausted")
+        // y transiciona a RequiresManualIntervention sin tocar el proveedor
+        using (var scope = scopeFactory.CreateScope())
+        {
+            var dispatcher = scope.ServiceProvider.GetRequiredService<Pos.Application.Common.Interfaces.IDispatcher>();
+            var targetExhaustedId = exhaustedInvoiceIds.First();
+
+            var directResult = await dispatcher.SendAsync(new Pos.Application.Invoicing.Commands.ReconcileInvoiceCommand(targetExhaustedId, MaxAttempts: 5));
+
+            Assert.True(directResult.IsFailure);
+            Assert.Equal("Invoice.ReconciliationExhausted", directResult.Error.Code);
+            // El proveedor no recibió ninguna llamada adicional
+            Assert.DoesNotContain(targetExhaustedId, spy.InvoicesSent);
+
+            using var verifyDb = _fixture.CreateDbContext(tenantId);
+            var updatedExhausted = await verifyDb.Invoices.FindAsync(targetExhaustedId);
+            Assert.NotNull(updatedExhausted);
+            Assert.Equal(InvoiceStatus.RequiresManualIntervention, updatedExhausted.Status);
+        }
+    }
+
+    private sealed class SpyElectronicInvoicingService : Pos.Application.Common.Interfaces.IElectronicInvoicingService
+    {
+        private readonly Pos.Application.Common.Interfaces.IElectronicInvoicingService _inner;
+        public System.Collections.Concurrent.ConcurrentBag<Guid> InvoicesSent { get; } = new();
+
+        public SpyElectronicInvoicingService(Pos.Application.Common.Interfaces.IElectronicInvoicingService inner)
+        {
+            _inner = inner;
+        }
+
+        public Task<Pos.Application.Common.Interfaces.InvoicingServiceResult> SendInvoiceAsync(Invoice invoice, CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(invoice);
+            InvoicesSent.Add(invoice.Id);
+            return _inner.SendInvoiceAsync(invoice, cancellationToken);
+        }
+
+        public Task<Pos.Application.Common.Interfaces.InvoicingServiceResult> GetStatusAsync(Invoice invoice, CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(invoice);
+            InvoicesSent.Add(invoice.Id);
+            return _inner.GetStatusAsync(invoice, cancellationToken);
+        }
+    }
+
     private static void SetPrivateProperty<T>(T obj, string propertyName, object value)
     {
         var prop = typeof(T).GetProperty(propertyName, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
         prop?.SetValue(obj, value);
     }
 }
+

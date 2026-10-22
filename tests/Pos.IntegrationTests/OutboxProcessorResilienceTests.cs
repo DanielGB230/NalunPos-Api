@@ -34,7 +34,7 @@ public class OutboxProcessorResilienceTests
             sp.GetRequiredService<IServiceScopeFactory>(),
             sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<OutboxProcessorBackgroundService>>(),
             Microsoft.Extensions.Options.Options.Create(settings ?? new OutboxSettings { PollingIntervalSeconds = 1, BaseRetryIntervalSeconds = 2, MaxRetries = 3 }),
-            timeProvider
+            timeProvider ?? TimeProvider.System
         );
 
     // ────────────────────────────────────────────────────────────────────────────

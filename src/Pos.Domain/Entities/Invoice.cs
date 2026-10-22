@@ -105,4 +105,19 @@ public class Invoice : AggregateRoot<Guid>, ITenantOwnedEntity
     {
         ReconciliationAttempts++;
     }
+
+    public void MarkAsRequiresManualIntervention(string reason, TimeProvider timeProvider)
+    {
+        ArgumentNullException.ThrowIfNull(timeProvider);
+        var utcNow = timeProvider.GetUtcNow().UtcDateTime;
+        Status = InvoiceStatus.RequiresManualIntervention;
+        RaiseDomainEvent(new InvoiceReconciliationExhaustedDomainEvent(
+            Id,
+            SaleId,
+            TenantId,
+            DocumentNumber,
+            ReconciliationAttempts,
+            reason,
+            utcNow));
+    }
 }

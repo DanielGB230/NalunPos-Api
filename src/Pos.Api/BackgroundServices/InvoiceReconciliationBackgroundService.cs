@@ -22,12 +22,12 @@ public class InvoiceReconciliationBackgroundService : BackgroundService
         IServiceScopeFactory scopeFactory,
         ILogger<InvoiceReconciliationBackgroundService> logger,
         IOptions<InvoiceReconciliationSettings> settings,
-        TimeProvider? timeProvider = null)
+        TimeProvider timeProvider)
     {
         _scopeFactory = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _settings = settings?.Value ?? throw new ArgumentNullException(nameof(settings));
-        _timeProvider = timeProvider ?? TimeProvider.System;
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -68,6 +68,7 @@ public class InvoiceReconciliationBackgroundService : BackgroundService
             var reader = scope.ServiceProvider.GetRequiredService<IPendingInvoicePlatformReader>();
             pendingInvoices = await reader.GetPendingInvoicesDueAsync(
                 thresholdUtc,
+                _settings.MaxReconciliationAttempts,
                 _settings.BatchSize,
                 cancellationToken);
         }
@@ -79,20 +80,6 @@ public class InvoiceReconciliationBackgroundService : BackgroundService
 
         foreach (var pendingInvoice in pendingInvoices)
         {
-            if (pendingInvoice.ReconciliationAttempts >= _settings.MaxReconciliationAttempts)
-            {
-                if (_logger.IsEnabled(LogLevel.Critical))
-                {
-                    _logger.LogCritical(
-                        "ALERTA FISCAL: La factura ID {InvoiceId} (Folio: {DocumentNumber}) del Tenant {TenantId} superó el límite de reintentos ({MaxAttempts}). Se requiere intervención manual.",
-                        pendingInvoice.Id,
-                        pendingInvoice.DocumentNumber,
-                        pendingInvoice.TenantId,
-                        _settings.MaxReconciliationAttempts);
-                }
-                continue;
-            }
-
             try
             {
                 using var tenantScope = _scopeFactory.CreateScope();
@@ -100,7 +87,9 @@ public class InvoiceReconciliationBackgroundService : BackgroundService
                 tenantSetter.SetTenantId(pendingInvoice.TenantId);
 
                 var dispatcher = tenantScope.ServiceProvider.GetRequiredService<IDispatcher>();
-                var result = await dispatcher.SendAsync(new ReconcileInvoiceCommand(pendingInvoice.Id), cancellationToken);
+                var result = await dispatcher.SendAsync(
+                    new ReconcileInvoiceCommand(pendingInvoice.Id, _settings.MaxReconciliationAttempts),
+                    cancellationToken);
 
                 if (!result.IsSuccess)
                 {

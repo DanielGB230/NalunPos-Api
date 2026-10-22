@@ -18,6 +18,7 @@ public interface IPendingInvoicePlatformReader
 {
     Task<IReadOnlyList<PendingInvoiceSummary>> GetPendingInvoicesDueAsync(
         DateTime thresholdUtc,
+        int maxAttempts,
         int batchSize,
         CancellationToken cancellationToken = default);
 }
