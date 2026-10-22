@@ -4,6 +4,7 @@ using Pos.Application.Invoicing.Commands;
 using Pos.Domain.Common;
 using Pos.Domain.Entities;
 using Pos.Domain.Enums;
+using Pos.Domain.Exceptions;
 using Pos.Domain.Interfaces;
 using Pos.Domain.ValueObjects;
 using Xunit;
@@ -60,6 +61,58 @@ public class ReconcileInvoiceCommandHandlerTests
         Assert.True(result.IsFailure);
         Assert.Equal(ErrorType.Conflict, result.Error.Type);
         Assert.Equal("Invoice.AlreadyProcessed", result.Error.Code);
+        Assert.Equal(0, _invoicingService.GetStatusCallCount);
+        Assert.Equal(0, _invoicingService.SendInvoiceCallCount);
+        Assert.Empty(_dispatcher.PublishedDomainEvents);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenConcurrencyExceptionOccurs_ShouldReturnConflictResultAndPublishZeroEvents()
+    {
+        var invoice = Invoice.Create(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            InvoiceDocumentType.Invoice,
+            "F001-00000009",
+            TaxId.Create("20123456789", "PE"),
+            Money.Create(150m, "USD"));
+        _invoiceRepository.Invoices.Add(invoice);
+
+        _invoicingService.ReturnStatus(ElectronicInvoiceProviderStatus.Accepted);
+        _unitOfWork.ExceptionToThrowOnSave = new ConcurrencyException("Conflicto de concurrencia simulado en base de datos.");
+
+        var command = new ReconcileInvoiceCommand(invoice.Id);
+
+        var result = await _handler.HandleAsync(command, CancellationToken.None);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(ErrorType.Conflict, result.Error.Type);
+        Assert.Equal("Invoice.ConcurrencyConflict", result.Error.Code);
+        Assert.Empty(_dispatcher.PublishedDomainEvents);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenSuccessful_ShouldPublishDomainEventsExactlyOnce()
+    {
+        var invoice = Invoice.Create(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            InvoiceDocumentType.Invoice,
+            "F001-00000010",
+            TaxId.Create("20123456789", "PE"),
+            Money.Create(200m, "USD"));
+        _invoiceRepository.Invoices.Add(invoice);
+
+        _invoicingService.ReturnStatus(ElectronicInvoiceProviderStatus.Accepted);
+
+        var command = new ReconcileInvoiceCommand(invoice.Id);
+
+        var result = await _handler.HandleAsync(command, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.NotEmpty(_dispatcher.PublishedDomainEvents);
+        // Cada evento publicado una sola vez
+        Assert.Equal(_dispatcher.PublishedDomainEvents.Count, _dispatcher.PublishedDomainEvents.Distinct().Count());
     }
 
     [Fact]
@@ -109,5 +162,4 @@ public class ReconcileInvoiceCommandHandlerTests
         Assert.Equal(1, invoice.ReconciliationAttempts);
         Assert.Equal(1, _unitOfWork.SaveChangesCount);
     }
-
 }

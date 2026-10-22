@@ -17,6 +17,11 @@ public sealed class FakeElectronicInvoicingService : IElectronicInvoicingService
         StatusToReturn = status;
     }
 
+    /// <summary>Contador de llamadas a GetStatusAsync.</summary>
+    public int GetStatusCallCount { get; private set; }
+    /// <summary>Contador de llamadas a SendInvoiceAsync.</summary>
+    public int SendInvoiceCallCount { get; private set; }
+
     /// <summary>Configura el estado a retornar al enviar comprobantes.</summary>
     public void ReturnSendStatus(ElectronicInvoiceProviderStatus status)
     {
@@ -25,6 +30,7 @@ public sealed class FakeElectronicInvoicingService : IElectronicInvoicingService
 
     public Task<InvoicingServiceResult> GetStatusAsync(Invoice invoice, CancellationToken cancellationToken = default)
     {
+        GetStatusCallCount++;
         if (StatusToReturn is null)
         {
             throw new InvalidOperationException("FakeElectronicInvoicingService no configurado: llama ReturnStatus()");
@@ -35,6 +41,7 @@ public sealed class FakeElectronicInvoicingService : IElectronicInvoicingService
 
     public Task<InvoicingServiceResult> SendInvoiceAsync(Invoice invoice, CancellationToken cancellationToken = default)
     {
+        SendInvoiceCallCount++;
         if (SendStatusToReturn is null)
         {
             throw new InvalidOperationException("FakeElectronicInvoicingService no configurado: llama ReturnSendStatus()");

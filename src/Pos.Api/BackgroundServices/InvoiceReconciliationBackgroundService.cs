@@ -102,13 +102,26 @@ public class InvoiceReconciliationBackgroundService : BackgroundService
                 var dispatcher = tenantScope.ServiceProvider.GetRequiredService<IDispatcher>();
                 var result = await dispatcher.SendAsync(new ReconcileInvoiceCommand(pendingInvoice.Id), cancellationToken);
 
-                if (!result.IsSuccess && _logger.IsEnabled(LogLevel.Warning))
+                if (!result.IsSuccess)
                 {
-                    _logger.LogWarning(
-                        "No se pudo reconciliar la factura ID {InvoiceId} del Tenant {TenantId}: {ErrorMessage}",
-                        pendingInvoice.Id,
-                        pendingInvoice.TenantId,
-                        result.Error.Message);
+                    if (result.Error.Code == "Invoice.ConcurrencyConflict")
+                    {
+                        if (_logger.IsEnabled(LogLevel.Information))
+                        {
+                            _logger.LogInformation(
+                                "Factura ID {InvoiceId} del Tenant {TenantId} ya fue conciliada concurrentemente por otro proceso.",
+                                pendingInvoice.Id,
+                                pendingInvoice.TenantId);
+                        }
+                    }
+                    else if (_logger.IsEnabled(LogLevel.Warning))
+                    {
+                        _logger.LogWarning(
+                            "No se pudo reconciliar la factura ID {InvoiceId} del Tenant {TenantId}: {ErrorMessage}",
+                            pendingInvoice.Id,
+                            pendingInvoice.TenantId,
+                            result.Error.Message);
+                    }
                 }
             }
             catch (Exception ex)

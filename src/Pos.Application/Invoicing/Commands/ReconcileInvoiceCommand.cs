@@ -83,7 +83,9 @@ public class ReconcileInvoiceCommandHandler : ICommandHandler<ReconcileInvoiceCo
         }
         catch (ConcurrencyException)
         {
-            // Omitir silenciosamente en conflicto de concurrencia (ya fue procesado por otro proceso)
+            return Result.Fail<InvoiceDto>(DomainError.Conflict(
+                "Invoice.ConcurrencyConflict",
+                $"Conflicto de concurrencia al conciliar la factura con ID '{request.InvoiceId}'."));
         }
 
         foreach (var domainEvent in domainEvents)
