@@ -65,11 +65,12 @@ public class OutboxProcessorBackgroundService : BackgroundService
         tenantSetter.SetSuperAdmin(true);
 
         var dbContext = scope.ServiceProvider.GetRequiredService<PosDbContext>();
+        var now = _timeProvider.GetUtcNow();
 
         var pendingMessages = await dbContext.OutboxMessages
-            .Where(m => m.ProcessedOnUtc == null && m.Error == null)
+            .Where(m => m.ProcessedOnUtc == null && !m.IsDeadLetter && (m.NextRetryAtUtc == null || m.NextRetryAtUtc <= now))
             .OrderBy(m => m.OccurredOnUtc)
-            .Take(20)
+            .Take(_options.BatchSize)
             .ToListAsync(cancellationToken);
 
         if (pendingMessages.Count == 0)
@@ -97,17 +98,11 @@ public class OutboxProcessorBackgroundService : BackgroundService
 
                 if (eventType == null)
                 {
-                    _logger.LogWarning(
-                        "No se pudo resolver el tipo '{MessageType}' para el mensaje Outbox {MessageId}. Marcando como fallido.",
-                        message.Type, message.Id);
-                    message.MarkAsFailed($"No se pudo resolver el tipo {message.Type}");
+                    HandleMessageFailure(message, $"No se pudo resolver el tipo {message.Type}");
                 }
                 else if (!typeof(IIntegrationEvent).IsAssignableFrom(eventType))
                 {
-                    _logger.LogWarning(
-                        "El tipo '{TypeName}' no implementa IIntegrationEvent para el mensaje Outbox {MessageId}. Marcando como fallido.",
-                        eventType.Name, message.Id);
-                    message.MarkAsFailed($"El tipo {eventType.Name} no implementa IIntegrationEvent");
+                    HandleMessageFailure(message, $"El tipo {eventType.Name} no implementa IIntegrationEvent");
                 }
                 else
                 {
@@ -122,32 +117,25 @@ public class OutboxProcessorBackgroundService : BackgroundService
                             jex,
                             "Error al deserializar el mensaje Outbox {MessageId} de tipo '{MessageType}'.",
                             message.Id, message.Type);
-                        message.MarkAsFailed($"Error de deserialización: {jex.Message}");
+                        HandleMessageFailure(message, $"Error de deserialización: {jex.Message}");
                     }
 
-                    if (message.Error == null && integrationEvent == null)
+                    if (integrationEvent == null && !message.IsDeadLetter && message.NextRetryAtUtc == null)
                     {
-                        _logger.LogWarning(
-                            "Deserialización produjo null para el mensaje Outbox {MessageId} de tipo '{MessageType}'.",
-                            message.Id, message.Type);
-                        message.MarkAsFailed($"Fallo al deserializar el evento {message.Type}");
+                        HandleMessageFailure(message, $"Fallo al deserializar el evento {message.Type}");
                     }
-                    else if (message.Error == null && integrationEvent != null)
+                    else if (integrationEvent != null)
                     {
                         await eventBus.PublishAsync(integrationEvent, cancellationToken);
                         await dispatcher.PublishIntegrationEventAsync(integrationEvent, cancellationToken);
+                        message.MarkAsProcessed(_timeProvider);
                     }
-                }
-
-                if (message.Error == null)
-                {
-                    message.MarkAsProcessed(_timeProvider);
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Fallo al procesar el mensaje Outbox {MessageId}.", message.Id);
-                message.MarkAsFailed(ex.Message);
+                HandleMessageFailure(message, ex.Message);
             }
         }
 
@@ -156,9 +144,29 @@ public class OutboxProcessorBackgroundService : BackgroundService
         if (_logger.IsEnabled(LogLevel.Information))
         {
             _logger.LogInformation(
-                "Outbox: {Processed} procesados, {Failed} fallidos.",
+                "Outbox: {Processed} procesados, {Retrying} reintentando, {DeadLetter} en dead-letter.",
                 pendingMessages.Count(m => m.ProcessedOnUtc != null),
-                pendingMessages.Count(m => m.Error != null));
+                pendingMessages.Count(m => !m.IsDeadLetter && m.ProcessedOnUtc == null),
+                pendingMessages.Count(m => m.IsDeadLetter));
+        }
+    }
+
+    private void HandleMessageFailure(OutboxMessage message, string errorMessage)
+    {
+        var delay = TimeSpan.FromSeconds(Math.Pow(2, message.RetryCount) * _options.BaseRetryIntervalSeconds);
+        message.RecordFailure(errorMessage, _options.MaxRetries, delay, _timeProvider);
+
+        if (message.IsDeadLetter)
+        {
+            _logger.LogError(
+                "Mensaje Outbox {MessageId} ha alcanzado el límite de {MaxRetries} reintentos y fue enviado a Dead-Letter. Error: {Error}",
+                message.Id, _options.MaxRetries, errorMessage);
+        }
+        else
+        {
+            _logger.LogWarning(
+                "Mensaje Outbox {MessageId} falló (intento {Attempt}/{MaxRetries}). Siguiente reintento programado para {NextRetryAtUtc}. Error: {Error}",
+                message.Id, message.RetryCount, _options.MaxRetries, message.NextRetryAtUtc, errorMessage);
         }
     }
 }

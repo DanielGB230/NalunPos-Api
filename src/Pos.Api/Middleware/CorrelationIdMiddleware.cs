@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 
@@ -5,10 +6,14 @@ namespace Pos.Api.Middleware;
 
 /// <summary>
 /// Middleware encargado de generar o propagar el CorrelationId por cada request entrante.
+/// Valida que el header X-Correlation-ID entrante tenga un máximo de 64 caracteres
+/// y contenga únicamente caracteres alfanuméricos o guiones ([a-zA-Z0-9\-_]).
+/// Si es inválido, malicioso o vacío, lo ignora y genera un Guid nuevo.
 /// </summary>
-public class CorrelationIdMiddleware
+public partial class CorrelationIdMiddleware
 {
     private const string CorrelationIdHeader = "X-Correlation-ID";
+    private const int MaxCorrelationIdLength = 64;
     private readonly RequestDelegate _next;
     private readonly ILogger<CorrelationIdMiddleware> _logger;
 
@@ -18,6 +23,9 @@ public class CorrelationIdMiddleware
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
+    [GeneratedRegex(@"^[a-zA-Z0-9\-_]+$")]
+    private static partial Regex ValidCorrelationIdPattern();
+
     public async Task InvokeAsync(HttpContext context)
     {
         string correlationId;
@@ -25,7 +33,15 @@ public class CorrelationIdMiddleware
         if (context.Request.Headers.TryGetValue(CorrelationIdHeader, out var existingCorrelationId) &&
             !string.IsNullOrWhiteSpace(existingCorrelationId))
         {
-            correlationId = existingCorrelationId.ToString();
+            var headerValue = existingCorrelationId.ToString();
+            if (headerValue.Length <= MaxCorrelationIdLength && ValidCorrelationIdPattern().IsMatch(headerValue))
+            {
+                correlationId = headerValue;
+            }
+            else
+            {
+                correlationId = Guid.NewGuid().ToString();
+            }
         }
         else
         {

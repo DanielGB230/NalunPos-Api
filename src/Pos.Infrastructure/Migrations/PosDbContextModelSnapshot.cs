@@ -1235,11 +1235,24 @@ namespace Pos.Infrastructure.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("nvarchar(2000)");
 
+                    b.Property<bool>("IsDeadLetter")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<DateTimeOffset?>("NextRetryAtUtc")
+                        .HasColumnType("datetimeoffset");
+
                     b.Property<DateTimeOffset>("OccurredOnUtc")
                         .HasColumnType("datetimeoffset");
 
                     b.Property<DateTimeOffset?>("ProcessedOnUtc")
                         .HasColumnType("datetimeoffset");
+
+                    b.Property<int>("RetryCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
 
                     b.Property<Guid?>("TenantId")
                         .HasColumnType("uniqueidentifier");
@@ -1254,6 +1267,8 @@ namespace Pos.Infrastructure.Migrations
                     b.HasIndex("OccurredOnUtc");
 
                     b.HasIndex("ProcessedOnUtc");
+
+                    b.HasIndex("ProcessedOnUtc", "IsDeadLetter", "NextRetryAtUtc");
 
                     b.ToTable("OutboxMessages", (string)null);
                 });

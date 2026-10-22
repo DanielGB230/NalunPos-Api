@@ -29,11 +29,12 @@ public class OutboxProcessorResilienceTests
         _output = output;
     }
 
-    private static OutboxProcessorBackgroundService BuildProcessor(IServiceProvider sp) =>
+    private static OutboxProcessorBackgroundService BuildProcessor(IServiceProvider sp, OutboxSettings? settings = null, TimeProvider? timeProvider = null) =>
         new(
             sp.GetRequiredService<IServiceScopeFactory>(),
             sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<OutboxProcessorBackgroundService>>(),
-            Microsoft.Extensions.Options.Options.Create(new OutboxSettings { PollingIntervalSeconds = 1 })
+            Microsoft.Extensions.Options.Options.Create(settings ?? new OutboxSettings { PollingIntervalSeconds = 1, BaseRetryIntervalSeconds = 2, MaxRetries = 3 }),
+            timeProvider
         );
 
     // ────────────────────────────────────────────────────────────────────────────
@@ -199,5 +200,177 @@ public class OutboxProcessorResilienceTests
 
         // Assert: el segundo SaveChanges NO duplicó los OutboxMessages
         Assert.Equal(countAfterFirst, countAfterSecond);
+    }
+
+    // ────────────────────────────────────────────────────────────────────────────
+    // Punto 6: Reintentos con Backoff Exponencial y Dead-Letter
+    // ────────────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task OutboxProcessor_WhenMessageFails_IncrementsRetryCountAndCalculatesBackoff()
+    {
+        Guid tenantId = Guid.NewGuid();
+        Guid messageId = Guid.NewGuid();
+
+        using (var db = _fixture.CreateDbContext(tenantId))
+        {
+            var message = OutboxMessage.Create(
+                messageId,
+                tenantId,
+                "Pos.Application.DoesNotExist.FailingEvent, Pos.Application",
+                "{\"Id\":\"" + Guid.NewGuid() + "\"}",
+                DateTimeOffset.UtcNow.AddYears(-5)
+            );
+            db.OutboxMessages.Add(message);
+            await db.SaveChangesAsync();
+        }
+
+        var sp = _fixture.CreateServiceProvider(null);
+        var settings = new OutboxSettings
+        {
+            PollingIntervalSeconds = 1,
+            MaxRetries = 3,
+            BaseRetryIntervalSeconds = 2
+        };
+        var processor = BuildProcessor(sp, settings);
+
+        // Act
+        var beforeProcess = DateTimeOffset.UtcNow;
+        await processor.ProcessOutboxMessagesAsync(CancellationToken.None);
+
+        // Assert: RetryCount incrementado a 1, no es dead-letter y NextRetryAtUtc programado con backoff
+        using var dbVerify = _fixture.CreateDbContext(null, isSuperAdmin: true);
+        var msg = await dbVerify.OutboxMessages.IgnoreQueryFilters().FirstOrDefaultAsync(m => m.Id == messageId);
+
+        Assert.NotNull(msg);
+        Assert.Null(msg.ProcessedOnUtc);
+        Assert.NotNull(msg.Error);
+        Assert.Equal(1, msg.RetryCount);
+        Assert.False(msg.IsDeadLetter);
+        Assert.NotNull(msg.NextRetryAtUtc);
+        // Delay esperado: 2^0 * 2s = 2 segundos
+        Assert.True(msg.NextRetryAtUtc >= beforeProcess.AddSeconds(1));
+    }
+
+    [Fact]
+    public async Task OutboxProcessor_WhenNextRetryInFuture_DoesNotReprocessUntilDue()
+    {
+        Guid tenantId = Guid.NewGuid();
+        Guid messageId = Guid.NewGuid();
+
+        using (var db = _fixture.CreateDbContext(tenantId))
+        {
+            var message = OutboxMessage.Create(
+                messageId,
+                tenantId,
+                "Pos.Application.DoesNotExist.FailingEvent, Pos.Application",
+                "{\"Id\":\"" + Guid.NewGuid() + "\"}",
+                DateTimeOffset.UtcNow.AddYears(-5)
+            );
+            // Simular primer fallo previo con próximo reintento en el futuro (+10 minutos)
+            message.RecordFailure("Error temporal", maxRetries: 3, retryDelay: TimeSpan.FromMinutes(10), TimeProvider.System);
+            db.OutboxMessages.Add(message);
+            await db.SaveChangesAsync();
+        }
+
+        var sp = _fixture.CreateServiceProvider(null);
+        var processor = BuildProcessor(sp);
+
+        // Act 1: Como NextRetryAtUtc está en el futuro, no debe procesarlo
+        await processor.ProcessOutboxMessagesAsync(CancellationToken.None);
+
+        using (var dbVerify1 = _fixture.CreateDbContext(null, isSuperAdmin: true))
+        {
+            var msg1 = await dbVerify1.OutboxMessages.IgnoreQueryFilters().FirstOrDefaultAsync(m => m.Id == messageId);
+            Assert.NotNull(msg1);
+            Assert.Equal(1, msg1.RetryCount); // No se incrementó
+        }
+
+        // Act 2: Actualizar NextRetryAtUtc al pasado (simulando que el tiempo transcurrió)
+        using (var dbUpdate = _fixture.CreateDbContext(null, isSuperAdmin: true))
+        {
+            await dbUpdate.Database.ExecuteSqlAsync($"UPDATE OutboxMessages SET NextRetryAtUtc = {DateTimeOffset.UtcNow.AddSeconds(-5)} WHERE Id = {messageId}");
+        }
+
+        // Act 3: Ahora sí debe ser seleccionado para reintento
+        await processor.ProcessOutboxMessagesAsync(CancellationToken.None);
+
+        using (var dbVerify2 = _fixture.CreateDbContext(null, isSuperAdmin: true))
+        {
+            var msg2 = await dbVerify2.OutboxMessages.IgnoreQueryFilters().FirstOrDefaultAsync(m => m.Id == messageId);
+            Assert.NotNull(msg2);
+            Assert.Equal(2, msg2.RetryCount); // Se incrementó al segundo reintento
+        }
+    }
+
+    [Fact]
+    public async Task OutboxProcessor_WhenMaxRetriesReached_TransitionsToDeadLetter()
+    {
+        Guid tenantId = Guid.NewGuid();
+        Guid messageId = Guid.NewGuid();
+
+        using (var db = _fixture.CreateDbContext(tenantId))
+        {
+            var message = OutboxMessage.Create(
+                messageId,
+                tenantId,
+                "Pos.Application.DoesNotExist.FailingEvent, Pos.Application",
+                "{\"Id\":\"" + Guid.NewGuid() + "\"}",
+                DateTimeOffset.UtcNow.AddYears(-5)
+            );
+            db.OutboxMessages.Add(message);
+            await db.SaveChangesAsync();
+        }
+
+        var sp = _fixture.CreateServiceProvider(null);
+        var settings = new OutboxSettings
+        {
+            PollingIntervalSeconds = 1,
+            MaxRetries = 2, // Límite de 2 reintentos
+            BaseRetryIntervalSeconds = 1
+        };
+        var processor = BuildProcessor(sp, settings);
+
+        // Intento 1: falla y se programa reintento
+        await processor.ProcessOutboxMessagesAsync(CancellationToken.None);
+
+        using (var dbCheck1 = _fixture.CreateDbContext(null, isSuperAdmin: true))
+        {
+            var msg1 = await dbCheck1.OutboxMessages.IgnoreQueryFilters().FirstOrDefaultAsync(m => m.Id == messageId);
+            Assert.NotNull(msg1);
+            Assert.Equal(1, msg1.RetryCount);
+            Assert.False(msg1.IsDeadLetter);
+            Assert.NotNull(msg1.NextRetryAtUtc);
+        }
+
+        // Simular que el intervalo expiró
+        using (var dbUpdate = _fixture.CreateDbContext(null, isSuperAdmin: true))
+        {
+            await dbUpdate.Database.ExecuteSqlAsync($"UPDATE OutboxMessages SET NextRetryAtUtc = {DateTimeOffset.UtcNow.AddSeconds(-1)} WHERE Id = {messageId}");
+        }
+
+        // Intento 2: alcanza MaxRetries (2) -> pasa a Dead-Letter
+        await processor.ProcessOutboxMessagesAsync(CancellationToken.None);
+
+        using (var dbCheck2 = _fixture.CreateDbContext(null, isSuperAdmin: true))
+        {
+            var msg2 = await dbCheck2.OutboxMessages.IgnoreQueryFilters().FirstOrDefaultAsync(m => m.Id == messageId);
+            Assert.NotNull(msg2);
+            Assert.Equal(2, msg2.RetryCount);
+            Assert.True(msg2.IsDeadLetter);
+            Assert.Null(msg2.NextRetryAtUtc);
+            Assert.NotNull(msg2.Error);
+        }
+
+        // Ejecución posterior: el mensaje dead-letter ya no es tomado por el worker
+        await processor.ProcessOutboxMessagesAsync(CancellationToken.None);
+
+        using (var dbCheck3 = _fixture.CreateDbContext(null, isSuperAdmin: true))
+        {
+            var msg3 = await dbCheck3.OutboxMessages.IgnoreQueryFilters().FirstOrDefaultAsync(m => m.Id == messageId);
+            Assert.NotNull(msg3);
+            Assert.Equal(2, msg3.RetryCount); // Se mantiene en 2, ignorado
+            Assert.True(msg3.IsDeadLetter);
+        }
     }
 }

@@ -88,6 +88,10 @@ if (app.Environment.IsDevelopment())
                .WithTheme(ScalarTheme.Purple);
     });
 }
+else
+{
+    app.UseHsts();
+}
 
 app.UseHttpsRedirection();
 app.UseCors("AllowFrontend");

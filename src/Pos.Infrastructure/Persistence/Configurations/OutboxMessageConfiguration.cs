@@ -30,7 +30,18 @@ public class OutboxMessageConfiguration : IEntityTypeConfiguration<OutboxMessage
         builder.Property(o => o.Error)
             .HasMaxLength(2000);
 
+        builder.Property(o => o.RetryCount)
+            .IsRequired()
+            .HasDefaultValue(0);
+
+        builder.Property(o => o.NextRetryAtUtc);
+
+        builder.Property(o => o.IsDeadLetter)
+            .IsRequired()
+            .HasDefaultValue(false);
+
         builder.HasIndex(o => o.ProcessedOnUtc);
         builder.HasIndex(o => o.OccurredOnUtc);
+        builder.HasIndex(o => new { o.ProcessedOnUtc, o.IsDeadLetter, o.NextRetryAtUtc });
     }
 }

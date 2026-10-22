@@ -13,6 +13,9 @@ public class OutboxMessage
     public DateTimeOffset OccurredOnUtc { get; private set; }
     public DateTimeOffset? ProcessedOnUtc { get; private set; }
     public string? Error { get; private set; }
+    public int RetryCount { get; private set; }
+    public DateTimeOffset? NextRetryAtUtc { get; private set; }
+    public bool IsDeadLetter { get; private set; }
 
     private OutboxMessage()
     {
@@ -40,6 +43,8 @@ public class OutboxMessage
         Type = type.Trim();
         Content = content;
         OccurredOnUtc = occurredOnUtc;
+        RetryCount = 0;
+        IsDeadLetter = false;
     }
 
     public static OutboxMessage Create(Guid id, Guid? tenantId, string type, string content, DateTimeOffset occurredOnUtc)
@@ -51,6 +56,7 @@ public class OutboxMessage
     {
         ProcessedOnUtc = processedOnUtc;
         Error = null;
+        NextRetryAtUtc = null;
     }
 
     public void MarkAsProcessed(TimeProvider timeProvider)
@@ -58,10 +64,42 @@ public class OutboxMessage
         ArgumentNullException.ThrowIfNull(timeProvider);
         ProcessedOnUtc = timeProvider.GetUtcNow();
         Error = null;
+        NextRetryAtUtc = null;
     }
 
     public void MarkAsFailed(string error)
     {
         Error = error;
+        RetryCount++;
+    }
+
+    /// <summary>
+    /// Registra un fallo en el procesamiento. Incrementa RetryCount. Si se alcanza maxRetries,
+    /// pasa el mensaje a estado Dead-Letter (IsDeadLetter = true). Si no, programa el siguiente
+    /// reintento aplicando retryDelay (backoff exponencial) mediante el timeProvider.
+    /// </summary>
+    public void RecordFailure(string error, int maxRetries, TimeSpan retryDelay, TimeProvider timeProvider)
+    {
+        ArgumentNullException.ThrowIfNull(timeProvider);
+        Error = error;
+        RetryCount++;
+
+        if (RetryCount >= maxRetries)
+        {
+            IsDeadLetter = true;
+            NextRetryAtUtc = null;
+        }
+        else
+        {
+            IsDeadLetter = false;
+            NextRetryAtUtc = timeProvider.GetUtcNow().Add(retryDelay);
+        }
+    }
+
+    public void MarkAsDeadLetter(string error)
+    {
+        Error = error;
+        IsDeadLetter = true;
+        NextRetryAtUtc = null;
     }
 }
