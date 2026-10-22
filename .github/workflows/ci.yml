@@ -43,6 +43,21 @@ jobs:
       - name: Build Solution (Release with TreatWarningsAsErrors)
         run: dotnet build -c Release Pos.slnx --no-restore /p:TreatWarningsAsErrors=true
 
+      - name: Restore Local Tools (dotnet-ef)
+        run: dotnet tool restore
+
+      - name: Verify No Pending Model Changes (dotnet ef migrations has-pending-model-changes)
+        run: dotnet ef migrations has-pending-model-changes --project src/Pos.Infrastructure --startup-project src/Pos.Api
+
+      - name: Generate Migrations Bundle (dotnet ef migrations bundle)
+        run: dotnet ef migrations bundle --project src/Pos.Infrastructure --startup-project src/Pos.Api --output ./efbundle --configuration Release --verbose
+
+      - name: Apply Migrations Bundle to SQL Server 2022
+        run: |
+          chmod +x ./efbundle
+          ./efbundle --connection "Server=localhost,1433;Database=PosIntegrationTests;User Id=sa;Password=Your_password123!;TrustServerCertificate=True;"
+          ./efbundle --connection "Server=localhost,1433;Database=PosInfrastructureTests;User Id=sa;Password=Your_password123!;TrustServerCertificate=True;"
+
       - name: Run Domain Tests
         run: dotnet test tests/Pos.Domain.Tests/Pos.Domain.Tests.csproj -c Release --no-build --verbosity normal
 

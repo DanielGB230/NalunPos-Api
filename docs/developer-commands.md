@@ -35,6 +35,30 @@ dotnet ef database drop --force --project src/Pos.Infrastructure --startup-proje
 dotnet ef migrations list --project src/Pos.Infrastructure --startup-project src/Pos.Api
 ```
 
+### Restaurar Herramientas Locales (.NET Tools fijadas en `.config/dotnet-tools.json`)
+```bash
+dotnet tool restore
+```
+
+### Validar que no existan Cambios Pendientes en el Modelo de EF Core
+```bash
+dotnet ef migrations has-pending-model-changes --project src/Pos.Infrastructure --startup-project src/Pos.Api
+```
+
+### Generar Bundle de Migraciones para Producción / CI (ADR 0019)
+```bash
+# En Windows (genera efbundle.exe)
+dotnet ef migrations bundle --project src/Pos.Infrastructure --startup-project src/Pos.Api --output ./efbundle.exe --configuration Release
+
+# En Linux / CI (genera efbundle)
+dotnet ef migrations bundle --project src/Pos.Infrastructure --startup-project src/Pos.Api --output ./efbundle --configuration Release
+```
+
+### Ejecutar Bundle de Migraciones contra la Base de Datos
+```bash
+./efbundle --connection "Server=localhost,1433;Database=PosIntegrationTests;User Id=sa;Password=Your_password123!;TrustServerCertificate=True;"
+```
+
 ---
 
 ## 2. Gestión de Seguridad (User Secrets)
