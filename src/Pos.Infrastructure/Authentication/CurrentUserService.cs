@@ -29,4 +29,6 @@ public class CurrentUserService : ICurrentUserService
             return _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.Email);
         }
     }
+
+    public bool IsSystemContext => _httpContextAccessor.HttpContext == null;
 }

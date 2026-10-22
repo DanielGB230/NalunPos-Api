@@ -110,6 +110,7 @@ public static class DependencyInjection
         services.AddScoped<ITokenGenerator, JwtTokenGenerator>();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
         services.AddScoped<IAuthUserLookup, AuthUserLookup>();
+        services.AddScoped<IPendingInvoicePlatformReader, Pos.Infrastructure.Persistence.PendingInvoicePlatformReader>();
         services.AddScoped<Pos.Application.Common.Authorization.ICurrentUserPermissions, CurrentUserPermissions>();
 
         // ── Seeders ───────────────────────────────────────────────────────────

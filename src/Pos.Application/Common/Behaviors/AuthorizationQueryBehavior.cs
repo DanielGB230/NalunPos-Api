@@ -49,6 +49,11 @@ public class AuthorizationQueryBehavior<TRequest, TResponse> : IQueryHandler<TRe
             throw new UnauthorizedDomainException("Acceso denegado: el handler no declara reglas de autorización (Fail-Closed).");
         }
 
+        if (_currentUserService.IsSystemContext)
+        {
+            return await _inner.HandleAsync(request, cancellationToken);
+        }
+
         if (!_currentUserService.UserId.HasValue)
         {
             throw new UnauthorizedDomainException("No se ha proporcionado un token de autenticación válido.");

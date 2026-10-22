@@ -32,6 +32,7 @@ public class MockCurrentUserService : ICurrentUserService
 {
     public Guid? UserId { get; set; }
     public string? UserEmail { get; set; }
+    public bool IsSystemContext => false;
 }
 
 public class SaleOrchestrationIntegrationTests : IDisposable

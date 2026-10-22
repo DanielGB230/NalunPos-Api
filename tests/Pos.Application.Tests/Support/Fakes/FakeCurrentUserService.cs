@@ -8,4 +8,5 @@ public sealed class FakeCurrentUserService : ICurrentUserService
     public Guid? UserId { get; set; }
     /// <summary>Correo electrónico simulado del usuario actual.</summary>
     public string? UserEmail => "test@example.com";
+    public bool IsSystemContext { get; set; }
 }

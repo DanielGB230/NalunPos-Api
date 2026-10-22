@@ -1,17 +1,15 @@
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Pos.Api.Options;
 using Pos.Application.Common.Interfaces;
-using Pos.Domain.Entities;
-using Pos.Domain.Enums;
-using Pos.Domain.Interfaces;
+using Pos.Application.Invoicing.Commands;
 using Pos.Infrastructure.Multitenancy;
-using Pos.Infrastructure.Persistence.Context;
 
 namespace Pos.Api.BackgroundServices;
 
 /// <summary>
-/// Worker en segundo plano para la reconciliación automática de facturas preliminares (Pending).
+/// Worker en segundo plano para la orquestación temporal de la reconciliación de facturas pendientes.
+/// Responsabilidad única: temporizador y orquestador de scopes limpios por tenant (ADR 0019).
+/// Prohibida la lógica de negocio en Pos.Api: la reconciliación se delega al caso de uso ReconcileInvoiceCommand vía IDispatcher.
 /// </summary>
 public class InvoiceReconciliationBackgroundService : BackgroundService
 {
@@ -60,20 +58,18 @@ public class InvoiceReconciliationBackgroundService : BackgroundService
         }
     }
 
-    private async Task ReconcilePendingInvoicesAsync(CancellationToken cancellationToken)
+    internal async Task ReconcilePendingInvoicesAsync(CancellationToken cancellationToken)
     {
         var thresholdUtc = _timeProvider.GetUtcNow().UtcDateTime.AddMinutes(-Math.Abs(_settings.ThresholdMinutes));
-        List<Invoice> pendingInvoices;
+        IReadOnlyList<PendingInvoiceSummary> pendingInvoices;
 
         using (var scope = _scopeFactory.CreateScope())
         {
-            var dbContext = scope.ServiceProvider.GetRequiredService<PosDbContext>();
-            pendingInvoices = await dbContext.Invoices
-                .IgnoreQueryFilters()
-                .Where(i => i.Status == InvoiceStatus.Pending && i.IssueDateUtc <= thresholdUtc)
-                .OrderBy(i => i.IssueDateUtc)
-                .Take(50)
-                .ToListAsync(cancellationToken);
+            var reader = scope.ServiceProvider.GetRequiredService<IPendingInvoicePlatformReader>();
+            pendingInvoices = await reader.GetPendingInvoicesDueAsync(
+                thresholdUtc,
+                _settings.BatchSize,
+                cancellationToken);
         }
 
         if (pendingInvoices.Count == 0)
@@ -103,72 +99,23 @@ public class InvoiceReconciliationBackgroundService : BackgroundService
                 var tenantSetter = tenantScope.ServiceProvider.GetRequiredService<ITenantSetter>();
                 tenantSetter.SetTenantId(pendingInvoice.TenantId);
 
-                var invoiceRepo = tenantScope.ServiceProvider.GetRequiredService<IInvoiceRepository>();
-                var invoicingService = tenantScope.ServiceProvider.GetRequiredService<IElectronicInvoicingService>();
-                var unitOfWork = tenantScope.ServiceProvider.GetRequiredService<IUnitOfWork>();
                 var dispatcher = tenantScope.ServiceProvider.GetRequiredService<IDispatcher>();
+                var result = await dispatcher.SendAsync(new ReconcileInvoiceCommand(pendingInvoice.Id), cancellationToken);
 
-                var invoice = await invoiceRepo.GetByIdAsync(pendingInvoice.Id, cancellationToken);
-                if (invoice == null || invoice.Status != InvoiceStatus.Pending)
+                if (!result.IsSuccess && _logger.IsEnabled(LogLevel.Warning))
                 {
-                    continue;
-                }
-
-                var statusResult = await invoicingService.GetStatusAsync(invoice, cancellationToken);
-
-                if (statusResult.Status == ElectronicInvoiceProviderStatus.Accepted)
-                {
-                    invoice.MarkAsSent();
-                    invoice.MarkAsAccepted();
-                }
-                else if (statusResult.Status == ElectronicInvoiceProviderStatus.Rejected)
-                {
-                    invoice.MarkAsRejected();
-                }
-                else if (statusResult.Status == ElectronicInvoiceProviderStatus.NotFound)
-                {
-                    invoice.IncrementReconciliationAttempts();
-                    var sendResult = await invoicingService.SendInvoiceAsync(invoice, cancellationToken);
-                    if (sendResult.Status == ElectronicInvoiceProviderStatus.Accepted)
-                    {
-                        invoice.MarkAsSent();
-                        invoice.MarkAsAccepted();
-                    }
-                    else if (sendResult.Status == ElectronicInvoiceProviderStatus.Rejected)
-                    {
-                        invoice.MarkAsRejected();
-                    }
-                }
-
-                invoiceRepo.Update(invoice);
-
-                var domainEvents = invoice.DomainEvents.ToList();
-
-                try
-                {
-                    await unitOfWork.SaveChangesAsync(cancellationToken);
-                }
-                catch (Exception ex) when (ex is DbUpdateConcurrencyException || ex is Pos.Domain.Exceptions.ConcurrencyException)
-                {
-                    if (_logger.IsEnabled(LogLevel.Information))
-                    {
-                        _logger.LogInformation(
-                            "Concurrencia detectada en la factura {InvoiceId}: ya fue procesada o actualizada por otro hilo/proceso. Omitiendo.",
-                            invoice.Id);
-                    }
-                    continue;
-                }
-
-                foreach (var domainEvent in domainEvents)
-                {
-                    await dispatcher.PublishAsync(domainEvent, cancellationToken);
+                    _logger.LogWarning(
+                        "No se pudo reconciliar la factura ID {InvoiceId} del Tenant {TenantId}: {ErrorMessage}",
+                        pendingInvoice.Id,
+                        pendingInvoice.TenantId,
+                        result.Error.Message);
                 }
             }
             catch (Exception ex)
             {
                 if (_logger.IsEnabled(LogLevel.Warning))
                 {
-                    _logger.LogWarning(ex, "Fallo al reconciliar factura ID {InvoiceId}", pendingInvoice.Id);
+                    _logger.LogWarning(ex, "Fallo al reconciliar factura ID {InvoiceId} del Tenant {TenantId}", pendingInvoice.Id, pendingInvoice.TenantId);
                 }
             }
         }

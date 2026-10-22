@@ -50,11 +50,13 @@ public class TestCurrentUserService : ICurrentUserService
 {
     public Guid? UserId { get; set; }
     public string? UserEmail { get; set; }
+    public bool IsSystemContext { get; set; }
 
-    public TestCurrentUserService(Guid? userId = null, string? email = null)
+    public TestCurrentUserService(Guid? userId = null, string? email = null, bool? isSystemContext = null)
     {
         UserId = userId;
         UserEmail = email;
+        IsSystemContext = isSystemContext ?? (!userId.HasValue);
     }
 }
 
@@ -226,6 +228,9 @@ public class MsSqlTestFixture : IAsyncLifetime, IDisposable
         services.AddScoped<IInventoryRepository, InventoryRepository>();
         services.AddScoped<IPaymentRepository, PaymentRepository>();
         services.AddScoped<ICustomerRepository, CustomerRepository>();
+        services.AddScoped<IInvoiceRepository, InvoiceRepository>();
+        services.AddScoped<IElectronicInvoicingService, DummyElectronicInvoicingService>();
+        services.AddScoped<IPendingInvoicePlatformReader, Pos.Infrastructure.Persistence.PendingInvoicePlatformReader>();
         services.AddScoped<IAgentActionRecordRepository, AgentActionRecordRepository>();
         services.AddScoped<ISystemNotificationRepository, SystemNotificationRepository>();
 

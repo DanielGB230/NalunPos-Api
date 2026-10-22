@@ -583,10 +583,11 @@ public class ArchitectureTests
         {
             var fileName = Path.GetFileName(file);
 
-            // Permitido únicamente en ITenantSetter.cs, CurrentTenantContext.cs y OutboxProcessorBackgroundService.cs
+            // Permitido únicamente en ITenantSetter.cs, CurrentTenantContext.cs, OutboxProcessorBackgroundService.cs y PendingInvoicePlatformReader.cs
             if (fileName == "ITenantSetter.cs" ||
                 fileName == "CurrentTenantContext.cs" ||
-                fileName == "OutboxProcessorBackgroundService.cs")
+                fileName == "OutboxProcessorBackgroundService.cs" ||
+                fileName == "PendingInvoicePlatformReader.cs")
             {
                 continue;
             }

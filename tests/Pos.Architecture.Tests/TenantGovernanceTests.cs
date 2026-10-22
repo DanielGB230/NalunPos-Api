@@ -648,7 +648,6 @@ public class TenantGovernanceTests
             "AuthUserLookup.cs",
             "SuperAdminSeeder.cs",
             "PosDbContext.cs",
-            "InvoiceReconciliationBackgroundService.cs",
             "PendingInvoicePlatformReader.cs"
         };
 
