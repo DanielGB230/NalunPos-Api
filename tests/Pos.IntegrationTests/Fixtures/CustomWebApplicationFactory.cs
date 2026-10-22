@@ -16,6 +16,29 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
+        builder.UseSetting("ConnectionStrings:DefaultConnection", "");
+        builder.UseSetting("SuperAdminSettings:Email", "superadmin@test.com");
+        builder.UseSetting("SuperAdminSettings:Password", "TestPassword123!");
+        builder.UseSetting("SuperAdminSettings:FirstName", "Super");
+        builder.UseSetting("SuperAdminSettings:LastName", "Admin");
+        builder.UseSetting("JwtSettings:Secret", "SuperSecretEnterpriseJwtKey_LongEnoughFor256Bits_NalunPos2026!");
+        builder.UseSetting("JwtSettings:Issuer", "NalunPosApi");
+        builder.UseSetting("JwtSettings:Audience", "NalunPosClients");
+        builder.UseSetting("CorsSettings:AllowedOrigins:0", "http://localhost:4200");
+        builder.UseSetting("RateLimiting:AuthPolicy:PermitLimit", "5");
+        builder.UseSetting("RateLimiting:AuthPolicy:WindowMinutes", "1");
+        builder.UseSetting("RateLimiting:AuthPolicy:QueueLimit", "0");
+        builder.UseSetting("RateLimiting:PosCheckoutPolicy:PermitLimit", "5");
+        builder.UseSetting("RateLimiting:PosCheckoutPolicy:WindowMinutes", "1");
+        builder.UseSetting("RateLimiting:PosCheckoutPolicy:SegmentsPerWindow", "2");
+        builder.UseSetting("RateLimiting:PosCheckoutPolicy:QueueLimit", "0");
+        builder.UseSetting("RateLimiting:SensitiveOperationsPolicy:PermitLimit", "2");
+        builder.UseSetting("RateLimiting:SensitiveOperationsPolicy:WindowMinutes", "1");
+        builder.UseSetting("RateLimiting:SensitiveOperationsPolicy:QueueLimit", "0");
+        builder.UseSetting("RateLimiting:GlobalApiPolicy:PermitLimit", "3");
+        builder.UseSetting("RateLimiting:GlobalApiPolicy:WindowMinutes", "1");
+        builder.UseSetting("RateLimiting:GlobalApiPolicy:QueueLimit", "0");
+
         builder.ConfigureAppConfiguration((ctx, config) =>
         {
             config.AddInMemoryCollection(new Dictionary<string, string?>

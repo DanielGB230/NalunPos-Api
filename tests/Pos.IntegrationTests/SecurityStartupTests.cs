@@ -80,4 +80,30 @@ public class SecurityStartupTests
         Action action = () => { _ = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<Pos.Api.Options.InvoiceReconciliationSettings>>().Value; };
         action.Should().Throw<Microsoft.Extensions.Options.OptionsValidationException>();
     }
+
+    [Fact]
+    public void App_FailsToStart_WhenSuperAdminPasswordIsMissing()
+    {
+        var inMemorySettings = new Dictionary<string, string?>
+        {
+            ["SuperAdminSettings:Email"] = "admin@enterprise.com",
+            ["SuperAdminSettings:Password"] = "" // Missing or empty
+        };
+
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(inMemorySettings)
+            .Build();
+
+        var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
+        services.AddOptions<Pos.Api.Options.SuperAdminSettings>()
+            .Bind(config.GetSection(Pos.Api.Options.SuperAdminSettings.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        var provider = services.BuildServiceProvider();
+
+        Action action = () => { _ = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<Pos.Api.Options.SuperAdminSettings>>().Value; };
+        action.Should().Throw<Microsoft.Extensions.Options.OptionsValidationException>();
+    }
 }
+

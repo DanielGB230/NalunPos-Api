@@ -1149,5 +1149,76 @@ public class ArchitectureTests
             $"Se encontraron clases de Settings/Options fuera de 'src/Pos.Api/Options/':\n{string.Join("\n", violations)}"
         );
     }
+
+    [Fact]
+    public void Appsettings_In_Src_Must_Not_Contain_Hardcoded_Secrets()
+    {
+        var rootDir = SolutionDirectory.Root;
+        var srcDir = Path.Combine(rootDir, "src");
+        var appsettingsFiles = Directory.GetFiles(srcDir, "appsettings*.json", SearchOption.AllDirectories)
+            .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}") &&
+                        !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}"))
+            .ToList();
+
+        Assert.NotEmpty(appsettingsFiles);
+
+        var forbiddenWords = new[] { "Password", "Secret", "Key", "Token" };
+        var violations = new List<string>();
+
+        foreach (var file in appsettingsFiles)
+        {
+            var relativePath = Path.GetRelativePath(rootDir, file);
+            var json = File.ReadAllText(file);
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+
+            CheckElement(doc.RootElement, relativePath, string.Empty);
+        }
+
+        void CheckElement(System.Text.Json.JsonElement element, string filePath, string currentPath)
+        {
+            if (element.ValueKind == System.Text.Json.JsonValueKind.Object)
+            {
+                foreach (var prop in element.EnumerateObject())
+                {
+                    var propertyPath = string.IsNullOrEmpty(currentPath) ? prop.Name : $"{currentPath}:{prop.Name}";
+                    var matchesForbiddenWord = forbiddenWords.Any(w => prop.Name.Contains(w, StringComparison.OrdinalIgnoreCase));
+
+                    if (matchesForbiddenWord)
+                    {
+                        var hasNonEmptyValue = prop.Value.ValueKind switch
+                        {
+                            System.Text.Json.JsonValueKind.String => !string.IsNullOrWhiteSpace(prop.Value.GetString()),
+                            System.Text.Json.JsonValueKind.Null => false,
+                            System.Text.Json.JsonValueKind.Undefined => false,
+                            System.Text.Json.JsonValueKind.Array => prop.Value.GetArrayLength() > 0,
+                            System.Text.Json.JsonValueKind.Object => prop.Value.EnumerateObject().Any(),
+                            _ => true
+                        };
+
+                        if (hasNonEmptyValue)
+                        {
+                            violations.Add($"Archivo '{filePath}' contiene secreto expuesto en '{propertyPath}'.");
+                        }
+                    }
+
+                    CheckElement(prop.Value, filePath, propertyPath);
+                }
+            }
+            else if (element.ValueKind == System.Text.Json.JsonValueKind.Array)
+            {
+                var index = 0;
+                foreach (var item in element.EnumerateArray())
+                {
+                    CheckElement(item, filePath, $"{currentPath}[{index}]");
+                    index++;
+                }
+            }
+        }
+
+        Assert.True(
+            violations.Count == 0,
+            $"Se encontraron secretos o credenciales en archivos appsettings*.json dentro de 'src/':\n{string.Join("\n", violations)}"
+        );
+    }
 }
 
