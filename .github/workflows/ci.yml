@@ -57,10 +57,12 @@ jobs:
         run: dotnet ef migrations bundle --project src/Pos.Infrastructure --startup-project src/Pos.Api --output ./efbundle --configuration Release --verbose
 
       - name: Apply Migrations Bundle to SQL Server 2022
+        env:
+          EFCORE_CONNECTIONSTRING: "Server=localhost,1433;Database=PosIntegrationTests;User Id=sa;Password=Your_password123!;TrustServerCertificate=True;"
         run: |
           chmod +x ./efbundle
-          ./efbundle --connection "Server=localhost,1433;Database=PosIntegrationTests;User Id=sa;Password=Your_password123!;TrustServerCertificate=True;"
-          ./efbundle --connection "Server=localhost,1433;Database=PosInfrastructureTests;User Id=sa;Password=Your_password123!;TrustServerCertificate=True;"
+          ./efbundle --verbose --connection "Server=localhost,1433;Database=PosIntegrationTests;User Id=sa;Password=Your_password123!;TrustServerCertificate=True;"
+          ./efbundle --verbose --connection "Server=localhost,1433;Database=PosInfrastructureTests;User Id=sa;Password=Your_password123!;TrustServerCertificate=True;"
 
       - name: Run Domain Tests
         run: dotnet test tests/Pos.Domain.Tests/Pos.Domain.Tests.csproj -c Release --no-build --verbosity normal

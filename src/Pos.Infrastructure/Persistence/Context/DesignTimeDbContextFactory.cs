@@ -44,8 +44,23 @@ public sealed class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<Pos
 
 
 
+        // Prioridad 0: Argumento --connection pasado por efbundle o CLI en args
+        string? connectionString = null;
+        if (args != null && args.Length > 0)
+        {
+            for (int i = 0; i < args.Length; i++)
+            {
+                if (string.Equals(args[i], "--connection", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
+                {
+                    connectionString = args[i + 1];
+                    break;
+                }
+            }
+        }
+
         // Prioridad 1: ConnectionStrings:DefaultConnection (user-secrets / appsettings)
-        string? connectionString = configuration.GetConnectionString("DefaultConnection");
+        if (string.IsNullOrWhiteSpace(connectionString))
+            connectionString = configuration.GetConnectionString("DefaultConnection");
 
         // Prioridad 2: Variable de entorno dedicada para CLI/CI (evita depender del appsettings)
         if (string.IsNullOrWhiteSpace(connectionString))
