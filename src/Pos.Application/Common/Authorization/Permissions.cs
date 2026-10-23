@@ -149,4 +149,10 @@ public static class Permissions
         public const string ProposeAction = "Permissions.AiGovernance.ProposeAction";
         public const string ReviewAction = "Permissions.AiGovernance.ReviewAction";
     }
+
+    public static class Platform
+    {
+        public const string DeadLetterView = "Permissions.Platform.DeadLetter.View";
+        public const string DeadLetterReprocess = "Permissions.Platform.DeadLetter.Reprocess";
+    }
 }

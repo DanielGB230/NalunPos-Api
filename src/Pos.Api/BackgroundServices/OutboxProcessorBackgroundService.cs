@@ -58,6 +58,8 @@ public class OutboxProcessorBackgroundService : BackgroundService
         }
     }
 
+    private readonly string _instanceId = $"{Environment.MachineName}_{Guid.NewGuid():N}";
+
     internal async Task ProcessOutboxMessagesAsync(CancellationToken cancellationToken)
     {
         using var scope = _scopeFactory.CreateScope();
@@ -66,24 +68,63 @@ public class OutboxProcessorBackgroundService : BackgroundService
 
         var dbContext = scope.ServiceProvider.GetRequiredService<PosDbContext>();
         var now = _timeProvider.GetUtcNow();
+        var leaseDuration = TimeSpan.FromSeconds(_options.LeaseDurationSeconds);
+        var leaseUntil = now.Add(leaseDuration);
 
-        var pendingMessages = await dbContext.OutboxMessages
-            .Where(m => m.ProcessedOnUtc == null && !m.IsDeadLetter && (m.NextRetryAtUtc == null || m.NextRetryAtUtc <= now))
-            .OrderBy(m => m.OccurredOnUtc)
-            .Take(_options.BatchSize)
-            .ToListAsync(cancellationToken);
+        List<OutboxMessage> claimedMessages;
 
-        if (pendingMessages.Count == 0)
+        if (dbContext.Database.IsRelational())
+        {
+            var rawSql = @"
+                WITH cte AS (
+                    SELECT TOP ({0}) *
+                    FROM [dbo].[OutboxMessages] WITH (UPDLOCK, READPAST)
+                    WHERE [ProcessedOnUtc] IS NULL
+                      AND [IsDeadLetter] = 0
+                      AND ([NextRetryAtUtc] IS NULL OR [NextRetryAtUtc] <= {1})
+                      AND ([LockedUntilUtc] IS NULL OR [LockedUntilUtc] <= {1})
+                    ORDER BY [OccurredOnUtc]
+                )
+                UPDATE cte
+                SET [LockedUntilUtc] = {2}, [LockedBy] = {3}
+                OUTPUT INSERTED.*;";
+
+            claimedMessages = await dbContext.OutboxMessages
+                .FromSqlRaw(rawSql, _options.BatchSize, now, leaseUntil, _instanceId)
+                .AsTracking()
+                .ToListAsync(cancellationToken);
+        }
+        else
+        {
+            claimedMessages = await dbContext.OutboxMessages
+                .Where(m => m.ProcessedOnUtc == null &&
+                            !m.IsDeadLetter &&
+                            (m.NextRetryAtUtc == null || m.NextRetryAtUtc <= now) &&
+                            (m.LockedUntilUtc == null || m.LockedUntilUtc <= now))
+                .OrderBy(m => m.OccurredOnUtc)
+                .Take(_options.BatchSize)
+                .ToListAsync(cancellationToken);
+
+            foreach (var msg in claimedMessages)
+            {
+                msg.AcquireLease(_instanceId, leaseDuration, _timeProvider);
+            }
+
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+
+        if (claimedMessages.Count == 0)
         {
             if (_logger.IsEnabled(LogLevel.Debug))
-                _logger.LogDebug("No hay mensajes pendientes en el Outbox.");
+                _logger.LogDebug("No hay mensajes pendientes disponibles para reclamar en el Outbox.");
             return;
         }
 
         if (_logger.IsEnabled(LogLevel.Information))
-            _logger.LogInformation("Procesando {Count} mensajes del Outbox.", pendingMessages.Count);
+            _logger.LogInformation("Instancia {InstanceId} procesando {Count} mensajes del Outbox con lease hasta {LeaseUntil}.",
+                _instanceId, claimedMessages.Count, leaseUntil);
 
-        foreach (var message in pendingMessages)
+        foreach (var message in claimedMessages)
         {
             try
             {
@@ -149,9 +190,9 @@ public class OutboxProcessorBackgroundService : BackgroundService
         {
             _logger.LogInformation(
                 "Outbox: {Processed} procesados, {Retrying} reintentando, {DeadLetter} en dead-letter.",
-                pendingMessages.Count(m => m.ProcessedOnUtc != null),
-                pendingMessages.Count(m => !m.IsDeadLetter && m.ProcessedOnUtc == null),
-                pendingMessages.Count(m => m.IsDeadLetter));
+                claimedMessages.Count(m => m.ProcessedOnUtc != null),
+                claimedMessages.Count(m => !m.IsDeadLetter && m.ProcessedOnUtc == null),
+                claimedMessages.Count(m => m.IsDeadLetter));
         }
     }
 

@@ -215,6 +215,7 @@ public class MsSqlTestFixture : IAsyncLifetime, IDisposable
         services.AddScoped<IInvoiceRepository, InvoiceRepository>();
         services.AddScoped<IElectronicInvoicingService, DummyElectronicInvoicingService>();
         services.AddScoped<IPendingInvoicePlatformReader, Pos.Infrastructure.Persistence.PendingInvoicePlatformReader>();
+        services.AddScoped<IOutboxPlatformReader, Pos.Infrastructure.Persistence.OutboxPlatformReader>();
         services.AddScoped<IAgentActionRecordRepository, AgentActionRecordRepository>();
         services.AddScoped<ISystemNotificationRepository, SystemNotificationRepository>();
 
@@ -268,7 +269,8 @@ public class MsSqlTestFixture : IAsyncLifetime, IDisposable
                 {
                     Permissions.Tenants.Create, Permissions.Tenants.View, Permissions.Tenants.Update, Permissions.Tenants.Delete,
                     Permissions.Users.Create, Permissions.Users.View, Permissions.Users.Update, Permissions.Users.Delete,
-                    Permissions.Roles.Create, Permissions.Roles.View, Permissions.Roles.Update, Permissions.Roles.Delete
+                    Permissions.Roles.Create, Permissions.Roles.View, Permissions.Roles.Update, Permissions.Roles.Delete,
+                    Permissions.Platform.DeadLetterView, Permissions.Platform.DeadLetterReprocess
                 };
 
                 if (superAdminRole == null)

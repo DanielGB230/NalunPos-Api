@@ -17,4 +17,7 @@ public class OutboxSettings
 
     [Range(1, 300, ErrorMessage = "BaseRetryIntervalSeconds debe estar entre 1 y 300.")]
     public int BaseRetryIntervalSeconds { get; set; } = 2;
+
+    [Range(5, 3600, ErrorMessage = "LeaseDurationSeconds debe estar entre 5 y 3600.")]
+    public int LeaseDurationSeconds { get; set; } = 60;
 }

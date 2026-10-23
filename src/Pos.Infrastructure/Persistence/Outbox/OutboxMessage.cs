@@ -16,6 +16,8 @@ public class OutboxMessage
     public int RetryCount { get; private set; }
     public DateTimeOffset? NextRetryAtUtc { get; private set; }
     public bool IsDeadLetter { get; private set; }
+    public DateTimeOffset? LockedUntilUtc { get; private set; }
+    public string? LockedBy { get; private set; }
 
     private OutboxMessage()
     {
@@ -57,6 +59,8 @@ public class OutboxMessage
         ProcessedOnUtc = processedOnUtc;
         Error = null;
         NextRetryAtUtc = null;
+        LockedUntilUtc = null;
+        LockedBy = null;
     }
 
     public void MarkAsProcessed(TimeProvider timeProvider)
@@ -65,12 +69,16 @@ public class OutboxMessage
         ProcessedOnUtc = timeProvider.GetUtcNow();
         Error = null;
         NextRetryAtUtc = null;
+        LockedUntilUtc = null;
+        LockedBy = null;
     }
 
     public void MarkAsFailed(string error)
     {
         Error = error;
         RetryCount++;
+        LockedUntilUtc = null;
+        LockedBy = null;
     }
 
     /// <summary>
@@ -83,6 +91,8 @@ public class OutboxMessage
         ArgumentNullException.ThrowIfNull(timeProvider);
         Error = error;
         RetryCount++;
+        LockedUntilUtc = null;
+        LockedBy = null;
 
         if (RetryCount >= maxRetries)
         {
@@ -101,5 +111,32 @@ public class OutboxMessage
         Error = error;
         IsDeadLetter = true;
         NextRetryAtUtc = null;
+        LockedUntilUtc = null;
+        LockedBy = null;
+    }
+
+    public void AcquireLease(string lockedBy, TimeSpan leaseDuration, TimeProvider timeProvider)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(lockedBy);
+        ArgumentNullException.ThrowIfNull(timeProvider);
+
+        LockedBy = lockedBy;
+        LockedUntilUtc = timeProvider.GetUtcNow().Add(leaseDuration);
+    }
+
+    public void ReleaseLease()
+    {
+        LockedBy = null;
+        LockedUntilUtc = null;
+    }
+
+    public void ReprocessFromDeadLetter()
+    {
+        IsDeadLetter = false;
+        RetryCount = 0;
+        NextRetryAtUtc = null;
+        LockedUntilUtc = null;
+        LockedBy = null;
+        Error = null;
     }
 }

@@ -1240,6 +1240,13 @@ namespace Pos.Infrastructure.Migrations
                         .HasColumnType("bit")
                         .HasDefaultValue(false);
 
+                    b.Property<string>("LockedBy")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<DateTimeOffset?>("LockedUntilUtc")
+                        .HasColumnType("datetimeoffset");
+
                     b.Property<DateTimeOffset?>("NextRetryAtUtc")
                         .HasColumnType("datetimeoffset");
 
@@ -1268,7 +1275,7 @@ namespace Pos.Infrastructure.Migrations
 
                     b.HasIndex("ProcessedOnUtc");
 
-                    b.HasIndex("ProcessedOnUtc", "IsDeadLetter", "NextRetryAtUtc");
+                    b.HasIndex("ProcessedOnUtc", "IsDeadLetter", "LockedUntilUtc", "NextRetryAtUtc");
 
                     b.ToTable("OutboxMessages", (string)null);
                 });
