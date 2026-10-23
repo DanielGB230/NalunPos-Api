@@ -69,12 +69,10 @@ jobs:
 
       - name: Run Infrastructure Tests
         env:
-          ConnectionStrings__DefaultConnection: "Server=localhost,1433;Database=PosInfrastructureTests;User Id=sa;Password=Your_password123!;TrustServerCertificate=True;"
           IntegrationTests__ConnectionString: "Server=localhost,1433;Database=PosInfrastructureTests;User Id=sa;Password=Your_password123!;TrustServerCertificate=True;"
         run: dotnet test tests/Pos.Infrastructure.Tests/Pos.Infrastructure.Tests.csproj -c Release --no-build --verbosity normal
 
       - name: Run Integration Tests
         env:
-          ConnectionStrings__DefaultConnection: "Server=localhost,1433;Database=PosIntegrationTests;User Id=sa;Password=Your_password123!;TrustServerCertificate=True;"
           IntegrationTests__ConnectionString: "Server=localhost,1433;Database=PosIntegrationTests;User Id=sa;Password=Your_password123!;TrustServerCertificate=True;"
         run: dotnet test tests/Pos.IntegrationTests/Pos.IntegrationTests.csproj -c Release --no-build --verbosity normal

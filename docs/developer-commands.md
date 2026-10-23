@@ -105,10 +105,12 @@ dotnet test
 ```
 
 ### Ejecutar Pruebas de Integración con SQL Server
-Las pruebas de integración (`Pos.IntegrationTests`) se conectan directamente a la instancia de SQL Server configurada mediante variable de entorno o `tests/Pos.IntegrationTests/appsettings.IntegrationTests.json`, sin depender de Docker ni Testcontainers:
+Las pruebas de integración (`Pos.IntegrationTests`) se conectan directamente a la instancia de SQL Server configurada mediante la variable de entorno exclusiva `IntegrationTests__ConnectionString` o `tests/Pos.IntegrationTests/appsettings.IntegrationTests.json`, sin depender de Docker ni Testcontainers.
+> **Regla de seguridad Fail-Closed**: El nombre de la base de datos DEBE terminar obligatoriamente en `Tests` (ej. `PosIntegrationTests`). Si no termina en `Tests`, la ejecución abortará inmediatamente para prevenir el borrado accidental (`EnsureDeletedAsync`) de bases de desarrollo o producción.
+
 ```bash
-# Opcional: configurar cadena de conexión si difiere del valor por defecto
-$env:ConnectionStrings__DefaultConnection="Server=localhost,1433;Database=PosIntegrationTests;User Id=sa;Password=Your_password123;TrustServerCertificate=True;"
+# Configurar la variable exclusiva de pruebas de integración si difiere del valor por defecto
+$env:IntegrationTests__ConnectionString="Server=localhost,1433;Database=PosIntegrationTests;User Id=sa;Password=Your_password123!;TrustServerCertificate=True;"
 dotnet test tests/Pos.IntegrationTests
 ```
 

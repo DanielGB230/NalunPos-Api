@@ -79,10 +79,8 @@ public class MsSqlTestFixture : IAsyncLifetime, IDisposable
 
     public async Task InitializeAsync()
     {
-        // 1. Si existe variable de entorno explícita (p. ej. en GitHub Actions / CI), tiene prioridad
-        var envConn = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
-            ?? Environment.GetEnvironmentVariable("IntegrationTests__ConnectionString")
-            ?? Environment.GetEnvironmentVariable("MSSQL_CONNECTION_STRING");
+        // 1. Variable de entorno exclusiva de pruebas (M2)
+        var envConn = Environment.GetEnvironmentVariable("IntegrationTests__ConnectionString");
 
         if (!string.IsNullOrWhiteSpace(envConn))
         {
@@ -95,8 +93,11 @@ public class MsSqlTestFixture : IAsyncLifetime, IDisposable
                 .AddEnvironmentVariables()
                 .Build();
             _connectionString = config["IntegrationTests:ConnectionString"]
-                ?? "Server=localhost,1433;Database=PosIntegrationTests;User Id=sa;Password=Your_password123;TrustServerCertificate=True;";
+                ?? "Server=localhost,1433;Database=PosIntegrationTests;User Id=sa;Password=Your_password123!;TrustServerCertificate=True;";
         }
+
+        // 2. Validación Fail-Closed: prohibido ejecutar contra bases que no terminen en 'Tests'
+        ValidateDatabaseName(_connectionString);
 
         using var dbContext = CreateDbContext(tenantId: null, isSuperAdmin: true);
         await dbContext.Database.EnsureDeletedAsync();
@@ -108,6 +109,18 @@ public class MsSqlTestFixture : IAsyncLifetime, IDisposable
         Console.WriteLine($"   {ConnectionString}");
         Console.WriteLine("==========================================================================");
         Console.ResetColor();
+    }
+
+    public static void ValidateDatabaseName(string connectionString)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(connectionString);
+        var builder = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(connectionString);
+        var databaseName = builder.InitialCatalog;
+        if (string.IsNullOrWhiteSpace(databaseName) || !databaseName.EndsWith("Tests", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                $"Operación abortada por seguridad: la base de datos de pruebas '{databaseName}' debe terminar en 'Tests' para prevenir la eliminación accidental de bases de desarrollo o producción.");
+        }
     }
 
     public Task DisposeAsync()
