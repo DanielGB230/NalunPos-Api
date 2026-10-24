@@ -8,6 +8,8 @@ namespace Pos.Domain.Tests;
 
 public class TenantTests
 {
+    private readonly TimeProvider _timeProvider = TimeProvider.System;
+
     [Fact]
     public void CreateTenantShouldStartInPendingProvisioningAndEmitEvent()
     {
@@ -16,7 +18,7 @@ public class TenantTests
         string taxId = "20123456789";
 
         // Act
-        var tenant = Tenant.Create(name, taxId);
+        var tenant = Tenant.Create(name, taxId, _timeProvider);
 
         // Assert
         Assert.NotEqual(Guid.Empty, tenant.Id);
@@ -31,12 +33,12 @@ public class TenantTests
     public void Activate_WhenNotActive_ShouldChangeStatusAndEmitTenantStatusChangedDomainEvent()
     {
         // Arrange
-        var tenant = Tenant.Create("Supermercado Central", "20987654321");
+        var tenant = Tenant.Create("Supermercado Central", "20987654321", _timeProvider);
         tenant.ClearDomainEvents();
         var oldStatus = tenant.Status; // PendingProvisioning
 
         // Act
-        tenant.Activate();
+        tenant.Activate(_timeProvider);
 
         // Assert
         Assert.Equal(TenantStatus.Active, tenant.Status);
@@ -54,12 +56,12 @@ public class TenantTests
     public void Activate_WhenAlreadyActive_ShouldNotEmitEvent()
     {
         // Arrange
-        var tenant = Tenant.Create("Supermercado Central", "20987654321");
-        tenant.Activate();
+        var tenant = Tenant.Create("Supermercado Central", "20987654321", _timeProvider);
+        tenant.Activate(_timeProvider);
         tenant.ClearDomainEvents();
 
         // Act
-        tenant.Activate();
+        tenant.Activate(_timeProvider);
 
         // Assert
         Assert.Equal(TenantStatus.Active, tenant.Status);
@@ -70,13 +72,13 @@ public class TenantTests
     public void Suspend_WhenNotSuspended_ShouldChangeStatusAndEmitTenantStatusChangedDomainEvent()
     {
         // Arrange
-        var tenant = Tenant.Create("Supermercado Central", "20987654321");
-        tenant.Activate();
+        var tenant = Tenant.Create("Supermercado Central", "20987654321", _timeProvider);
+        tenant.Activate(_timeProvider);
         tenant.ClearDomainEvents();
         var oldStatus = tenant.Status; // Active
 
         // Act
-        tenant.Suspend();
+        tenant.Suspend(_timeProvider);
 
         // Assert
         Assert.Equal(TenantStatus.Suspended, tenant.Status);
@@ -94,12 +96,12 @@ public class TenantTests
     public void Suspend_WhenAlreadySuspended_ShouldNotEmitEvent()
     {
         // Arrange
-        var tenant = Tenant.Create("Supermercado Central", "20987654321");
-        tenant.Suspend();
+        var tenant = Tenant.Create("Supermercado Central", "20987654321", _timeProvider);
+        tenant.Suspend(_timeProvider);
         tenant.ClearDomainEvents();
 
         // Act
-        tenant.Suspend();
+        tenant.Suspend(_timeProvider);
 
         // Assert
         Assert.Equal(TenantStatus.Suspended, tenant.Status);
@@ -109,7 +111,7 @@ public class TenantTests
     [Fact]
     public void CreateTenantWithEmptyNameShouldThrowDomainException()
     {
-        Assert.Throws<DomainException>(() => Tenant.Create("", "20123456789"));
+        Assert.Throws<DomainException>(() => Tenant.Create("", "20123456789", _timeProvider));
     }
 
     [Fact]

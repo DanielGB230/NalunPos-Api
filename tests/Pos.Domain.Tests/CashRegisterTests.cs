@@ -7,6 +7,8 @@ namespace Pos.Domain.Tests;
 
 public class CashRegisterTests
 {
+    private readonly TimeProvider _timeProvider = TimeProvider.System;
+
     [Fact]
     public void CreateCashRegisterWithValidParametersShouldInstantiateActiveCashRegister()
     {
@@ -17,7 +19,7 @@ public class CashRegisterTests
         string serialNumber = "CR-001";
 
         // Act
-        var register = CashRegister.Create(tenantId, branchId, name, serialNumber);
+        var register = CashRegister.Create(tenantId, branchId, name, serialNumber, _timeProvider);
 
         // Assert
         Assert.NotEqual(Guid.Empty, register.Id);
@@ -38,7 +40,7 @@ public class CashRegisterTests
 
         // Act & Assert
         Assert.Throws<DomainException>(() =>
-            CashRegister.Create(tenantId, branchId, ""));
+            CashRegister.Create(tenantId, branchId, "", _timeProvider));
     }
 
     [Fact]
@@ -49,7 +51,7 @@ public class CashRegisterTests
 
         // Act & Assert
         var ex = Assert.Throws<DomainException>(() =>
-            CashRegister.Create(PlatformScope.TenantId, branchId, "Caja Test"));
+            CashRegister.Create(PlatformScope.TenantId, branchId, "Caja Test", _timeProvider));
 
         Assert.Equal("El ID del tenant es requerido para crear una caja.", ex.Message);
     }
@@ -62,7 +64,7 @@ public class CashRegisterTests
 
         // Act & Assert
         var ex = Assert.Throws<DomainException>(() =>
-            CashRegister.Create(Guid.Empty, branchId, "Caja Test"));
+            CashRegister.Create(Guid.Empty, branchId, "Caja Test", _timeProvider));
 
         Assert.Equal("El ID del tenant es requerido para crear una caja.", ex.Message);
     }
@@ -75,7 +77,7 @@ public class CashRegisterTests
 
         // Act & Assert
         var ex = Assert.Throws<DomainException>(() =>
-            CashRegister.Create(tenantId, Guid.Empty, "Caja Test"));
+            CashRegister.Create(tenantId, Guid.Empty, "Caja Test", _timeProvider));
 
         Assert.Equal("El ID de la sucursal es requerido para crear una caja.", ex.Message);
     }

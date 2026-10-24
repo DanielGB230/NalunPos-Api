@@ -7,6 +7,8 @@ namespace Pos.Domain.Tests;
 
 public class SystemNotificationTests
 {
+    private readonly TimeProvider _timeProvider = TimeProvider.System;
+
     [Fact]
     public void CreateNotificationShouldInstantiateUnreadNotification()
     {
@@ -17,7 +19,7 @@ public class SystemNotificationTests
         string message = "El producto Impresora POS ha superado el umbral mínimo.";
 
         // Act
-        var notification = SystemNotification.Create(tenantId, userId, title, message);
+        var notification = SystemNotification.Create(tenantId, userId, title, message, _timeProvider);
 
         // Assert
         Assert.NotEqual(Guid.Empty, notification.Id);
@@ -33,7 +35,7 @@ public class SystemNotificationTests
     {
         // Act & Assert
         var ex = Assert.Throws<DomainException>(() =>
-            SystemNotification.Create(PlatformScope.TenantId, Guid.NewGuid(), "Título", "Mensaje"));
+            SystemNotification.Create(PlatformScope.TenantId, Guid.NewGuid(), "Título", "Mensaje", _timeProvider));
 
         Assert.Equal("El ID del tenant es requerido para crear una notificación.", ex.Message);
     }
@@ -43,7 +45,7 @@ public class SystemNotificationTests
     {
         // Act & Assert
         var ex = Assert.Throws<DomainException>(() =>
-            SystemNotification.Create(Guid.Empty, Guid.NewGuid(), "Título", "Mensaje"));
+            SystemNotification.Create(Guid.Empty, Guid.NewGuid(), "Título", "Mensaje", _timeProvider));
 
         Assert.Equal("El ID del tenant es requerido para crear una notificación.", ex.Message);
     }
@@ -52,7 +54,7 @@ public class SystemNotificationTests
     public void MarkAsReadShouldSetIsReadToTrue()
     {
         // Arrange
-        var notification = SystemNotification.Create(Guid.NewGuid(), Guid.NewGuid(), "Título", "Mensaje");
+        var notification = SystemNotification.Create(Guid.NewGuid(), Guid.NewGuid(), "Título", "Mensaje", _timeProvider);
 
         // Act
         notification.MarkAsRead();

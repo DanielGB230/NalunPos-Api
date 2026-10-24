@@ -7,6 +7,8 @@ namespace Pos.Domain.Tests;
 
 public class InventoryMovementTests
 {
+    private readonly TimeProvider _timeProvider = TimeProvider.System;
+
     [Fact]
     public void RecordWithValidParametersShouldInstantiateMovementAndEmitEvent()
     {
@@ -22,7 +24,12 @@ public class InventoryMovementTests
             quantity,
             InventoryMovementType.Purchase,
             referenceId: null,
-            notes: "Compra lote inicial");
+            notes: "Compra lote inicial",
+            containerId: null,
+            batchNumber: null,
+            expirationDate: null,
+            occurredAtUtc: null,
+            timeProvider: _timeProvider);
 
         // Assert
         Assert.NotEqual(Guid.Empty, movement.Id);
@@ -43,6 +50,7 @@ public class InventoryMovementTests
                 Guid.NewGuid(),
                 Guid.NewGuid(),
                 0m,
-                InventoryMovementType.Adjustment));
+                InventoryMovementType.Adjustment,
+                _timeProvider));
     }
 }

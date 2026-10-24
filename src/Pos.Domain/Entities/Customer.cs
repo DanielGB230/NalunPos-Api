@@ -33,8 +33,9 @@ public class Customer : AggregateRoot<Guid>, ITenantOwnedEntity
         string email,
         string phone,
         Address? address,
-        TimeProvider? timeProvider = null) : base(id)
+        TimeProvider timeProvider) : base(id)
     {
+        ArgumentNullException.ThrowIfNull(timeProvider);
         TenantId = TenantGuard.RequireTenantId(tenantId, "un cliente");
         SetFullName(fullName);
         TaxId = taxId ?? throw new ArgumentNullException(nameof(taxId));
@@ -42,7 +43,7 @@ public class Customer : AggregateRoot<Guid>, ITenantOwnedEntity
         Phone = phone?.Trim() ?? string.Empty;
         Address = address;
         IsActive = true;
-        CreatedAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        CreatedAtUtc = timeProvider.GetUtcNow().UtcDateTime;
 
         RaiseDomainEvent(new CustomerCreatedDomainEvent(Id, FullName, TaxId.Value, CreatedAtUtc));
     }
@@ -51,10 +52,19 @@ public class Customer : AggregateRoot<Guid>, ITenantOwnedEntity
         Guid tenantId,
         string fullName,
         TaxId taxId,
-        string email = "",
-        string phone = "",
-        Address? address = null,
-        TimeProvider? timeProvider = null)
+        TimeProvider timeProvider)
+    {
+        return Create(tenantId, fullName, taxId, string.Empty, string.Empty, null, timeProvider);
+    }
+
+    public static Customer Create(
+        Guid tenantId,
+        string fullName,
+        TaxId taxId,
+        string email,
+        string phone,
+        Address? address,
+        TimeProvider timeProvider)
     {
         return new Customer(Guid.NewGuid(), tenantId, fullName, taxId, email, phone, address, timeProvider);
     }
@@ -65,30 +75,33 @@ public class Customer : AggregateRoot<Guid>, ITenantOwnedEntity
         string email,
         string phone,
         Address? address,
-        TimeProvider? timeProvider = null)
+        TimeProvider timeProvider)
     {
+        ArgumentNullException.ThrowIfNull(timeProvider);
         SetFullName(fullName);
         TaxId = taxId ?? throw new ArgumentNullException(nameof(taxId));
         Email = email?.Trim() ?? string.Empty;
         Phone = phone?.Trim() ?? string.Empty;
         Address = address;
-        UpdatedAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        UpdatedAtUtc = timeProvider.GetUtcNow().UtcDateTime;
 
         RaiseDomainEvent(new CustomerUpdatedDomainEvent(Id, FullName, UpdatedAtUtc.Value));
     }
 
-    public void Activate(TimeProvider? timeProvider = null)
+    public void Activate(TimeProvider timeProvider)
     {
+        ArgumentNullException.ThrowIfNull(timeProvider);
         if (IsActive) return;
         IsActive = true;
-        UpdatedAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        UpdatedAtUtc = timeProvider.GetUtcNow().UtcDateTime;
     }
 
-    public void Deactivate(TimeProvider? timeProvider = null)
+    public void Deactivate(TimeProvider timeProvider)
     {
+        ArgumentNullException.ThrowIfNull(timeProvider);
         if (!IsActive) return;
         IsActive = false;
-        UpdatedAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        UpdatedAtUtc = timeProvider.GetUtcNow().UtcDateTime;
     }
 
     private void SetFullName(string name)

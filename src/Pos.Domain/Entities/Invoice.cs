@@ -34,8 +34,9 @@ public class Invoice : AggregateRoot<Guid>, ITenantOwnedEntity
         string documentNumber,
         TaxId customerTaxId,
         Money totalAmount,
-        TimeProvider? timeProvider = null) : base(id)
+        TimeProvider timeProvider) : base(id)
     {
+        ArgumentNullException.ThrowIfNull(timeProvider);
         TenantId = TenantGuard.RequireTenantId(tenantId, "una factura");
 
         if (saleId == Guid.Empty)
@@ -48,7 +49,7 @@ public class Invoice : AggregateRoot<Guid>, ITenantOwnedEntity
             throw new DomainException("El número de documento de facturación es requerido.");
         }
 
-        var utcNow = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        var utcNow = timeProvider.GetUtcNow().UtcDateTime;
 
         SaleId = saleId;
         DocumentType = documentType;
@@ -75,28 +76,31 @@ public class Invoice : AggregateRoot<Guid>, ITenantOwnedEntity
         string documentNumber,
         TaxId customerTaxId,
         Money totalAmount,
-        TimeProvider? timeProvider = null)
+        TimeProvider timeProvider)
     {
         return new Invoice(Guid.NewGuid(), tenantId, saleId, documentType, documentNumber, customerTaxId, totalAmount, timeProvider);
     }
 
-    public void MarkAsSent(TimeProvider? timeProvider = null)
+    public void MarkAsSent(TimeProvider timeProvider)
     {
-        var utcNow = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        ArgumentNullException.ThrowIfNull(timeProvider);
+        var utcNow = timeProvider.GetUtcNow().UtcDateTime;
         Status = InvoiceStatus.Sent;
         RaiseDomainEvent(new InvoiceStatusUpdatedDomainEvent(Id, DocumentNumber, Status.ToString(), utcNow));
     }
 
-    public void MarkAsAccepted(TimeProvider? timeProvider = null)
+    public void MarkAsAccepted(TimeProvider timeProvider)
     {
-        var utcNow = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        ArgumentNullException.ThrowIfNull(timeProvider);
+        var utcNow = timeProvider.GetUtcNow().UtcDateTime;
         Status = InvoiceStatus.Accepted;
         RaiseDomainEvent(new InvoiceStatusUpdatedDomainEvent(Id, DocumentNumber, Status.ToString(), utcNow));
     }
 
-    public void MarkAsRejected(TimeProvider? timeProvider = null)
+    public void MarkAsRejected(TimeProvider timeProvider)
     {
-        var utcNow = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        ArgumentNullException.ThrowIfNull(timeProvider);
+        var utcNow = timeProvider.GetUtcNow().UtcDateTime;
         Status = InvoiceStatus.Rejected;
         RaiseDomainEvent(new InvoiceStatusUpdatedDomainEvent(Id, DocumentNumber, Status.ToString(), utcNow));
     }

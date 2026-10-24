@@ -36,15 +36,16 @@ public class Supplier : AggregateRoot<Guid>, ITenantOwnedEntity
         string contactName,
         string email,
         string phone,
-        TimeProvider? timeProvider = null) : base(id)
+        TimeProvider timeProvider) : base(id)
     {
+        ArgumentNullException.ThrowIfNull(timeProvider);
         TenantId = TenantGuard.RequireTenantId(tenantId, "un proveedor");
         SetName(name);
         TaxId = taxId ?? throw new ArgumentNullException(nameof(taxId));
         Address = address ?? throw new ArgumentNullException(nameof(address));
         SetContactDetails(contactName, email, phone);
         IsActive = true;
-        var utcNow = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        var utcNow = timeProvider.GetUtcNow().UtcDateTime;
         CreatedAtUtc = utcNow;
 
         RaiseDomainEvent(new SupplierCreatedDomainEvent(Id, Name, TaxId.Value, CreatedAtUtc));
@@ -55,10 +56,20 @@ public class Supplier : AggregateRoot<Guid>, ITenantOwnedEntity
         string name,
         TaxId taxId,
         Address address,
+        TimeProvider timeProvider)
+    {
+        return Create(tenantId, name, taxId, address, string.Empty, string.Empty, string.Empty, timeProvider);
+    }
+
+    public static Supplier Create(
+        Guid tenantId,
+        string name,
+        TaxId taxId,
+        Address address,
         string contactName,
         string email,
         string phone,
-        TimeProvider? timeProvider = null)
+        TimeProvider timeProvider)
     {
         return new Supplier(Guid.NewGuid(), tenantId, name, taxId, address, contactName, email, phone, timeProvider);
     }
@@ -70,30 +81,33 @@ public class Supplier : AggregateRoot<Guid>, ITenantOwnedEntity
         string contactName,
         string email,
         string phone,
-        TimeProvider? timeProvider = null)
+        TimeProvider timeProvider)
     {
+        ArgumentNullException.ThrowIfNull(timeProvider);
         SetName(name);
         TaxId = taxId ?? throw new ArgumentNullException(nameof(taxId));
         Address = address ?? throw new ArgumentNullException(nameof(address));
         SetContactDetails(contactName, email, phone);
-        var utcNow = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        var utcNow = timeProvider.GetUtcNow().UtcDateTime;
         UpdatedAtUtc = utcNow;
 
         RaiseDomainEvent(new SupplierUpdatedDomainEvent(Id, Name, UpdatedAtUtc.Value));
     }
 
-    public void Activate(TimeProvider? timeProvider = null)
+    public void Activate(TimeProvider timeProvider)
     {
+        ArgumentNullException.ThrowIfNull(timeProvider);
         if (IsActive) return;
         IsActive = true;
-        UpdatedAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        UpdatedAtUtc = timeProvider.GetUtcNow().UtcDateTime;
     }
 
-    public void Deactivate(TimeProvider? timeProvider = null)
+    public void Deactivate(TimeProvider timeProvider)
     {
+        ArgumentNullException.ThrowIfNull(timeProvider);
         if (!IsActive) return;
         IsActive = false;
-        var utcNow = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        var utcNow = timeProvider.GetUtcNow().UtcDateTime;
         UpdatedAtUtc = utcNow;
 
         RaiseDomainEvent(new SupplierDeactivatedDomainEvent(Id, UpdatedAtUtc.Value));

@@ -28,8 +28,9 @@ public class PosDevice : AggregateRoot<Guid>, ITenantOwnedEntity
         Guid branchId,
         string name,
         string serialNumber,
-        TimeProvider? timeProvider = null) : base(id)
+        TimeProvider timeProvider) : base(id)
     {
+        ArgumentNullException.ThrowIfNull(timeProvider);
         TenantId = TenantGuard.RequireTenantId(tenantId, "un dispositivo POS");
 
         if (branchId == Guid.Empty)
@@ -42,40 +43,44 @@ public class PosDevice : AggregateRoot<Guid>, ITenantOwnedEntity
 
         BranchId = branchId;
         IsActive = true;
-        CreatedAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        CreatedAtUtc = timeProvider.GetUtcNow().UtcDateTime;
 
         RaiseDomainEvent(new PosDeviceRegisteredDomainEvent(Id, BranchId, Name, SerialNumber, CreatedAtUtc));
     }
 
-    public static PosDevice Create(Guid tenantId, Guid branchId, string name, string serialNumber, TimeProvider? timeProvider = null)
+    public static PosDevice Create(Guid tenantId, Guid branchId, string name, string serialNumber, TimeProvider timeProvider)
     {
         return new PosDevice(Guid.NewGuid(), tenantId, branchId, name, serialNumber, timeProvider);
     }
 
-    public void UpdateDetails(string name, string serialNumber, TimeProvider? timeProvider = null)
+    public void UpdateDetails(string name, string serialNumber, TimeProvider timeProvider)
     {
+        ArgumentNullException.ThrowIfNull(timeProvider);
         SetName(name);
         SetSerialNumber(serialNumber);
-        UpdatedAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        UpdatedAtUtc = timeProvider.GetUtcNow().UtcDateTime;
     }
 
-    public void RecordPing(TimeProvider? timeProvider = null)
+    public void RecordPing(TimeProvider timeProvider)
     {
-        var utcNowOffset = (timeProvider ?? TimeProvider.System).GetUtcNow();
+        ArgumentNullException.ThrowIfNull(timeProvider);
+        var utcNowOffset = timeProvider.GetUtcNow();
         LastPingUtc = utcNowOffset;
         RaiseDomainEvent(new PosDevicePingedDomainEvent(Id, LastPingUtc.Value, utcNowOffset.UtcDateTime));
     }
 
-    public void Activate(TimeProvider? timeProvider = null)
+    public void Activate(TimeProvider timeProvider)
     {
+        ArgumentNullException.ThrowIfNull(timeProvider);
         IsActive = true;
-        UpdatedAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        UpdatedAtUtc = timeProvider.GetUtcNow().UtcDateTime;
     }
 
-    public void Deactivate(TimeProvider? timeProvider = null)
+    public void Deactivate(TimeProvider timeProvider)
     {
+        ArgumentNullException.ThrowIfNull(timeProvider);
         IsActive = false;
-        UpdatedAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        UpdatedAtUtc = timeProvider.GetUtcNow().UtcDateTime;
     }
 
     private void SetName(string name)

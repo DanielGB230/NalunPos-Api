@@ -24,13 +24,9 @@ public class Role : AggregateRoot<Guid>, IPlatformScopedEntity
     {
     }
 
-    private Role(Guid id, Guid tenantId, string name, string? description, IEnumerable<string>? permissions)
-        : this(id, tenantId, name, description, permissions, null)
+    private Role(Guid id, Guid tenantId, string name, string? description, IEnumerable<string>? permissions, TimeProvider timeProvider) : base(id)
     {
-    }
-
-    private Role(Guid id, Guid tenantId, string name, string? description, IEnumerable<string>? permissions, TimeProvider? timeProvider) : base(id)
-    {
+        ArgumentNullException.ThrowIfNull(timeProvider);
         TenantId = tenantId;
         SetName(name);
         Description = description?.Trim();
@@ -39,16 +35,36 @@ public class Role : AggregateRoot<Guid>, IPlatformScopedEntity
             _permissions.AddRange(permissions.Where(p => !string.IsNullOrWhiteSpace(p)).Select(p => p.Trim()));
         }
 
-        var utcNow = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        var utcNow = timeProvider.GetUtcNow().UtcDateTime;
         RaiseDomainEvent(new RoleCreatedDomainEvent(Id, Name, utcNow));
     }
 
-    public static Role Create(Guid tenantId, string name, string? description = null, IEnumerable<string>? permissions = null, TimeProvider? timeProvider = null)
+    public static Role Create(Guid tenantId, string name, TimeProvider timeProvider)
+    {
+        return Create(tenantId, name, null, null, timeProvider);
+    }
+
+    public static Role Create(Guid tenantId, string name, string? description, TimeProvider timeProvider)
+    {
+        return Create(tenantId, name, description, null, timeProvider);
+    }
+
+    public static Role Create(Guid tenantId, string name, string? description, IEnumerable<string>? permissions, TimeProvider timeProvider)
     {
         return new Role(Guid.NewGuid(), tenantId, name, description, permissions, timeProvider);
     }
 
-    public static Role CreatePlatformRole(Guid id, Guid tenantId, string name, string? description = null, IEnumerable<string>? permissions = null, TimeProvider? timeProvider = null)
+    public static Role CreatePlatformRole(Guid id, Guid tenantId, string name, TimeProvider timeProvider)
+    {
+        return CreatePlatformRole(id, tenantId, name, null, null, timeProvider);
+    }
+
+    public static Role CreatePlatformRole(Guid id, Guid tenantId, string name, string? description, TimeProvider timeProvider)
+    {
+        return CreatePlatformRole(id, tenantId, name, description, null, timeProvider);
+    }
+
+    public static Role CreatePlatformRole(Guid id, Guid tenantId, string name, string? description, IEnumerable<string>? permissions, TimeProvider timeProvider)
     {
         return new Role(id, tenantId, name, description, permissions, timeProvider);
     }

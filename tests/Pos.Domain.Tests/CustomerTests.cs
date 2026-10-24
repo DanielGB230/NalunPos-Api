@@ -8,6 +8,8 @@ namespace Pos.Domain.Tests;
 
 public class CustomerTests
 {
+    private readonly TimeProvider _timeProvider = TimeProvider.System;
+
     [Fact]
     public void Create_WithValidData_ShouldCreateCustomerWithTenantId()
     {
@@ -23,7 +25,8 @@ public class CustomerTests
             taxId,
             "juan@test.com",
             "+51987654321",
-            address);
+            address,
+            _timeProvider);
 
         // Assert
         Assert.NotEqual(Guid.Empty, customer.Id);
@@ -44,7 +47,7 @@ public class CustomerTests
 
         // Act & Assert
         var ex = Assert.Throws<DomainException>(() =>
-            Customer.Create(PlatformScope.TenantId, "Juan Pérez", taxId));
+            Customer.Create(PlatformScope.TenantId, "Juan Pérez", taxId, _timeProvider));
 
         Assert.Equal("El ID del tenant es requerido para crear un cliente.", ex.Message);
     }
@@ -57,7 +60,7 @@ public class CustomerTests
 
         // Act & Assert
         var ex = Assert.Throws<DomainException>(() =>
-            Customer.Create(Guid.Empty, "Juan Pérez", taxId));
+            Customer.Create(Guid.Empty, "Juan Pérez", taxId, _timeProvider));
 
         Assert.Equal("El ID del tenant es requerido para crear un cliente.", ex.Message);
     }

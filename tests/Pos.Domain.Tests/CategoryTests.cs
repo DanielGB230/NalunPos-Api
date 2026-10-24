@@ -7,6 +7,8 @@ namespace Pos.Domain.Tests;
 
 public class CategoryTests
 {
+    private readonly TimeProvider _timeProvider = TimeProvider.System;
+
     [Fact]
     public void Create_WithValidName_ShouldInstantiateCategory()
     {
@@ -14,7 +16,7 @@ public class CategoryTests
         var tenantId = Guid.NewGuid();
 
         // Act
-        var category = Category.Create(tenantId, "Periféricos", "Teclados y Mouses");
+        var category = Category.Create(tenantId, "Periféricos", "Teclados y Mouses", _timeProvider);
 
         // Assert
         Assert.NotEqual(Guid.Empty, category.Id);
@@ -30,7 +32,7 @@ public class CategoryTests
     {
         // Act & Assert
         var ex = Assert.Throws<DomainException>(() =>
-            Category.Create(PlatformScope.TenantId, "Periféricos", "Descripción"));
+            Category.Create(PlatformScope.TenantId, "Periféricos", "Descripción", _timeProvider));
 
         Assert.Equal("El ID del tenant es requerido para crear una categoría.", ex.Message);
     }
@@ -40,7 +42,7 @@ public class CategoryTests
     {
         // Act & Assert
         var ex = Assert.Throws<DomainException>(() =>
-            Category.Create(Guid.Empty, "Periféricos", "Descripción"));
+            Category.Create(Guid.Empty, "Periféricos", "Descripción", _timeProvider));
 
         Assert.Equal("El ID del tenant es requerido para crear una categoría.", ex.Message);
     }
@@ -49,10 +51,10 @@ public class CategoryTests
     public void Update_WithInvalidName_ShouldThrowDomainException()
     {
         // Arrange
-        var category = Category.Create(Guid.NewGuid(), "Hardware");
+        var category = Category.Create(Guid.NewGuid(), "Hardware", _timeProvider);
 
         // Act & Assert
-        Assert.Throws<DomainException>(() => category.Update("", "Descripción"));
+        Assert.Throws<DomainException>(() => category.Update("", "Descripción", _timeProvider));
     }
 
     [Fact]

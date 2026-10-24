@@ -8,6 +8,8 @@ namespace Pos.Domain.Tests;
 
 public class CashRegisterSessionTests
 {
+    private readonly TimeProvider _timeProvider = TimeProvider.System;
+
     [Fact]
     public void OpenWithValidParametersShouldInstantiateSessionAndEmitEvent()
     {
@@ -17,7 +19,7 @@ public class CashRegisterSessionTests
         var initialAmount = Money.Create(100m, "USD");
 
         // Act
-        var session = CashRegisterSession.Open(registerId, userId, initialAmount, "Apertura inicial");
+        var session = CashRegisterSession.Open(registerId, userId, initialAmount, "Apertura inicial", _timeProvider);
 
         // Assert
         Assert.NotEqual(Guid.Empty, session.Id);
@@ -32,12 +34,12 @@ public class CashRegisterSessionTests
     public void CloseSessionWhenAlreadyClosedShouldThrowDomainException()
     {
         // Arrange
-        var session = CashRegisterSession.Open(Guid.NewGuid(), Guid.NewGuid(), Money.Create(100m, "USD"));
-        session.Close(Money.Create(150m, "USD"), Money.Create(150m, "USD"));
+        var session = CashRegisterSession.Open(Guid.NewGuid(), Guid.NewGuid(), Money.Create(100m, "USD"), _timeProvider);
+        session.Close(Money.Create(150m, "USD"), Money.Create(150m, "USD"), _timeProvider);
 
         // Act & Assert
         Assert.Throws<DomainException>(() =>
-            session.Close(Money.Create(150m, "USD"), Money.Create(150m, "USD")));
+            session.Close(Money.Create(150m, "USD"), Money.Create(150m, "USD"), _timeProvider));
     }
 
     [Fact]

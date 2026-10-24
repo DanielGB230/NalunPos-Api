@@ -8,6 +8,8 @@ namespace Pos.Domain.Tests;
 
 public class BranchTests
 {
+    private readonly TimeProvider _timeProvider = TimeProvider.System;
+
     [Fact]
     public void CreateBranchWithValidParametersShouldInstantiateActiveBranch()
     {
@@ -18,7 +20,7 @@ public class BranchTests
         string phone = "+51 987654321";
 
         // Act
-        var branch = Branch.Create(tenantId, name, address, phone);
+        var branch = Branch.Create(tenantId, name, address, phone, _timeProvider);
 
         // Assert
         Assert.NotEqual(Guid.Empty, branch.Id);
@@ -39,7 +41,7 @@ public class BranchTests
 
         // Act & Assert
         Assert.Throws<DomainException>(() =>
-            Branch.Create(tenantId, "", address));
+            Branch.Create(tenantId, "", address, _timeProvider));
     }
 
     [Fact]
@@ -50,7 +52,7 @@ public class BranchTests
 
         // Act & Assert
         var ex = Assert.Throws<DomainException>(() =>
-            Branch.Create(PlatformScope.TenantId, "Sucursal Test", address));
+            Branch.Create(PlatformScope.TenantId, "Sucursal Test", address, _timeProvider));
 
         Assert.Equal("El ID del tenant es requerido para crear una sucursal.", ex.Message);
     }
@@ -63,7 +65,7 @@ public class BranchTests
 
         // Act & Assert
         var ex = Assert.Throws<DomainException>(() =>
-            Branch.Create(Guid.Empty, "Sucursal Test", address));
+            Branch.Create(Guid.Empty, "Sucursal Test", address, _timeProvider));
 
         Assert.Equal("El ID del tenant es requerido para crear una sucursal.", ex.Message);
     }

@@ -69,10 +69,11 @@ public class WarehouseTests
     public void Deactivate_WhenWarehouseIsDefault_ShouldThrowDomainException()
     {
         // Arrange
-        var warehouse = Warehouse.Create(Guid.NewGuid(), Guid.NewGuid(), "Almacén Default", isDefault: true);
+        var timeProvider = new Common.FakeTimeProvider(DateTimeOffset.UtcNow);
+        var warehouse = Warehouse.Create(Guid.NewGuid(), Guid.NewGuid(), "Almacén Default", isDefault: true, timeProvider);
 
         // Act & Assert
-        var ex = Assert.Throws<DomainException>(() => warehouse.Deactivate());
+        var ex = Assert.Throws<DomainException>(() => warehouse.Deactivate(timeProvider));
         Assert.Equal("No se puede desactivar el almacén predeterminado. Asigne otro almacén por defecto primero.", ex.Message);
     }
 
@@ -81,10 +82,11 @@ public class WarehouseTests
     {
         // Arrange
         var branchId = Guid.NewGuid();
+        var timeProvider = new Common.FakeTimeProvider(DateTimeOffset.UtcNow);
 
         // Act & Assert
         var ex = Assert.Throws<DomainException>(() =>
-            Warehouse.Create(Guid.Empty, branchId, "Almacén Sin Tenant"));
+            Warehouse.Create(Guid.Empty, branchId, "Almacén Sin Tenant", timeProvider));
 
         Assert.Equal("El ID del tenant es requerido para crear un almacén.", ex.Message);
     }
@@ -94,10 +96,11 @@ public class WarehouseTests
     {
         // Arrange
         var branchId = Guid.NewGuid();
+        var timeProvider = new Common.FakeTimeProvider(DateTimeOffset.UtcNow);
 
         // Act & Assert
         var ex = Assert.Throws<DomainException>(() =>
-            Warehouse.Create(PlatformScope.TenantId, branchId, "Almacén Plataforma"));
+            Warehouse.Create(PlatformScope.TenantId, branchId, "Almacén Plataforma", timeProvider));
 
         Assert.Equal("El ID del tenant es requerido para crear un almacén.", ex.Message);
     }
@@ -107,10 +110,11 @@ public class WarehouseTests
     {
         // Arrange
         var tenantId = Guid.NewGuid();
+        var timeProvider = new Common.FakeTimeProvider(DateTimeOffset.UtcNow);
 
         // Act & Assert
         var ex = Assert.Throws<DomainException>(() =>
-            Warehouse.Create(tenantId, Guid.Empty, "Almacén Sin Sucursal"));
+            Warehouse.Create(tenantId, Guid.Empty, "Almacén Sin Sucursal", timeProvider));
 
         Assert.Equal("El ID de la sucursal es requerido para crear un almacén.", ex.Message);
     }

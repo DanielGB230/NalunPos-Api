@@ -7,6 +7,8 @@ namespace Pos.Domain.Tests;
 
 public class PosDeviceTests
 {
+    private readonly TimeProvider _timeProvider = TimeProvider.System;
+
     [Fact]
     public void CreatePosDeviceShouldInstantiateDevice()
     {
@@ -17,7 +19,7 @@ public class PosDeviceTests
         string serialNumber = "POS-DEV-889900";
 
         // Act
-        var device = PosDevice.Create(tenantId, branchId, name, serialNumber);
+        var device = PosDevice.Create(tenantId, branchId, name, serialNumber, _timeProvider);
 
         // Assert
         Assert.NotEqual(Guid.Empty, device.Id);
@@ -35,10 +37,10 @@ public class PosDeviceTests
     {
         // Arrange
         var tenantId = Guid.NewGuid();
-        var device = PosDevice.Create(tenantId, Guid.NewGuid(), "Caja 02", "MAC-001");
+        var device = PosDevice.Create(tenantId, Guid.NewGuid(), "Caja 02", "MAC-001", _timeProvider);
 
         // Act
-        device.RecordPing();
+        device.RecordPing(_timeProvider);
 
         // Assert
         Assert.NotNull(device.LastPingUtc);
@@ -51,7 +53,7 @@ public class PosDeviceTests
         // Arrange & Act & Assert
         var tenantId = Guid.NewGuid();
         Assert.Throws<DomainException>(() =>
-            PosDevice.Create(tenantId, Guid.NewGuid(), "Caja 03", ""));
+            PosDevice.Create(tenantId, Guid.NewGuid(), "Caja 03", "", _timeProvider));
     }
 
     [Fact]
@@ -59,7 +61,7 @@ public class PosDeviceTests
     {
         // Arrange & Act & Assert
         var ex = Assert.Throws<DomainException>(() =>
-            PosDevice.Create(PlatformScope.TenantId, Guid.NewGuid(), "Caja 04", "MAC-004"));
+            PosDevice.Create(PlatformScope.TenantId, Guid.NewGuid(), "Caja 04", "MAC-004", _timeProvider));
 
         Assert.Equal("El ID del tenant es requerido para crear un dispositivo POS.", ex.Message);
     }
@@ -69,7 +71,7 @@ public class PosDeviceTests
     {
         // Arrange & Act & Assert
         var ex = Assert.Throws<DomainException>(() =>
-            PosDevice.Create(Guid.Empty, Guid.NewGuid(), "Caja 04", "MAC-004"));
+            PosDevice.Create(Guid.Empty, Guid.NewGuid(), "Caja 04", "MAC-004", _timeProvider));
 
         Assert.Equal("El ID del tenant es requerido para crear un dispositivo POS.", ex.Message);
     }

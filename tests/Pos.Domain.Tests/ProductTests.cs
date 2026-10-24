@@ -7,6 +7,8 @@ namespace Pos.Domain.Tests;
 
 public class ProductTests
 {
+    private readonly TimeProvider _timeProvider = TimeProvider.System;
+
     [Fact]
     public void Create_WithValidParameters_ShouldInstantiateProductAndRaiseDomainEvent()
     {
@@ -18,7 +20,7 @@ public class ProductTests
         Guid categoryId = Guid.NewGuid();
 
         // Act
-        var product = Product.Create(tenantId, name, sku, price, categoryId);
+        var product = Product.Create(tenantId, name, sku, price, categoryId, _timeProvider);
 
         // Assert
         Assert.NotEqual(Guid.Empty, product.Id);
@@ -36,7 +38,7 @@ public class ProductTests
     {
         // Arrange
         var ex = Assert.Throws<DomainException>(() =>
-            Product.Create(Pos.Domain.Common.PlatformScope.TenantId, "Mouse Gamer", Sku.Create("MSE-01"), Money.Create(50m, "USD"), Guid.NewGuid()));
+            Product.Create(Pos.Domain.Common.PlatformScope.TenantId, "Mouse Gamer", Sku.Create("MSE-01"), Money.Create(50m, "USD"), Guid.NewGuid(), _timeProvider));
 
         Assert.Equal("El ID del tenant es requerido para crear un producto.", ex.Message);
     }
@@ -46,7 +48,7 @@ public class ProductTests
     {
         // Arrange
         var ex = Assert.Throws<DomainException>(() =>
-            Product.Create(Guid.Empty, "Mouse Gamer", Sku.Create("MSE-01"), Money.Create(50m, "USD"), Guid.NewGuid()));
+            Product.Create(Guid.Empty, "Mouse Gamer", Sku.Create("MSE-01"), Money.Create(50m, "USD"), Guid.NewGuid(), _timeProvider));
 
         Assert.Equal("El ID del tenant es requerido para crear un producto.", ex.Message);
     }
@@ -55,11 +57,11 @@ public class ProductTests
     public void UpdatePrice_WithNewValidPrice_ShouldUpdatePriceAndEmitEvent()
     {
         // Arrange
-        var product = Product.Create(Guid.NewGuid(), "Mouse Gamer", Sku.Create("MSE-01"), Money.Create(50m, "USD"), Guid.NewGuid());
+        var product = Product.Create(Guid.NewGuid(), "Mouse Gamer", Sku.Create("MSE-01"), Money.Create(50m, "USD"), Guid.NewGuid(), _timeProvider);
         var newPrice = Money.Create(45m, "USD");
 
         // Act
-        product.UpdatePrice(newPrice);
+        product.UpdatePrice(newPrice, _timeProvider);
 
         // Assert
         Assert.Equal(newPrice, product.Price);
@@ -71,19 +73,19 @@ public class ProductTests
     {
         // Arrange & Act & Assert
         Assert.Throws<DomainException>(() =>
-            Product.Create(Guid.NewGuid(), "", Sku.Create("SKU-123"), Money.Create(10m, "USD"), Guid.NewGuid()));
+            Product.Create(Guid.NewGuid(), "", Sku.Create("SKU-123"), Money.Create(10m, "USD"), Guid.NewGuid(), _timeProvider));
     }
 
     [Fact]
     public void Activate_WhenNotActive_ShouldActivateAndEmitProductStatusChangedDomainEvent()
     {
         // Arrange
-        var product = Product.Create(Guid.NewGuid(), "Mouse Gamer", Sku.Create("MSE-01"), Money.Create(50m, "USD"), Guid.NewGuid());
-        product.Deactivate(); // Set to inactive first
+        var product = Product.Create(Guid.NewGuid(), "Mouse Gamer", Sku.Create("MSE-01"), Money.Create(50m, "USD"), Guid.NewGuid(), _timeProvider);
+        product.Deactivate(_timeProvider); // Set to inactive first
         product.ClearDomainEvents();
 
         // Act
-        product.Activate();
+        product.Activate(_timeProvider);
 
         // Assert
         Assert.True(product.IsActive);
@@ -99,11 +101,11 @@ public class ProductTests
     public void Activate_WhenAlreadyActive_ShouldNotEmitEvent()
     {
         // Arrange
-        var product = Product.Create(Guid.NewGuid(), "Mouse Gamer", Sku.Create("MSE-01"), Money.Create(50m, "USD"), Guid.NewGuid());
+        var product = Product.Create(Guid.NewGuid(), "Mouse Gamer", Sku.Create("MSE-01"), Money.Create(50m, "USD"), Guid.NewGuid(), _timeProvider);
         product.ClearDomainEvents();
 
         // Act
-        product.Activate();
+        product.Activate(_timeProvider);
 
         // Assert
         Assert.True(product.IsActive);
@@ -114,11 +116,11 @@ public class ProductTests
     public void Deactivate_WhenActive_ShouldDeactivateAndEmitProductStatusChangedDomainEvent()
     {
         // Arrange
-        var product = Product.Create(Guid.NewGuid(), "Mouse Gamer", Sku.Create("MSE-01"), Money.Create(50m, "USD"), Guid.NewGuid());
+        var product = Product.Create(Guid.NewGuid(), "Mouse Gamer", Sku.Create("MSE-01"), Money.Create(50m, "USD"), Guid.NewGuid(), _timeProvider);
         product.ClearDomainEvents();
 
         // Act
-        product.Deactivate();
+        product.Deactivate(_timeProvider);
 
         // Assert
         Assert.False(product.IsActive);
@@ -134,12 +136,12 @@ public class ProductTests
     public void Deactivate_WhenAlreadyInactive_ShouldNotEmitEvent()
     {
         // Arrange
-        var product = Product.Create(Guid.NewGuid(), "Mouse Gamer", Sku.Create("MSE-01"), Money.Create(50m, "USD"), Guid.NewGuid());
-        product.Deactivate();
+        var product = Product.Create(Guid.NewGuid(), "Mouse Gamer", Sku.Create("MSE-01"), Money.Create(50m, "USD"), Guid.NewGuid(), _timeProvider);
+        product.Deactivate(_timeProvider);
         product.ClearDomainEvents();
 
         // Act
-        product.Deactivate();
+        product.Deactivate(_timeProvider);
 
         // Assert
         Assert.False(product.IsActive);
@@ -162,7 +164,7 @@ public class ProductTests
         var initialPrice = Money.Create(499.99m, "USD");
 
         // Act - Create
-        var product = Product.Create(tenantId, "Monitor 4K", sku, initialPrice, categoryId, timeProvider: timeProvider);
+        var product = Product.Create(tenantId, "Monitor 4K", sku, initialPrice, categoryId, timeProvider);
 
         // Assert - Create
         Assert.Equal(createdTime.UtcDateTime, product.CreatedAtUtc);
@@ -180,7 +182,7 @@ public class ProductTests
 
         // Act - UpdatePrice
         timeProvider.SetUtcNow(priceUpdatedTime);
-        product.UpdatePrice(Money.Create(449.99m, "USD"), timeProvider: timeProvider);
+        product.UpdatePrice(Money.Create(449.99m, "USD"), timeProvider);
 
         // Assert - UpdatePrice
         Assert.Equal(priceUpdatedTime.UtcDateTime, product.UpdatedAtUtc);

@@ -33,8 +33,10 @@ public class AgentActionRecord : AggregateRoot<Guid>, ITenantOwnedEntity
         string proposedActionType,
         string payloadJson,
         RiskLevel riskLevel,
-        TimeProvider? timeProvider = null) : base(id)
+        TimeProvider timeProvider) : base(id)
     {
+        ArgumentNullException.ThrowIfNull(timeProvider);
+
         if (tenantId == Guid.Empty)
         {
             throw new DomainException("El ID del tenant es requerido para registrar la acción del agente IA.");
@@ -61,7 +63,7 @@ public class AgentActionRecord : AggregateRoot<Guid>, ITenantOwnedEntity
         PayloadJson = payloadJson.Trim();
         RiskLevel = riskLevel;
         Status = AgentActionStatus.PendingApproval;
-        CreatedAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        CreatedAtUtc = timeProvider.GetUtcNow().UtcDateTime;
 
         RaiseDomainEvent(new AgentActionProposedDomainEvent(
             Id, AgentId, ProposedActionType, RiskLevel, CreatedAtUtc));
@@ -73,13 +75,15 @@ public class AgentActionRecord : AggregateRoot<Guid>, ITenantOwnedEntity
         string proposedActionType,
         string payloadJson,
         RiskLevel riskLevel,
-        TimeProvider? timeProvider = null)
+        TimeProvider timeProvider)
     {
         return new AgentActionRecord(Guid.NewGuid(), tenantId, agentId, proposedActionType, payloadJson, riskLevel, timeProvider);
     }
 
-    public void Approve(Guid reviewerUserId, TimeProvider? timeProvider = null)
+    public void Approve(Guid reviewerUserId, TimeProvider timeProvider)
     {
+        ArgumentNullException.ThrowIfNull(timeProvider);
+
         if (reviewerUserId == Guid.Empty)
         {
             throw new DomainException("El ID del usuario revisor es requerido para aprobar la acción.");
@@ -92,13 +96,15 @@ public class AgentActionRecord : AggregateRoot<Guid>, ITenantOwnedEntity
 
         Status = AgentActionStatus.Approved;
         ReviewedByUserId = reviewerUserId;
-        ReviewedAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        ReviewedAtUtc = timeProvider.GetUtcNow().UtcDateTime;
 
         RaiseDomainEvent(new AgentActionApprovedDomainEvent(Id, reviewerUserId, ReviewedAtUtc.Value));
     }
 
-    public void Reject(Guid reviewerUserId, TimeProvider? timeProvider = null)
+    public void Reject(Guid reviewerUserId, TimeProvider timeProvider)
     {
+        ArgumentNullException.ThrowIfNull(timeProvider);
+
         if (reviewerUserId == Guid.Empty)
         {
             throw new DomainException("El ID del usuario revisor es requerido para rechazar la acción.");
@@ -111,7 +117,7 @@ public class AgentActionRecord : AggregateRoot<Guid>, ITenantOwnedEntity
 
         Status = AgentActionStatus.Rejected;
         ReviewedByUserId = reviewerUserId;
-        ReviewedAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        ReviewedAtUtc = timeProvider.GetUtcNow().UtcDateTime;
 
         RaiseDomainEvent(new AgentActionRejectedDomainEvent(Id, reviewerUserId, ReviewedAtUtc.Value));
     }

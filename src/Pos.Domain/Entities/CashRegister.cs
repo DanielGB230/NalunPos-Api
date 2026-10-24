@@ -21,8 +21,9 @@ public class CashRegister : AggregateRoot<Guid>, ITenantOwnedEntity
     {
     }
 
-    private CashRegister(Guid id, Guid tenantId, Guid branchId, string name, string serialNumber, TimeProvider? timeProvider = null) : base(id)
+    private CashRegister(Guid id, Guid tenantId, Guid branchId, string name, string serialNumber, TimeProvider timeProvider) : base(id)
     {
+        ArgumentNullException.ThrowIfNull(timeProvider);
         TenantId = TenantGuard.RequireTenantId(tenantId, "una caja");
 
         if (branchId == Guid.Empty)
@@ -31,53 +32,63 @@ public class CashRegister : AggregateRoot<Guid>, ITenantOwnedEntity
         SetName(name);
         SerialNumber = serialNumber?.Trim().ToUpperInvariant() ?? string.Empty;
         IsActive = true;
-        CreatedAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        CreatedAtUtc = timeProvider.GetUtcNow().UtcDateTime;
     }
 
-    public static CashRegister Create(Guid tenantId, Guid branchId, string name, string serialNumber = "", TimeProvider? timeProvider = null)
+    public static CashRegister Create(Guid tenantId, Guid branchId, string name, TimeProvider timeProvider)
+    {
+        return Create(tenantId, branchId, name, string.Empty, timeProvider);
+    }
+
+    public static CashRegister Create(Guid tenantId, Guid branchId, string name, string serialNumber, TimeProvider timeProvider)
     {
         return new CashRegister(Guid.NewGuid(), tenantId, branchId, name, serialNumber, timeProvider);
     }
 
-    public void UpdateDetails(string name, string serialNumber, TimeProvider? timeProvider = null)
+    public void UpdateDetails(string name, string serialNumber, TimeProvider timeProvider)
     {
+        ArgumentNullException.ThrowIfNull(timeProvider);
         SetName(name);
         SerialNumber = serialNumber?.Trim().ToUpperInvariant() ?? string.Empty;
-        UpdatedAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        UpdatedAtUtc = timeProvider.GetUtcNow().UtcDateTime;
     }
 
-    public void SetCurrentSession(Guid sessionId, TimeProvider? timeProvider = null)
+    public void SetCurrentSession(Guid sessionId, TimeProvider timeProvider)
     {
+        ArgumentNullException.ThrowIfNull(timeProvider);
         if (CurrentSessionId.HasValue && CurrentSessionId.Value != sessionId)
         {
             throw new DomainException($"La caja '{Name}' ya tiene un turno abierto activo.");
         }
 
         CurrentSessionId = sessionId;
-        UpdatedAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        UpdatedAtUtc = timeProvider.GetUtcNow().UtcDateTime;
     }
 
-    public void ClearCurrentSession(TimeProvider? timeProvider = null)
+    public void ClearCurrentSession(TimeProvider timeProvider)
     {
+        ArgumentNullException.ThrowIfNull(timeProvider);
         CurrentSessionId = null;
-        UpdatedAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        UpdatedAtUtc = timeProvider.GetUtcNow().UtcDateTime;
     }
 
-    public void Activate(TimeProvider? timeProvider = null)
+    public void Activate(TimeProvider timeProvider)
     {
+        ArgumentNullException.ThrowIfNull(timeProvider);
         IsActive = true;
-        UpdatedAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        UpdatedAtUtc = timeProvider.GetUtcNow().UtcDateTime;
     }
 
-    public void Deactivate(TimeProvider? timeProvider = null)
+    public void Deactivate(TimeProvider timeProvider)
     {
+        ArgumentNullException.ThrowIfNull(timeProvider);
         if (CurrentSessionId.HasValue)
         {
             throw new DomainException("No se puede desactivar una caja que tiene una sesión abierta.");
         }
 
         IsActive = false;
-        UpdatedAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        UpdatedAtUtc = timeProvider.GetUtcNow().UtcDateTime;
     }
 
     private void SetName(string name)

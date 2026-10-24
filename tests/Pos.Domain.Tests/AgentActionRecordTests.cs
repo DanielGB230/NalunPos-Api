@@ -8,6 +8,7 @@ namespace Pos.Domain.Tests;
 public class AgentActionRecordTests
 {
     private static readonly Guid TestTenantId = Guid.NewGuid();
+    private readonly TimeProvider _timeProvider = TimeProvider.System;
 
     [Fact]
     public void CreateAgentActionRecordShouldInstantiatePendingApprovalRecord()
@@ -18,7 +19,7 @@ public class AgentActionRecordTests
         string payloadJson = "{\"ProductId\":\"" + Guid.NewGuid() + "\",\"Quantity\":50}";
 
         // Act
-        var record = AgentActionRecord.Create(TestTenantId, agentId, actionType, payloadJson, RiskLevel.High);
+        var record = AgentActionRecord.Create(TestTenantId, agentId, actionType, payloadJson, RiskLevel.High, _timeProvider);
 
         // Assert
         Assert.NotEqual(Guid.Empty, record.Id);
@@ -36,11 +37,11 @@ public class AgentActionRecordTests
     public void ApproveRecordByHumanUserShouldChangeStatusToApproved()
     {
         // Arrange
-        var record = AgentActionRecord.Create(TestTenantId, "Bot1", "Action1", "{}", RiskLevel.Medium);
+        var record = AgentActionRecord.Create(TestTenantId, "Bot1", "Action1", "{}", RiskLevel.Medium, _timeProvider);
         Guid reviewerUserId = Guid.NewGuid();
 
         // Act
-        record.Approve(reviewerUserId);
+        record.Approve(reviewerUserId, _timeProvider);
 
         // Assert
         Assert.Equal(AgentActionStatus.Approved, record.Status);
@@ -53,11 +54,11 @@ public class AgentActionRecordTests
     public void RejectRecordByHumanUserShouldChangeStatusToRejected()
     {
         // Arrange
-        var record = AgentActionRecord.Create(TestTenantId, "Bot1", "Action1", "{}", RiskLevel.Low);
+        var record = AgentActionRecord.Create(TestTenantId, "Bot1", "Action1", "{}", RiskLevel.Low, _timeProvider);
         Guid reviewerUserId = Guid.NewGuid();
 
         // Act
-        record.Reject(reviewerUserId);
+        record.Reject(reviewerUserId, _timeProvider);
 
         // Assert
         Assert.Equal(AgentActionStatus.Rejected, record.Status);
@@ -68,7 +69,7 @@ public class AgentActionRecordTests
     public void MarkAsExecutedWithoutPriorApprovalShouldThrowInvalidAgentActionStateException()
     {
         // Arrange
-        var record = AgentActionRecord.Create(TestTenantId, "Bot1", "Action1", "{}", RiskLevel.High);
+        var record = AgentActionRecord.Create(TestTenantId, "Bot1", "Action1", "{}", RiskLevel.High, _timeProvider);
 
         // Act & Assert
         Assert.Throws<InvalidAgentActionStateException>(() =>

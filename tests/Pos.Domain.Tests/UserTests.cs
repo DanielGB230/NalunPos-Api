@@ -8,6 +8,8 @@ namespace Pos.Domain.Tests;
 
 public class UserTests
 {
+    private readonly TimeProvider _timeProvider = TimeProvider.System;
+
     [Fact]
     public void CreateUserWithNullTenantIdShouldSucceedAndEmitEvent()
     {
@@ -17,7 +19,7 @@ public class UserTests
         Guid roleId = Guid.NewGuid();
 
         // Act
-        var user = User.Create(email, passwordHash, roleId, tenantId: null, firstName: "Super", lastName: "Admin");
+        var user = User.Create(email, passwordHash, roleId, tenantId: null, firstName: "Super", lastName: "Admin", _timeProvider);
 
         // Assert
         Assert.NotEqual(Guid.Empty, user.Id);
@@ -37,7 +39,7 @@ public class UserTests
         Guid roleId = Guid.NewGuid();
 
         // Act
-        var user = User.Create("cajero@tenant.com", "HASH_SAMPLE", roleId, tenantId: tenantId, firstName: "Pedro", lastName: "Pérez");
+        var user = User.Create("cajero@tenant.com", "HASH_SAMPLE", roleId, tenantId: tenantId, firstName: "Pedro", lastName: "Pérez", _timeProvider);
 
         // Assert
         Assert.Equal(tenantId, user.TenantId);
@@ -52,7 +54,7 @@ public class UserTests
 
         // Act & Assert
         var ex = Assert.Throws<DomainException>(() =>
-            User.Create("admin@tenant.com", "HASH", Guid.Empty, tenantId: tenantId));
+            User.Create("admin@tenant.com", "HASH", Guid.Empty, tenantId, _timeProvider));
 
         Assert.Contains("RoleId", ex.Message);
     }
@@ -65,10 +67,10 @@ public class UserTests
         Guid newRoleId = Guid.NewGuid();
         Guid oldTenantId = Guid.NewGuid();
         Guid newTenantId = Guid.NewGuid();
-        var user = User.Create("user@tenant.com", "HASH", oldRoleId, oldTenantId, "Juan", "Pérez");
+        var user = User.Create("user@tenant.com", "HASH", oldRoleId, oldTenantId, "Juan", "Pérez", _timeProvider);
 
         // Act
-        user.ChangeRole(newRoleId, newTenantId);
+        user.ChangeRole(newRoleId, newTenantId, _timeProvider);
 
         // Assert
         Assert.Equal(newRoleId, user.RoleId);
@@ -90,11 +92,11 @@ public class UserTests
         // Arrange
         Guid roleId = Guid.NewGuid();
         Guid tenantId = Guid.NewGuid();
-        var user = User.Create("user@tenant.com", "HASH", roleId, tenantId, "Juan", "Pérez");
+        var user = User.Create("user@tenant.com", "HASH", roleId, tenantId, "Juan", "Pérez", _timeProvider);
         int eventCountBefore = user.DomainEvents.Count;
 
         // Act
-        user.ChangeRole(roleId, tenantId);
+        user.ChangeRole(roleId, tenantId, _timeProvider);
 
         // Assert
         Assert.Equal(roleId, user.RoleId);
@@ -107,10 +109,10 @@ public class UserTests
     public void ChangeRole_WithEmptyRoleId_ShouldThrowDomainException()
     {
         // Arrange
-        var user = User.Create("user@tenant.com", "HASH", Guid.NewGuid(), Guid.NewGuid(), "Juan", "Pérez");
+        var user = User.Create("user@tenant.com", "HASH", Guid.NewGuid(), Guid.NewGuid(), "Juan", "Pérez", _timeProvider);
 
         // Act & Assert
-        var ex = Assert.Throws<DomainException>(() => user.ChangeRole(Guid.Empty, Guid.NewGuid()));
+        var ex = Assert.Throws<DomainException>(() => user.ChangeRole(Guid.Empty, Guid.NewGuid(), _timeProvider));
         Assert.Contains("RoleId", ex.Message);
     }
 
@@ -118,12 +120,12 @@ public class UserTests
     public void Activate_WhenNotActive_ShouldActivateAndEmitUserStatusChangedDomainEvent()
     {
         // Arrange
-        var user = User.Create("user@tenant.com", "HASH", Guid.NewGuid(), Guid.NewGuid(), "Juan", "Pérez");
-        user.Deactivate(); // Set to inactive first
+        var user = User.Create("user@tenant.com", "HASH", Guid.NewGuid(), Guid.NewGuid(), "Juan", "Pérez", _timeProvider);
+        user.Deactivate(_timeProvider); // Set to inactive first
         user.ClearDomainEvents();
 
         // Act
-        user.Activate();
+        user.Activate(_timeProvider);
 
         // Assert
         Assert.True(user.IsActive);
@@ -139,11 +141,11 @@ public class UserTests
     public void Activate_WhenAlreadyActive_ShouldNotEmitEvent()
     {
         // Arrange
-        var user = User.Create("user@tenant.com", "HASH", Guid.NewGuid(), Guid.NewGuid(), "Juan", "Pérez");
+        var user = User.Create("user@tenant.com", "HASH", Guid.NewGuid(), Guid.NewGuid(), "Juan", "Pérez", _timeProvider);
         user.ClearDomainEvents();
 
         // Act
-        user.Activate();
+        user.Activate(_timeProvider);
 
         // Assert
         Assert.True(user.IsActive);
@@ -154,11 +156,11 @@ public class UserTests
     public void Deactivate_WhenActive_ShouldDeactivateAndEmitUserStatusChangedDomainEvent()
     {
         // Arrange
-        var user = User.Create("user@tenant.com", "HASH", Guid.NewGuid(), Guid.NewGuid(), "Juan", "Pérez");
+        var user = User.Create("user@tenant.com", "HASH", Guid.NewGuid(), Guid.NewGuid(), "Juan", "Pérez", _timeProvider);
         user.ClearDomainEvents();
 
         // Act
-        user.Deactivate();
+        user.Deactivate(_timeProvider);
 
         // Assert
         Assert.False(user.IsActive);
@@ -174,12 +176,12 @@ public class UserTests
     public void Deactivate_WhenAlreadyInactive_ShouldNotEmitEvent()
     {
         // Arrange
-        var user = User.Create("user@tenant.com", "HASH", Guid.NewGuid(), Guid.NewGuid(), "Juan", "Pérez");
-        user.Deactivate();
+        var user = User.Create("user@tenant.com", "HASH", Guid.NewGuid(), Guid.NewGuid(), "Juan", "Pérez", _timeProvider);
+        user.Deactivate(_timeProvider);
         user.ClearDomainEvents();
 
         // Act
-        user.Deactivate();
+        user.Deactivate(_timeProvider);
 
         // Assert
         Assert.False(user.IsActive);

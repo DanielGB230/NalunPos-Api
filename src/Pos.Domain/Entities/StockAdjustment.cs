@@ -38,8 +38,10 @@ public class StockAdjustment : AggregateRoot<Guid>, ITenantOwnedEntity
         StockAdjustmentReason reason,
         IEnumerable<StockAdjustmentLine> lines,
         string? notes,
-        TimeProvider? timeProvider = null) : base(id)
+        TimeProvider timeProvider) : base(id)
     {
+        ArgumentNullException.ThrowIfNull(timeProvider);
+
         if (tenantId == Guid.Empty)
             throw new DomainException("El ID del tenant es requerido para registrar un ajuste de stock.");
 
@@ -55,7 +57,7 @@ public class StockAdjustment : AggregateRoot<Guid>, ITenantOwnedEntity
         Reason = reason;
         Notes = notes?.Trim();
         _lines = linesList;
-        var utcNow = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        var utcNow = timeProvider.GetUtcNow().UtcDateTime;
         CreatedAtUtc = utcNow;
 
         RaiseDomainEvent(new StockAdjustmentCreatedDomainEvent(Id, TenantId, WarehouseId, Reason, CreatedAtUtc));
@@ -66,8 +68,18 @@ public class StockAdjustment : AggregateRoot<Guid>, ITenantOwnedEntity
         Guid warehouseId,
         StockAdjustmentReason reason,
         IEnumerable<(Guid ProductId, decimal Quantity)> lineItems,
-        string? notes = null,
-        TimeProvider? timeProvider = null)
+        TimeProvider timeProvider)
+    {
+        return Create(tenantId, warehouseId, reason, lineItems, null, timeProvider);
+    }
+
+    public static StockAdjustment Create(
+        Guid tenantId,
+        Guid warehouseId,
+        StockAdjustmentReason reason,
+        IEnumerable<(Guid ProductId, decimal Quantity)> lineItems,
+        string? notes,
+        TimeProvider timeProvider)
     {
         var lines = lineItems
             .Select(i => StockAdjustmentLine.Create(i.ProductId, i.Quantity))

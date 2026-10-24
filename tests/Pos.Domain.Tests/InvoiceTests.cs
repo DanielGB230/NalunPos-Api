@@ -9,6 +9,8 @@ namespace Pos.Domain.Tests;
 
 public class InvoiceTests
 {
+    private readonly TimeProvider _timeProvider = TimeProvider.System;
+
     [Fact]
     public void CreateInvoiceShouldEmitInvoiceIssuedDomainEvent()
     {
@@ -19,7 +21,7 @@ public class InvoiceTests
         var amount = Money.Create(295m, "USD");
 
         // Act
-        var invoice = Invoice.Create(tenantId, saleId, InvoiceDocumentType.Invoice, "F001-00001", taxId, amount);
+        var invoice = Invoice.Create(tenantId, saleId, InvoiceDocumentType.Invoice, "F001-00001", taxId, amount, _timeProvider);
 
         // Assert
         Assert.NotEqual(Guid.Empty, invoice.Id);
@@ -41,7 +43,7 @@ public class InvoiceTests
 
         // Act & Assert
         var ex = Assert.Throws<DomainException>(() =>
-            Invoice.Create(PlatformScope.TenantId, saleId, InvoiceDocumentType.Invoice, "F001-00001", taxId, amount));
+            Invoice.Create(PlatformScope.TenantId, saleId, InvoiceDocumentType.Invoice, "F001-00001", taxId, amount, _timeProvider));
 
         Assert.Equal("El ID del tenant es requerido para crear una factura.", ex.Message);
     }
@@ -56,7 +58,7 @@ public class InvoiceTests
 
         // Act & Assert
         var ex = Assert.Throws<DomainException>(() =>
-            Invoice.Create(Guid.Empty, saleId, InvoiceDocumentType.Invoice, "F001-00001", taxId, amount));
+            Invoice.Create(Guid.Empty, saleId, InvoiceDocumentType.Invoice, "F001-00001", taxId, amount, _timeProvider));
 
         Assert.Equal("El ID del tenant es requerido para crear una factura.", ex.Message);
     }

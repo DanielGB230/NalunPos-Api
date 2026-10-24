@@ -31,8 +31,9 @@ public class Payment : AggregateRoot<Guid>, ITenantOwnedEntity
         Money amount,
         PaymentMethod method,
         string? externalReference,
-        TimeProvider? timeProvider = null) : base(id)
+        TimeProvider timeProvider) : base(id)
     {
+        ArgumentNullException.ThrowIfNull(timeProvider);
         TenantId = TenantGuard.RequireTenantId(tenantId, "un pago");
 
         if (saleId == Guid.Empty)
@@ -45,7 +46,7 @@ public class Payment : AggregateRoot<Guid>, ITenantOwnedEntity
         Method = method;
         ExternalReference = externalReference?.Trim();
         Status = PaymentStatus.Pending;
-        CreatedAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        CreatedAtUtc = timeProvider.GetUtcNow().UtcDateTime;
     }
 
     public static Payment Create(
@@ -53,14 +54,31 @@ public class Payment : AggregateRoot<Guid>, ITenantOwnedEntity
         Guid saleId,
         Money amount,
         PaymentMethod method,
-        string? externalReference = null,
-        TimeProvider? timeProvider = null)
+        TimeProvider timeProvider)
+    {
+        return Create(tenantId, saleId, amount, method, null, timeProvider);
+    }
+
+    public static Payment Create(
+        Guid tenantId,
+        Guid saleId,
+        Money amount,
+        PaymentMethod method,
+        string? externalReference,
+        TimeProvider timeProvider)
     {
         return new Payment(Guid.NewGuid(), tenantId, saleId, amount, method, externalReference, timeProvider);
     }
 
-    public void Process(string? externalVoucherReference = null, TimeProvider? timeProvider = null)
+    public void Process(TimeProvider timeProvider)
     {
+        Process(null, timeProvider);
+    }
+
+    public void Process(string? externalVoucherReference, TimeProvider timeProvider)
+    {
+        ArgumentNullException.ThrowIfNull(timeProvider);
+
         if (Status == PaymentStatus.Processed)
         {
             throw new DomainException("El pago ya fue procesado anteriormente.");
@@ -72,7 +90,7 @@ public class Payment : AggregateRoot<Guid>, ITenantOwnedEntity
         }
 
         Status = PaymentStatus.Processed;
-        var utcNow = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        var utcNow = timeProvider.GetUtcNow().UtcDateTime;
 
         RaiseDomainEvent(new PaymentProcessedDomainEvent(
             Id,
@@ -84,10 +102,11 @@ public class Payment : AggregateRoot<Guid>, ITenantOwnedEntity
             utcNow));
     }
 
-    public void Fail(string reason, TimeProvider? timeProvider = null)
+    public void Fail(string reason, TimeProvider timeProvider)
     {
+        ArgumentNullException.ThrowIfNull(timeProvider);
         Status = PaymentStatus.Failed;
-        var utcNow = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        var utcNow = timeProvider.GetUtcNow().UtcDateTime;
 
         RaiseDomainEvent(new PaymentFailedDomainEvent(
             Id,

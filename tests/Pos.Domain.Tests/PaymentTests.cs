@@ -9,6 +9,8 @@ namespace Pos.Domain.Tests;
 
 public class PaymentTests
 {
+    private readonly TimeProvider _timeProvider = TimeProvider.System;
+
     [Fact]
     public void CreatePaymentShouldInstantiatePendingPaymentWithNoSensitiveCardData()
     {
@@ -18,7 +20,7 @@ public class PaymentTests
         var amount = Money.Create(295m, "USD");
 
         // Act
-        var payment = Payment.Create(tenantId, saleId, amount, PaymentMethod.CreditCard, "VOUCHER-9988");
+        var payment = Payment.Create(tenantId, saleId, amount, PaymentMethod.CreditCard, "VOUCHER-9988", _timeProvider);
 
         // Assert
         Assert.NotEqual(Guid.Empty, payment.Id);
@@ -41,10 +43,10 @@ public class PaymentTests
     {
         // Arrange
         var tenantId = Guid.NewGuid();
-        var payment = Payment.Create(tenantId, Guid.NewGuid(), Money.Create(100m, "USD"), PaymentMethod.Cash);
+        var payment = Payment.Create(tenantId, Guid.NewGuid(), Money.Create(100m, "USD"), PaymentMethod.Cash, _timeProvider);
 
         // Act
-        payment.Process("CASH-REF-001");
+        payment.Process("CASH-REF-001", _timeProvider);
 
         // Assert
         Assert.Equal(PaymentStatus.Processed, payment.Status);
@@ -61,7 +63,7 @@ public class PaymentTests
 
         // Act & Assert
         var ex = Assert.Throws<DomainException>(() =>
-            Payment.Create(PlatformScope.TenantId, saleId, amount, PaymentMethod.Cash));
+            Payment.Create(PlatformScope.TenantId, saleId, amount, PaymentMethod.Cash, _timeProvider));
 
         Assert.Equal("El ID del tenant es requerido para crear un pago.", ex.Message);
     }
@@ -75,7 +77,7 @@ public class PaymentTests
 
         // Act & Assert
         var ex = Assert.Throws<DomainException>(() =>
-            Payment.Create(Guid.Empty, saleId, amount, PaymentMethod.Cash));
+            Payment.Create(Guid.Empty, saleId, amount, PaymentMethod.Cash, _timeProvider));
 
         Assert.Equal("El ID del tenant es requerido para crear un pago.", ex.Message);
     }

@@ -8,6 +8,8 @@ namespace Pos.Domain.Tests;
 
 public class SupplierTests
 {
+    private readonly TimeProvider _timeProvider = TimeProvider.System;
+
     [Fact]
     public void CreateWithValidParametersShouldInstantiateSupplierAndEmitEvent()
     {
@@ -18,7 +20,7 @@ public class SupplierTests
         var address = Address.Create("Av. Principal 123", "Lima", "15001", "Perú");
 
         // Act
-        var supplier = Supplier.Create(tenantId, name, taxId, address, "Juan Pérez", "juan@tech.com", "999888777");
+        var supplier = Supplier.Create(tenantId, name, taxId, address, "Juan Pérez", "juan@tech.com", "999888777", _timeProvider);
 
         // Assert
         Assert.NotEqual(Guid.Empty, supplier.Id);
@@ -39,7 +41,7 @@ public class SupplierTests
 
         // Act & Assert
         var ex = Assert.Throws<DomainException>(() =>
-            Supplier.Create(PlatformScope.TenantId, "Proveedor", taxId, address, "Contacto", "test@test.com", "123"));
+            Supplier.Create(PlatformScope.TenantId, "Proveedor", taxId, address, "Contacto", "test@test.com", "123", _timeProvider));
 
         Assert.Equal("El ID del tenant es requerido para crear un proveedor.", ex.Message);
     }
@@ -53,7 +55,7 @@ public class SupplierTests
 
         // Act & Assert
         var ex = Assert.Throws<DomainException>(() =>
-            Supplier.Create(Guid.Empty, "Proveedor", taxId, address, "Contacto", "test@test.com", "123"));
+            Supplier.Create(Guid.Empty, "Proveedor", taxId, address, "Contacto", "test@test.com", "123", _timeProvider));
 
         Assert.Equal("El ID del tenant es requerido para crear un proveedor.", ex.Message);
     }
@@ -67,7 +69,7 @@ public class SupplierTests
 
         // Act & Assert
         Assert.Throws<DomainException>(() =>
-            Supplier.Create(Guid.NewGuid(), "", taxId, address, "Contacto", "test@test.com", "123"));
+            Supplier.Create(Guid.NewGuid(), "", taxId, address, "Contacto", "test@test.com", "123", _timeProvider));
     }
 
     [Fact]

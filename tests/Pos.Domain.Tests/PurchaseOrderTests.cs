@@ -8,6 +8,8 @@ namespace Pos.Domain.Tests;
 
 public class PurchaseOrderTests
 {
+    private readonly TimeProvider _timeProvider = TimeProvider.System;
+
     [Fact]
     public void CreatePurchaseOrderWithValidItemsShouldInstantiateDraftOrder()
     {
@@ -22,7 +24,7 @@ public class PurchaseOrderTests
         };
 
         // Act
-        var order = PurchaseOrder.Create(tenantId, supplierId, warehouseId, orderNumber, lines);
+        var order = PurchaseOrder.Create(tenantId, supplierId, warehouseId, orderNumber, lines, _timeProvider);
 
         // Assert
         Assert.NotEqual(Guid.Empty, order.Id);
@@ -42,11 +44,11 @@ public class PurchaseOrderTests
         {
             (Guid.NewGuid(), 10m, Money.Create(40m, "USD"))
         };
-        var order = PurchaseOrder.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "PO-002", lines);
+        var order = PurchaseOrder.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "PO-002", lines, _timeProvider);
         order.ClearDomainEvents();
 
         // Act
-        order.Send();
+        order.Send(_timeProvider);
 
         // Assert
         Assert.Equal(PurchaseOrderStatus.Sent, order.Status);
@@ -69,12 +71,12 @@ public class PurchaseOrderTests
         {
             (Guid.NewGuid(), 10m, Money.Create(40m, "USD"))
         };
-        var order = PurchaseOrder.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "PO-002", lines);
-        order.Send();
+        var order = PurchaseOrder.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "PO-002", lines, _timeProvider);
+        order.Send(_timeProvider);
         order.ClearDomainEvents();
 
         // Act & Assert
-        Assert.Throws<DomainException>(() => order.Send());
+        Assert.Throws<DomainException>(() => order.Send(_timeProvider));
         Assert.Empty(order.DomainEvents.OfType<DomainEvents.PurchaseOrderSentDomainEvent>());
     }
 
@@ -87,13 +89,13 @@ public class PurchaseOrderTests
         {
             (productId, 10m, Money.Create(40m, "USD"))
         };
-        var order = PurchaseOrder.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "PO-002", lines);
-        order.Send();
-        order.ReceiveLines(new[] { (productId, 10m) });
+        var order = PurchaseOrder.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "PO-002", lines, _timeProvider);
+        order.Send(_timeProvider);
+        order.ReceiveLines(new[] { (productId, 10m) }, _timeProvider);
         order.ClearDomainEvents();
 
         // Act & Assert
-        Assert.Throws<DomainException>(() => order.Send());
+        Assert.Throws<DomainException>(() => order.Send(_timeProvider));
         Assert.Empty(order.DomainEvents.OfType<DomainEvents.PurchaseOrderSentDomainEvent>());
     }
 
@@ -105,12 +107,12 @@ public class PurchaseOrderTests
         {
             (Guid.NewGuid(), 10m, Money.Create(40m, "USD"))
         };
-        var order = PurchaseOrder.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "PO-002", lines);
-        order.Cancel();
+        var order = PurchaseOrder.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "PO-002", lines, _timeProvider);
+        order.Cancel(_timeProvider);
         order.ClearDomainEvents();
 
         // Act & Assert
-        Assert.Throws<DomainException>(() => order.Send());
+        Assert.Throws<DomainException>(() => order.Send(_timeProvider));
         Assert.Empty(order.DomainEvents.OfType<DomainEvents.PurchaseOrderSentDomainEvent>());
     }
 
@@ -123,11 +125,11 @@ public class PurchaseOrderTests
         {
             (productId, 10m, Money.Create(20m, "USD"))
         };
-        var order = PurchaseOrder.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "PO-003", lines);
-        order.Send();
+        var order = PurchaseOrder.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "PO-003", lines, _timeProvider);
+        order.Send(_timeProvider);
 
         // Act
-        var receivedLines = order.ReceiveLines(new[] { (productId, 10m) });
+        var receivedLines = order.ReceiveLines(new[] { (productId, 10m) }, _timeProvider);
 
         // Assert
         Assert.Equal(PurchaseOrderStatus.Received, order.Status);
@@ -144,11 +146,11 @@ public class PurchaseOrderTests
         {
             (productId, 5m, Money.Create(10m, "USD"))
         };
-        var order = PurchaseOrder.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "PO-004", lines);
-        order.Send();
+        var order = PurchaseOrder.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "PO-004", lines, _timeProvider);
+        order.Send(_timeProvider);
 
         // Act & Assert
-        Assert.Throws<DomainException>(() => order.ReceiveLines(new[] { (productId, 10m) }));
+        Assert.Throws<DomainException>(() => order.ReceiveLines(new[] { (productId, 10m) }, _timeProvider));
     }
 
     [Fact]
@@ -159,11 +161,11 @@ public class PurchaseOrderTests
         {
             (Guid.NewGuid(), 10m, Money.Create(40m, "USD"))
         };
-        var order = PurchaseOrder.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "PO-005", lines);
+        var order = PurchaseOrder.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "PO-005", lines, _timeProvider);
         order.ClearDomainEvents();
 
         // Act
-        order.Cancel();
+        order.Cancel(_timeProvider);
 
         // Assert
         Assert.Equal(PurchaseOrderStatus.Cancelled, order.Status);
@@ -182,12 +184,12 @@ public class PurchaseOrderTests
         {
             (Guid.NewGuid(), 10m, Money.Create(40m, "USD"))
         };
-        var order = PurchaseOrder.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "PO-006", lines);
-        order.Send();
+        var order = PurchaseOrder.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "PO-006", lines, _timeProvider);
+        order.Send(_timeProvider);
         order.ClearDomainEvents();
 
         // Act
-        order.Cancel();
+        order.Cancel(_timeProvider);
 
         // Assert
         Assert.Equal(PurchaseOrderStatus.Cancelled, order.Status);
@@ -207,13 +209,13 @@ public class PurchaseOrderTests
         {
             (productId, 10m, Money.Create(40m, "USD"))
         };
-        var order = PurchaseOrder.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "PO-007", lines);
-        order.Send();
-        order.ReceiveLines(new[] { (productId, 5m) });
+        var order = PurchaseOrder.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "PO-007", lines, _timeProvider);
+        order.Send(_timeProvider);
+        order.ReceiveLines(new[] { (productId, 5m) }, _timeProvider);
         order.ClearDomainEvents();
 
         // Act
-        order.Cancel();
+        order.Cancel(_timeProvider);
 
         // Assert
         Assert.Equal(PurchaseOrderStatus.Cancelled, order.Status);
@@ -233,13 +235,13 @@ public class PurchaseOrderTests
         {
             (productId, 10m, Money.Create(40m, "USD"))
         };
-        var order = PurchaseOrder.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "PO-008", lines);
-        order.Send();
-        order.ReceiveLines(new[] { (productId, 10m) });
+        var order = PurchaseOrder.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "PO-008", lines, _timeProvider);
+        order.Send(_timeProvider);
+        order.ReceiveLines(new[] { (productId, 10m) }, _timeProvider);
         order.ClearDomainEvents();
 
         // Act & Assert
-        Assert.Throws<DomainException>(() => order.Cancel());
+        Assert.Throws<DomainException>(() => order.Cancel(_timeProvider));
         Assert.Empty(order.DomainEvents.OfType<DomainEvents.PurchaseOrderCancelledDomainEvent>());
     }
 
@@ -251,12 +253,12 @@ public class PurchaseOrderTests
         {
             (Guid.NewGuid(), 10m, Money.Create(40m, "USD"))
         };
-        var order = PurchaseOrder.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "PO-009", lines);
-        order.Cancel();
+        var order = PurchaseOrder.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "PO-009", lines, _timeProvider);
+        order.Cancel(_timeProvider);
         order.ClearDomainEvents();
 
         // Act & Assert
-        Assert.Throws<DomainException>(() => order.Cancel());
+        Assert.Throws<DomainException>(() => order.Cancel(_timeProvider));
         Assert.Empty(order.DomainEvents.OfType<DomainEvents.PurchaseOrderCancelledDomainEvent>());
     }
 }

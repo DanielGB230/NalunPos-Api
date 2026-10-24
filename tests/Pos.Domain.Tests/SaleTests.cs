@@ -9,6 +9,8 @@ namespace Pos.Domain.Tests;
 
 public class SaleTests
 {
+    private readonly TimeProvider _timeProvider = TimeProvider.System;
+
     [Fact]
     public void CreateSaleWithValidItemsShouldCalculateTotalsAndEmitSaleCompletedDomainEvent()
     {
@@ -24,7 +26,7 @@ public class SaleTests
         var items = new List<SaleLineItem> { item1, item2 };
 
         // Act
-        var sale = Sale.Create(tenantId, receiptNumber, sessionId, null, items, taxRatePercentage: 18m, currency: "USD");
+        var sale = Sale.Create(tenantId, receiptNumber, sessionId, null, items, 18m, "USD", _timeProvider);
 
         // Assert
         Assert.NotEqual(Guid.Empty, sale.Id);
@@ -51,7 +53,7 @@ public class SaleTests
 
         // Act & Assert
         var ex = Assert.Throws<DomainException>(() =>
-            Sale.Create(saleTenantId, "REC-001", Guid.NewGuid(), null, new[] { itemOfOtherTenant }));
+            Sale.Create(saleTenantId, "REC-001", Guid.NewGuid(), null, new[] { itemOfOtherTenant }, _timeProvider));
 
         Assert.Equal("La venta y sus líneas no pueden pertenecer a tenants distintos.", ex.Message);
     }
@@ -64,7 +66,7 @@ public class SaleTests
 
         // Act & Assert
         var ex = Assert.Throws<DomainException>(() =>
-            Sale.Create(PlatformScope.TenantId, "REC-001", Guid.NewGuid(), null, new[] { item }));
+            Sale.Create(PlatformScope.TenantId, "REC-001", Guid.NewGuid(), null, new[] { item }, _timeProvider));
 
         Assert.Equal("El ID del tenant es requerido para crear una venta.", ex.Message);
     }
@@ -94,7 +96,7 @@ public class SaleTests
     {
         // Arrange & Act & Assert
         Assert.Throws<DomainException>(() =>
-            Sale.Create(Guid.NewGuid(), "REC-001", Guid.NewGuid(), null, new List<SaleLineItem>()));
+            Sale.Create(Guid.NewGuid(), "REC-001", Guid.NewGuid(), null, new List<SaleLineItem>(), _timeProvider));
     }
 
     [Fact]

@@ -47,8 +47,10 @@ public class InventoryMovement : AggregateRoot<Guid>, ITenantOwnedEntity
         string? batchNumber,
         DateTime? expirationDate,
         DateTime? occurredAtUtc,
-        TimeProvider? timeProvider = null) : base(id)
+        TimeProvider timeProvider) : base(id)
     {
+        ArgumentNullException.ThrowIfNull(timeProvider);
+
         if (productId == Guid.Empty)
             throw new DomainException("El ID del producto es requerido para registrar un movimiento de inventario.");
 
@@ -67,7 +69,7 @@ public class InventoryMovement : AggregateRoot<Guid>, ITenantOwnedEntity
         Notes = notes?.Trim();
         BatchNumber = batchNumber?.Trim().ToUpperInvariant();
         ExpirationDate = expirationDate;
-        var utcNow = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        var utcNow = timeProvider.GetUtcNow().UtcDateTime;
         OccurredAtUtc = occurredAtUtc ?? utcNow;
         CreatedAtUtc = utcNow;
 
@@ -89,13 +91,49 @@ public class InventoryMovement : AggregateRoot<Guid>, ITenantOwnedEntity
         Guid warehouseId,
         decimal quantity,
         InventoryMovementType movementType,
-        Guid? referenceId = null,
-        string? notes = null,
-        Guid? containerId = null,
-        string? batchNumber = null,
-        DateTime? expirationDate = null,
-        DateTime? occurredAtUtc = null,
-        TimeProvider? timeProvider = null)
+        TimeProvider timeProvider)
+    {
+        return Record(productId, warehouseId, quantity, movementType, null, null, null, null, null, null, timeProvider);
+    }
+
+    public static InventoryMovement Record(
+        Guid productId,
+        Guid warehouseId,
+        decimal quantity,
+        InventoryMovementType movementType,
+        Guid? referenceId,
+        string? notes,
+        TimeProvider timeProvider)
+    {
+        return Record(productId, warehouseId, quantity, movementType, referenceId, notes, null, null, null, null, timeProvider);
+    }
+
+    public static InventoryMovement Record(
+        Guid productId,
+        Guid warehouseId,
+        decimal quantity,
+        InventoryMovementType movementType,
+        Guid? referenceId,
+        string? notes,
+        string? batchNumber,
+        DateTime? expirationDate,
+        TimeProvider timeProvider)
+    {
+        return Record(productId, warehouseId, quantity, movementType, referenceId, notes, null, batchNumber, expirationDate, null, timeProvider);
+    }
+
+    public static InventoryMovement Record(
+        Guid productId,
+        Guid warehouseId,
+        decimal quantity,
+        InventoryMovementType movementType,
+        Guid? referenceId,
+        string? notes,
+        Guid? containerId,
+        string? batchNumber,
+        DateTime? expirationDate,
+        DateTime? occurredAtUtc,
+        TimeProvider timeProvider)
     {
         return new InventoryMovement(
             Guid.NewGuid(),

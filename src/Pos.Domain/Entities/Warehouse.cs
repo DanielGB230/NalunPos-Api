@@ -36,8 +36,10 @@ public class Warehouse : AggregateRoot<Guid>, ITenantOwnedEntity
         string name,
         string? description,
         bool isDefault,
-        TimeProvider? timeProvider = null) : base(id)
+        TimeProvider timeProvider) : base(id)
     {
+        ArgumentNullException.ThrowIfNull(timeProvider);
+
         if (tenantId == Guid.Empty)
             throw new DomainException("El ID del tenant es requerido para crear un almacén.");
 
@@ -50,7 +52,7 @@ public class Warehouse : AggregateRoot<Guid>, ITenantOwnedEntity
         Description = description?.Trim();
         IsDefault = isDefault;
         IsActive = true;
-        var utcNow = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        var utcNow = timeProvider.GetUtcNow().UtcDateTime;
         CreatedAtUtc = utcNow;
 
         RaiseDomainEvent(new WarehouseCreatedDomainEvent(Id, TenantId, BranchId, Name, IsDefault, CreatedAtUtc));
@@ -60,9 +62,28 @@ public class Warehouse : AggregateRoot<Guid>, ITenantOwnedEntity
         Guid tenantId,
         Guid branchId,
         string name,
-        string? description = null,
-        bool isDefault = false,
-        TimeProvider? timeProvider = null)
+        TimeProvider timeProvider)
+    {
+        return Create(tenantId, branchId, name, null, false, timeProvider);
+    }
+
+    public static Warehouse Create(
+        Guid tenantId,
+        Guid branchId,
+        string name,
+        bool isDefault,
+        TimeProvider timeProvider)
+    {
+        return Create(tenantId, branchId, name, null, isDefault, timeProvider);
+    }
+
+    public static Warehouse Create(
+        Guid tenantId,
+        Guid branchId,
+        string name,
+        string? description,
+        bool isDefault,
+        TimeProvider timeProvider)
     {
         return new Warehouse(Guid.NewGuid(), tenantId, branchId, name, description, isDefault, timeProvider);
     }
@@ -72,42 +93,47 @@ public class Warehouse : AggregateRoot<Guid>, ITenantOwnedEntity
     /// Solo puede haber un IsDefault=true por tenant — la lógica de unicidad
     /// se garantiza en el caso de uso (application layer), no aquí.
     /// </summary>
-    public void SetAsDefault(TimeProvider? timeProvider = null)
+    public void SetAsDefault(TimeProvider timeProvider)
     {
+        ArgumentNullException.ThrowIfNull(timeProvider);
         if (IsDefault) return;
         IsDefault = true;
-        UpdatedAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        UpdatedAtUtc = timeProvider.GetUtcNow().UtcDateTime;
     }
 
-    public void UnsetDefault(TimeProvider? timeProvider = null)
+    public void UnsetDefault(TimeProvider timeProvider)
     {
+        ArgumentNullException.ThrowIfNull(timeProvider);
         if (!IsDefault) return;
         IsDefault = false;
-        UpdatedAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        UpdatedAtUtc = timeProvider.GetUtcNow().UtcDateTime;
     }
 
-    public void UpdateDetails(string name, string? description, TimeProvider? timeProvider = null)
+    public void UpdateDetails(string name, string? description, TimeProvider timeProvider)
     {
+        ArgumentNullException.ThrowIfNull(timeProvider);
         SetName(name);
         Description = description?.Trim();
-        UpdatedAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        UpdatedAtUtc = timeProvider.GetUtcNow().UtcDateTime;
     }
 
-    public void Activate(TimeProvider? timeProvider = null)
+    public void Activate(TimeProvider timeProvider)
     {
+        ArgumentNullException.ThrowIfNull(timeProvider);
         if (IsActive) return;
         IsActive = true;
-        UpdatedAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        UpdatedAtUtc = timeProvider.GetUtcNow().UtcDateTime;
     }
 
-    public void Deactivate(TimeProvider? timeProvider = null)
+    public void Deactivate(TimeProvider timeProvider)
     {
+        ArgumentNullException.ThrowIfNull(timeProvider);
         if (!IsActive) return;
         if (IsDefault)
             throw new DomainException("No se puede desactivar el almacén predeterminado. Asigne otro almacén por defecto primero.");
 
         IsActive = false;
-        UpdatedAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        UpdatedAtUtc = timeProvider.GetUtcNow().UtcDateTime;
     }
 
     private void SetName(string name)

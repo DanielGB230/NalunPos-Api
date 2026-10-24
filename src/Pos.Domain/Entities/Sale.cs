@@ -36,10 +36,11 @@ public class Sale : AggregateRoot<Guid>, ITenantOwnedEntity
         Guid sessionId,
         Guid? customerId,
         IEnumerable<SaleLineItem> lineItems,
-        decimal taxRatePercentage = 0m,
-        string currency = "USD",
-        TimeProvider? timeProvider = null) : base(id)
+        decimal taxRatePercentage,
+        string currency,
+        TimeProvider timeProvider) : base(id)
     {
+        ArgumentNullException.ThrowIfNull(timeProvider);
         TenantId = TenantGuard.RequireTenantId(tenantId, "una venta");
 
         if (string.IsNullOrWhiteSpace(receiptNumber))
@@ -68,7 +69,7 @@ public class Sale : AggregateRoot<Guid>, ITenantOwnedEntity
         CustomerId = customerId;
         _lineItems = itemsList;
         Status = SaleStatus.Completed;
-        var utcNow = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        var utcNow = timeProvider.GetUtcNow().UtcDateTime;
         CreatedAtUtc = utcNow;
 
         CalculateTotals(taxRatePercentage, currency);
@@ -80,9 +81,20 @@ public class Sale : AggregateRoot<Guid>, ITenantOwnedEntity
         Guid sessionId,
         Guid? customerId,
         IEnumerable<SaleLineItem> lineItems,
-        decimal taxRatePercentage = 0m,
-        string currency = "USD",
-        TimeProvider? timeProvider = null)
+        TimeProvider timeProvider)
+    {
+        return Create(tenantId, receiptNumber, sessionId, customerId, lineItems, 0m, "USD", timeProvider);
+    }
+
+    public static Sale Create(
+        Guid tenantId,
+        string receiptNumber,
+        Guid sessionId,
+        Guid? customerId,
+        IEnumerable<SaleLineItem> lineItems,
+        decimal taxRatePercentage,
+        string currency,
+        TimeProvider timeProvider)
     {
         var sale = new Sale(Guid.NewGuid(), tenantId, receiptNumber, sessionId, customerId, lineItems, taxRatePercentage, currency, timeProvider);
         sale.Complete();
@@ -111,27 +123,29 @@ public class Sale : AggregateRoot<Guid>, ITenantOwnedEntity
             CreatedAtUtc));
     }
 
-    public void Cancel(TimeProvider? timeProvider = null)
+    public void Cancel(TimeProvider timeProvider)
     {
+        ArgumentNullException.ThrowIfNull(timeProvider);
         if (Status == SaleStatus.Cancelled)
         {
             throw new DomainException("La venta ya ha sido cancelada.");
         }
 
         Status = SaleStatus.Cancelled;
-        var utcNow = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        var utcNow = timeProvider.GetUtcNow().UtcDateTime;
         RaiseDomainEvent(new SaleCancelledDomainEvent(Id, ReceiptNumber, utcNow));
     }
 
-    public void MarkAsPaid(TimeProvider? timeProvider = null)
+    public void MarkAsPaid(TimeProvider timeProvider)
     {
+        ArgumentNullException.ThrowIfNull(timeProvider);
         if (Status == SaleStatus.Cancelled)
         {
             throw new DomainException("No se puede marcar como pagada una venta cancelada.");
         }
 
         Status = SaleStatus.Paid;
-        var utcNow = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        var utcNow = timeProvider.GetUtcNow().UtcDateTime;
         RaiseDomainEvent(new SalePaidDomainEvent(Id, ReceiptNumber, utcNow));
     }
 

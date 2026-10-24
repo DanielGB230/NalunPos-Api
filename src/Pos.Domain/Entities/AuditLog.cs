@@ -31,8 +31,10 @@ public class AuditLog : Entity<Guid>, IPlatformScopedEntity
         Guid? userId,
         string? oldValues,
         string? newValues,
-        TimeProvider? timeProvider = null) : base(id)
+        TimeProvider timeProvider) : base(id)
     {
+        ArgumentNullException.ThrowIfNull(timeProvider);
+
         if (string.IsNullOrWhiteSpace(tableName))
         {
             throw new DomainException("El nombre de la tabla auditada es requerido.");
@@ -50,7 +52,7 @@ public class AuditLog : Entity<Guid>, IPlatformScopedEntity
         UserId = userId;
         OldValues = oldValues;
         NewValues = newValues;
-        TimestampUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        TimestampUtc = timeProvider.GetUtcNow().UtcDateTime;
     }
 
     public static AuditLog Create(
@@ -58,10 +60,20 @@ public class AuditLog : Entity<Guid>, IPlatformScopedEntity
         string tableName,
         string recordId,
         AuditAction action,
-        Guid? userId = null,
-        string? oldValues = null,
-        string? newValues = null,
-        TimeProvider? timeProvider = null)
+        TimeProvider timeProvider)
+    {
+        return Create(tenantId, tableName, recordId, action, null, null, null, timeProvider);
+    }
+
+    public static AuditLog Create(
+        Guid tenantId,
+        string tableName,
+        string recordId,
+        AuditAction action,
+        Guid? userId,
+        string? oldValues,
+        string? newValues,
+        TimeProvider timeProvider)
     {
         return new AuditLog(Guid.NewGuid(), tenantId, tableName, recordId, action, userId, oldValues, newValues, timeProvider);
     }

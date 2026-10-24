@@ -32,8 +32,10 @@ public class CashRegisterSession : AggregateRoot<Guid>, ITenantOwnedEntity
         Guid userId,
         Money initialAmount,
         string? notes,
-        TimeProvider? timeProvider = null) : base(id)
+        TimeProvider timeProvider) : base(id)
     {
+        ArgumentNullException.ThrowIfNull(timeProvider);
+
         if (cashRegisterId == Guid.Empty)
         {
             throw new DomainException("El ID de la caja es requerido para abrir un turno.");
@@ -48,7 +50,7 @@ public class CashRegisterSession : AggregateRoot<Guid>, ITenantOwnedEntity
         UserId = userId;
         InitialAmount = initialAmount ?? throw new ArgumentNullException(nameof(initialAmount));
         Status = SessionStatus.Open;
-        OpenedAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        OpenedAtUtc = timeProvider.GetUtcNow().UtcDateTime;
         Notes = notes?.Trim();
 
         RaiseDomainEvent(new CashRegisterSessionOpenedDomainEvent(
@@ -64,14 +66,30 @@ public class CashRegisterSession : AggregateRoot<Guid>, ITenantOwnedEntity
         Guid cashRegisterId,
         Guid userId,
         Money initialAmount,
-        string? notes = null,
-        TimeProvider? timeProvider = null)
+        TimeProvider timeProvider)
+    {
+        return Open(cashRegisterId, userId, initialAmount, null, timeProvider);
+    }
+
+    public static CashRegisterSession Open(
+        Guid cashRegisterId,
+        Guid userId,
+        Money initialAmount,
+        string? notes,
+        TimeProvider timeProvider)
     {
         return new CashRegisterSession(Guid.NewGuid(), cashRegisterId, userId, initialAmount, notes, timeProvider);
     }
 
-    public void Close(Money actualFinalAmount, Money expectedFinalAmount, string? notes = null, TimeProvider? timeProvider = null)
+    public void Close(Money actualFinalAmount, Money expectedFinalAmount, TimeProvider timeProvider)
     {
+        Close(actualFinalAmount, expectedFinalAmount, null, timeProvider);
+    }
+
+    public void Close(Money actualFinalAmount, Money expectedFinalAmount, string? notes, TimeProvider timeProvider)
+    {
+        ArgumentNullException.ThrowIfNull(timeProvider);
+
         if (Status == SessionStatus.Closed)
         {
             throw new DomainException("La sesión de caja ya se encuentra cerrada.");
@@ -80,7 +98,7 @@ public class CashRegisterSession : AggregateRoot<Guid>, ITenantOwnedEntity
         ActualFinalAmount = actualFinalAmount ?? throw new ArgumentNullException(nameof(actualFinalAmount));
         ExpectedFinalAmount = expectedFinalAmount ?? throw new ArgumentNullException(nameof(expectedFinalAmount));
         Status = SessionStatus.Closed;
-        ClosedAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        ClosedAtUtc = timeProvider.GetUtcNow().UtcDateTime;
 
         if (!string.IsNullOrWhiteSpace(notes))
         {
