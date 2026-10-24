@@ -29,7 +29,8 @@ public class ProcessPaymentCommandHandlerTests
             _paymentGateway,
             _unitOfWork,
             _dispatcher,
-            _tenantContext);
+            _tenantContext,
+            TimeProvider.System);
     }
 
     [Fact]
@@ -38,7 +39,7 @@ public class ProcessPaymentCommandHandlerTests
         // Arrange
         var tenantId = _tenantContext.TenantId!.Value;
         var lineItem = SaleLineItem.Create(tenantId, Guid.NewGuid(), "Producto Test", 1m, Money.Create(50m, "USD"));
-        var sale = Sale.Create(tenantId, "V-001-0001", Guid.NewGuid(), null, new[] { lineItem }, 0m, "USD");
+        var sale = Sale.Create(tenantId, "V-001-0001", Guid.NewGuid(), null, new[] { lineItem }, 0m, "USD", TimeProvider.System);
         _saleRepository.Sales.Add(sale);
         _paymentGateway.Approve();
 

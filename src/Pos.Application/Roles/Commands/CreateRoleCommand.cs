@@ -24,12 +24,18 @@ public class CreateRoleCommandHandler : ICommandHandler<CreateRoleCommand, Resul
     private readonly IRoleRepository _roleRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentTenantContext _currentTenantContext;
+    private readonly TimeProvider _timeProvider;
 
-    public CreateRoleCommandHandler(IRoleRepository roleRepository, IUnitOfWork unitOfWork, ICurrentTenantContext currentTenantContext)
+    public CreateRoleCommandHandler(
+        IRoleRepository roleRepository,
+        IUnitOfWork unitOfWork,
+        ICurrentTenantContext currentTenantContext,
+        TimeProvider timeProvider)
     {
         _roleRepository = roleRepository ?? throw new ArgumentNullException(nameof(roleRepository));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         _currentTenantContext = currentTenantContext ?? throw new ArgumentNullException(nameof(currentTenantContext));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public async Task<Result<RoleDto>> HandleAsync(CreateRoleCommand request, CancellationToken cancellationToken)
@@ -45,7 +51,7 @@ public class CreateRoleCommandHandler : ICommandHandler<CreateRoleCommand, Resul
         Role role;
         try
         {
-            role = Role.Create(tenantId, request.Name, request.Description, request.Permissions);
+            role = Role.Create(tenantId, request.Name, request.Description, request.Permissions, _timeProvider);
         }
         catch (DomainException ex)
         {

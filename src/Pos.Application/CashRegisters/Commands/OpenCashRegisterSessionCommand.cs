@@ -1,4 +1,4 @@
-﻿using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Attributes;
 using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.CashRegisters.DTOs;
@@ -24,11 +24,13 @@ public class OpenCashRegisterSessionCommandHandler : ICommandHandler<OpenCashReg
 {
     private readonly ICashRegisterRepository _registerRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly TimeProvider _timeProvider;
 
-    public OpenCashRegisterSessionCommandHandler(ICashRegisterRepository registerRepository, IUnitOfWork unitOfWork)
+    public OpenCashRegisterSessionCommandHandler(ICashRegisterRepository registerRepository, IUnitOfWork unitOfWork, TimeProvider timeProvider)
     {
         _registerRepository = registerRepository ?? throw new ArgumentNullException(nameof(registerRepository));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public async Task<Result<CashRegisterSessionDto>> HandleAsync(OpenCashRegisterSessionCommand request, CancellationToken cancellationToken)
@@ -55,9 +57,9 @@ public class OpenCashRegisterSessionCommandHandler : ICommandHandler<OpenCashReg
         try
         {
             var initialMoney = Money.Create(request.InitialAmount, request.Currency);
-            session = CashRegisterSession.Open(request.CashRegisterId, request.UserId, initialMoney, request.Notes);
+            session = CashRegisterSession.Open(request.CashRegisterId, request.UserId, initialMoney, request.Notes, _timeProvider);
 
-            register.SetCurrentSession(session.Id);
+            register.SetCurrentSession(session.Id, _timeProvider);
         }
         catch (DomainException ex)
         {

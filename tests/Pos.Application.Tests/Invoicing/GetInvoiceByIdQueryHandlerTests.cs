@@ -24,7 +24,8 @@ public class GetInvoiceByIdQueryHandlerTests
             InvoiceDocumentType.Invoice,
             "F001-00000001",
             TaxId.Create("20123456789", "PE"),
-            Money.Create(118m, "USD")
+            Money.Create(118m, "USD"),
+            TimeProvider.System
         );
         _invoiceRepository.Invoices.Add(invoice);
 

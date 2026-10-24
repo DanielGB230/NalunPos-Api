@@ -1,4 +1,4 @@
-﻿using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Attributes;
 using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Products.DTOs;
@@ -22,11 +22,13 @@ public class UpdateProductPriceCommandHandler : ICommandHandler<UpdateProductPri
 {
     private readonly IProductRepository _productRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly TimeProvider _timeProvider;
 
-    public UpdateProductPriceCommandHandler(IProductRepository productRepository, IUnitOfWork unitOfWork)
+    public UpdateProductPriceCommandHandler(IProductRepository productRepository, IUnitOfWork unitOfWork, TimeProvider timeProvider)
     {
         _productRepository = productRepository ?? throw new ArgumentNullException(nameof(productRepository));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public async Task<Result<ProductDto>> HandleAsync(UpdateProductPriceCommand request, CancellationToken cancellationToken)
@@ -46,7 +48,7 @@ public class UpdateProductPriceCommandHandler : ICommandHandler<UpdateProductPri
             var newPrice = Money.Create(request.PriceAmount, request.Currency);
             var newCost = request.CostAmount.HasValue ? Money.Create(request.CostAmount.Value, request.Currency) : null;
 
-            product.UpdatePrice(newPrice, newCost);
+            product.UpdatePrice(newPrice, newCost, _timeProvider);
         }
         catch (DomainException ex)
         {

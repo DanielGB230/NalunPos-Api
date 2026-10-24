@@ -106,7 +106,7 @@ public class PaginationValidationTests
         var provider = services.BuildServiceProvider();
         var handler = provider.GetRequiredService<IQueryHandler<GetUsersQuery, PagedResult<UserDto>>>();
 
-        userRepository.UserToReturn = User.Create("test@example.com", "hash", Guid.NewGuid(), Guid.NewGuid(), "Admin", "User");
+        userRepository.UserToReturn = User.Create("test@example.com", "hash", Guid.NewGuid(), Guid.NewGuid(), "Admin", "User", TimeProvider.System);
 
         var validQuery = new GetUsersQuery(PageNumber: 1, PageSize: 50);
         var pagedResult = await handler.HandleAsync(validQuery);
@@ -133,7 +133,7 @@ public class PaginationValidationTests
         var provider = services.BuildServiceProvider();
         var handler = provider.GetRequiredService<IQueryHandler<GetUsersQuery, PagedResult<UserDto>>>();
 
-        userRepository.UserToReturn = User.Create("test@example.com", "hash", Guid.NewGuid(), Guid.NewGuid(), "Admin", "User");
+        userRepository.UserToReturn = User.Create("test@example.com", "hash", Guid.NewGuid(), Guid.NewGuid(), "Admin", "User", TimeProvider.System);
 
         var invalidQuery = new GetUsersQuery(PageNumber: 1, PageSize: 101);
 
@@ -162,8 +162,8 @@ public class PaginationValidationTests
         var provider = services.BuildServiceProvider();
         var handler = provider.GetRequiredService<IQueryHandler<GetInventoryHistoryQuery, Result<PagedResult<InventoryMovementDto>>>>();
 
-        userRepository.UserToReturn = User.Create("test@example.com", "hash", Guid.NewGuid(), Guid.NewGuid(), "Admin", "User");
-        productRepository.ProductToReturn = Product.Create(Guid.NewGuid(), "Product Test", Sku.Create("SKU123"), Money.Create(10.0m, "USD"), Guid.NewGuid());
+        userRepository.UserToReturn = User.Create("test@example.com", "hash", Guid.NewGuid(), Guid.NewGuid(), "Admin", "User", TimeProvider.System);
+        productRepository.ProductToReturn = Product.Create(Guid.NewGuid(), "Product Test", Sku.Create("SKU123"), Money.Create(10.0m, "USD"), Guid.NewGuid(), TimeProvider.System);
 
         var invalidQuery = new GetInventoryHistoryQuery(ProductId: Guid.NewGuid(), PageNumber: 1, PageSize: 101);
 

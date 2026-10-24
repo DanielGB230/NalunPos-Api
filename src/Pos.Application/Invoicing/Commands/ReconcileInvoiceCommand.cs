@@ -28,13 +28,13 @@ public class ReconcileInvoiceCommandHandler : ICommandHandler<ReconcileInvoiceCo
         IElectronicInvoicingService invoicingService,
         IUnitOfWork unitOfWork,
         IDispatcher dispatcher,
-        TimeProvider? timeProvider = null)
+        TimeProvider timeProvider)
     {
         _invoiceRepository = invoiceRepository ?? throw new ArgumentNullException(nameof(invoiceRepository));
         _invoicingService = invoicingService ?? throw new ArgumentNullException(nameof(invoicingService));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
-        _timeProvider = timeProvider ?? TimeProvider.System;
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public async Task<Result<InvoiceDto>> HandleAsync(ReconcileInvoiceCommand request, CancellationToken cancellationToken)
@@ -91,12 +91,12 @@ public class ReconcileInvoiceCommandHandler : ICommandHandler<ReconcileInvoiceCo
 
         if (statusResult.Status == ElectronicInvoiceProviderStatus.Accepted)
         {
-            invoice.MarkAsSent();
-            invoice.MarkAsAccepted();
+            invoice.MarkAsSent(_timeProvider);
+            invoice.MarkAsAccepted(_timeProvider);
         }
         else if (statusResult.Status == ElectronicInvoiceProviderStatus.Rejected)
         {
-            invoice.MarkAsRejected();
+            invoice.MarkAsRejected(_timeProvider);
         }
         else if (statusResult.Status == ElectronicInvoiceProviderStatus.NotFound)
         {
@@ -112,12 +112,12 @@ public class ReconcileInvoiceCommandHandler : ICommandHandler<ReconcileInvoiceCo
                 var sendResult = await _invoicingService.SendInvoiceAsync(invoice, cancellationToken);
                 if (sendResult.Status == ElectronicInvoiceProviderStatus.Accepted)
                 {
-                    invoice.MarkAsSent();
-                    invoice.MarkAsAccepted();
+                    invoice.MarkAsSent(_timeProvider);
+                    invoice.MarkAsAccepted(_timeProvider);
                 }
                 else if (sendResult.Status == ElectronicInvoiceProviderStatus.Rejected)
                 {
-                    invoice.MarkAsRejected();
+                    invoice.MarkAsRejected(_timeProvider);
                 }
             }
         }

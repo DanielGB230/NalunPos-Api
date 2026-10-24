@@ -31,7 +31,7 @@ public class SuppliersCommandHandlerTests
             "contacto@distperu.com",
             "+51988776655"
         );
-        var handler = new CreateSupplierCommandHandler(_supplierRepository, _unitOfWork, _tenantContext);
+        var handler = new CreateSupplierCommandHandler(_supplierRepository, _unitOfWork, _tenantContext, TimeProvider.System);
 
         // Act
         var result = await handler.HandleAsync(command, CancellationToken.None);
@@ -56,7 +56,8 @@ public class SuppliersCommandHandlerTests
             existingAddress,
             "Contacto A",
             "a@supplier.com",
-            "+51900000001"
+            "+51900000001",
+            TimeProvider.System
         );
         _supplierRepository.Suppliers.Add(existingSupplier);
 
@@ -72,7 +73,7 @@ public class SuppliersCommandHandlerTests
             "b@supplier.com",
             "+51900000002"
         );
-        var handler = new CreateSupplierCommandHandler(_supplierRepository, _unitOfWork, _tenantContext);
+        var handler = new CreateSupplierCommandHandler(_supplierRepository, _unitOfWork, _tenantContext, TimeProvider.System);
 
         // Act
         var result = await handler.HandleAsync(command, CancellationToken.None);
@@ -102,7 +103,7 @@ public class SuppliersCommandHandlerTests
             "test@supplier.com",
             "+51900000000"
         );
-        var handler = new UpdateSupplierCommandHandler(_supplierRepository, _unitOfWork);
+        var handler = new UpdateSupplierCommandHandler(_supplierRepository, _unitOfWork, TimeProvider.System);
 
         // Act
         var result = await handler.HandleAsync(command, CancellationToken.None);

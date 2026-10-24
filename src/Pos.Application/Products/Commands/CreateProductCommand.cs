@@ -30,17 +30,20 @@ public class CreateProductCommandHandler : ICommandHandler<CreateProductCommand,
     private readonly ICategoryRepository _categoryRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentTenantContext _tenantContext;
+    private readonly TimeProvider _timeProvider;
 
     public CreateProductCommandHandler(
         IProductRepository productRepository,
         ICategoryRepository categoryRepository,
         IUnitOfWork unitOfWork,
-        ICurrentTenantContext tenantContext)
+        ICurrentTenantContext tenantContext,
+        TimeProvider timeProvider)
     {
         _productRepository = productRepository ?? throw new ArgumentNullException(nameof(productRepository));
         _categoryRepository = categoryRepository ?? throw new ArgumentNullException(nameof(categoryRepository));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         _tenantContext = tenantContext ?? throw new ArgumentNullException(nameof(tenantContext));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public async Task<Result<ProductDto>> HandleAsync(CreateProductCommand request, CancellationToken cancellationToken)
@@ -79,7 +82,8 @@ public class CreateProductCommandHandler : ICommandHandler<CreateProductCommand,
                 request.CategoryId,
                 request.Description,
                 barcodeVo,
-                costVo);
+                costVo,
+                _timeProvider);
         }
         catch (DomainException ex)
         {

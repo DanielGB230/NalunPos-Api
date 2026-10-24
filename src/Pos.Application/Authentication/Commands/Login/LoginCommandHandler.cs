@@ -19,12 +19,12 @@ public class LoginCommandHandler : ICommandHandler<LoginCommand, Result<LoginRes
         IAuthUserLookup authUserLookup,
         IPasswordHasher passwordHasher,
         ITokenGenerator tokenGenerator,
-        TimeProvider? timeProvider = null)
+        TimeProvider timeProvider)
     {
         _authUserLookup = authUserLookup ?? throw new ArgumentNullException(nameof(authUserLookup));
         _passwordHasher = passwordHasher ?? throw new ArgumentNullException(nameof(passwordHasher));
         _tokenGenerator = tokenGenerator ?? throw new ArgumentNullException(nameof(tokenGenerator));
-        _timeProvider = timeProvider ?? TimeProvider.System;
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public async Task<Result<LoginResponse>> HandleAsync(LoginCommand command, CancellationToken cancellationToken = default)

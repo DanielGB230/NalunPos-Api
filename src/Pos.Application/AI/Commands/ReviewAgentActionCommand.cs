@@ -1,4 +1,4 @@
-﻿using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Attributes;
 using Pos.Application.Common.Authorization;
 using Pos.Application.AI.DTOs;
 using Pos.Application.Common.Interfaces;
@@ -23,17 +23,20 @@ public class ReviewAgentActionCommandHandler : ICommandHandler<ReviewAgentAction
     private readonly ICurrentUserService _currentUserService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IDispatcher _dispatcher;
+    private readonly TimeProvider _timeProvider;
 
     public ReviewAgentActionCommandHandler(
         IAgentActionRecordRepository repository,
         ICurrentUserService currentUserService,
         IUnitOfWork unitOfWork,
-        IDispatcher dispatcher)
+        IDispatcher dispatcher,
+        TimeProvider timeProvider)
     {
         _repository = repository ?? throw new ArgumentNullException(nameof(repository));
         _currentUserService = currentUserService ?? throw new ArgumentNullException(nameof(currentUserService));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public async Task<Result<AgentActionRecordDto>> HandleAsync(ReviewAgentActionCommand request, CancellationToken cancellationToken)
@@ -55,11 +58,11 @@ public class ReviewAgentActionCommandHandler : ICommandHandler<ReviewAgentAction
         {
             if (request.Approve)
             {
-                record.Approve(reviewerUserId);
+                record.Approve(reviewerUserId, _timeProvider);
             }
             else
             {
-                record.Reject(reviewerUserId);
+                record.Reject(reviewerUserId, _timeProvider);
             }
         }
         catch (DomainException ex)

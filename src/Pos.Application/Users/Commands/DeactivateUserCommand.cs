@@ -14,11 +14,13 @@ public class DeactivateUserCommandHandler : ICommandHandler<DeactivateUserComman
 {
     private readonly IUserRepository _userRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly TimeProvider _timeProvider;
 
-    public DeactivateUserCommandHandler(IUserRepository userRepository, IUnitOfWork unitOfWork)
+    public DeactivateUserCommandHandler(IUserRepository userRepository, IUnitOfWork unitOfWork, TimeProvider timeProvider)
     {
         _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public async Task<Result<bool>> HandleAsync(DeactivateUserCommand request, CancellationToken cancellationToken)
@@ -34,7 +36,7 @@ public class DeactivateUserCommandHandler : ICommandHandler<DeactivateUserComman
             return Result.Fail<bool>(DomainError.Conflict("User.AlreadyInactive", $"El usuario con ID '{request.Id}' ya se encuentra inactivo."));
         }
 
-        user.Deactivate();
+        user.Deactivate(_timeProvider);
         _userRepository.Update(user);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 

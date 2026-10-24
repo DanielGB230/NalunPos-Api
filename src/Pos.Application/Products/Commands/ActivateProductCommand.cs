@@ -14,11 +14,13 @@ public class ActivateProductCommandHandler : ICommandHandler<ActivateProductComm
 {
     private readonly IProductRepository _productRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly TimeProvider _timeProvider;
 
-    public ActivateProductCommandHandler(IProductRepository productRepository, IUnitOfWork unitOfWork)
+    public ActivateProductCommandHandler(IProductRepository productRepository, IUnitOfWork unitOfWork, TimeProvider timeProvider)
     {
         _productRepository = productRepository ?? throw new ArgumentNullException(nameof(productRepository));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public async Task<Result<bool>> HandleAsync(ActivateProductCommand request, CancellationToken cancellationToken)
@@ -34,7 +36,7 @@ public class ActivateProductCommandHandler : ICommandHandler<ActivateProductComm
             return Result.Fail<bool>(DomainError.Conflict("Product.AlreadyActive", $"El producto con ID '{request.Id}' ya se encuentra activo."));
         }
 
-        product.Activate();
+        product.Activate(_timeProvider);
         _productRepository.Update(product);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 

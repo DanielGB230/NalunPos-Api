@@ -37,7 +37,8 @@ public class CreateSaleCommandHandlerTests
             _stockLevelRepository,
             _tenantContext,
             _unitOfWork,
-            _dispatcher);
+            _dispatcher,
+            TimeProvider.System);
     }
 
     [Fact]
@@ -47,14 +48,15 @@ public class CreateSaleCommandHandlerTests
         Guid tenantId = Guid.NewGuid();
         _tenantContext.TenantId = tenantId;
 
-        var warehouse = Warehouse.Create(tenantId, Guid.NewGuid(), "Almacén Principal", isDefault: true);
+        var warehouse = Warehouse.Create(tenantId, Guid.NewGuid(), "Almacén Principal", isDefault: true, TimeProvider.System);
         _warehouseRepository.Warehouses.Add(warehouse);
 
         var session = CashRegisterSession.Open(
             Guid.NewGuid(),
             Guid.NewGuid(),
             Money.Create(100m, "USD"),
-            "Apertura inicial");
+            "Apertura inicial",
+            TimeProvider.System);
         _registerRepository.Sessions.Add(session);
 
         var product = Product.Create(
@@ -62,7 +64,8 @@ public class CreateSaleCommandHandlerTests
             "Producto A",
             Sku.Create("PROD-A-001"),
             Money.Create(50m, "USD"),
-            Guid.NewGuid());
+            Guid.NewGuid(),
+            TimeProvider.System);
 
         _productRepository.Products.Add(product);
 
@@ -102,8 +105,9 @@ public class CreateSaleCommandHandlerTests
             Guid.NewGuid(),
             Guid.NewGuid(),
             Money.Create(100m, "USD"),
-            "Apertura previa");
-        session.Close(Money.Create(100m, "USD"), Money.Create(100m, "USD"), "Cierre de sesión");
+            "Apertura previa",
+            TimeProvider.System);
+        session.Close(Money.Create(100m, "USD"), Money.Create(100m, "USD"), "Cierre de sesión", TimeProvider.System);
         _registerRepository.Sessions.Add(session);
 
         var command = new CreateSaleCommand(
@@ -133,18 +137,21 @@ public class CreateSaleCommandHandlerTests
         Guid tenantId = Guid.NewGuid();
         _tenantContext.TenantId = tenantId;
 
-        var warehouse = Warehouse.Create(tenantId, Guid.NewGuid(), "Almacén Principal", isDefault: true);
+        var warehouse = Warehouse.Create(tenantId, Guid.NewGuid(), "Almacén Principal", isDefault: true, TimeProvider.System);
         _warehouseRepository.Warehouses.Add(warehouse);
 
-        var session = CashRegisterSession.Open(Guid.NewGuid(), Guid.NewGuid(), Money.Create(100m, "USD"), "Apertura");
+        var session = CashRegisterSession.Open(Guid.NewGuid(), Guid.NewGuid(), Money.Create(100m, "USD"), "Apertura", TimeProvider.System);
         _registerRepository.Sessions.Add(session);
 
         var customer = Customer.Create(
             tenantId,
             "Cliente Inactivo",
             TaxId.Create("12345678-9", "PE"),
-            "inactivo@test.com");
-        customer.Deactivate(); // Set to inactive
+            "inactivo@test.com",
+            phone: "",
+            address: null,
+            TimeProvider.System);
+        customer.Deactivate(TimeProvider.System); // Set to inactive
         _customerRepository.Customers.Add(customer);
 
         var command = new CreateSaleCommand(

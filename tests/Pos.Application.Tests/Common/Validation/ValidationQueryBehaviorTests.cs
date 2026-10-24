@@ -39,7 +39,7 @@ public class ValidationQueryBehaviorTests
         var roleId = Guid.NewGuid();
 
         currentUserService.UserId = userId;
-        userRepository.UserToReturn = User.Create("test@example.com", "hash", roleId, tenantId, "Test", "User");
+        userRepository.UserToReturn = User.Create("test@example.com", "hash", roleId, tenantId, "Test", "User", TimeProvider.System);
 
         var invalidQuery = new TestResultQuery("");
         var result = await queryHandler.HandleAsync(invalidQuery);
@@ -63,7 +63,7 @@ public class ValidationQueryBehaviorTests
         var roleId = Guid.NewGuid();
 
         currentUserService.UserId = userId;
-        userRepository.UserToReturn = User.Create("test@example.com", "hash", roleId, tenantId, "Test", "User");
+        userRepository.UserToReturn = User.Create("test@example.com", "hash", roleId, tenantId, "Test", "User", TimeProvider.System);
 
         var validQuery = new TestResultQuery("búsqueda válida");
         var result = await queryHandler.HandleAsync(validQuery);
@@ -83,7 +83,7 @@ public class ValidationQueryBehaviorTests
         var roleId = Guid.NewGuid();
 
         currentUserService.UserId = userId;
-        userRepository.UserToReturn = User.Create("test@example.com", "hash", roleId, tenantId, "Test", "User");
+        userRepository.UserToReturn = User.Create("test@example.com", "hash", roleId, tenantId, "Test", "User", TimeProvider.System);
 
         var invalidQuery = new NonResultQuery(Guid.Empty);
 

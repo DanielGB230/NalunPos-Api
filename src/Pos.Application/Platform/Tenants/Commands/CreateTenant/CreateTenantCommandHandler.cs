@@ -20,6 +20,7 @@ public class CreateTenantCommandHandler : ICommandHandler<CreateTenantCommand, R
     private readonly IRoleRepository _roleRepository;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly TimeProvider _timeProvider;
 
     public CreateTenantCommandHandler(
         ITenantRepository tenantRepository,
@@ -29,7 +30,8 @@ public class CreateTenantCommandHandler : ICommandHandler<CreateTenantCommand, R
         IWarehouseRepository warehouseRepository,
         IRoleRepository roleRepository,
         IPasswordHasher passwordHasher,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        TimeProvider timeProvider)
     {
         _tenantRepository = tenantRepository ?? throw new ArgumentNullException(nameof(tenantRepository));
         _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
@@ -39,6 +41,7 @@ public class CreateTenantCommandHandler : ICommandHandler<CreateTenantCommand, R
         _roleRepository = roleRepository ?? throw new ArgumentNullException(nameof(roleRepository));
         _passwordHasher = passwordHasher ?? throw new ArgumentNullException(nameof(passwordHasher));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public async Task<Result<Guid>> HandleAsync(CreateTenantCommand command, CancellationToken cancellationToken)
@@ -69,13 +72,13 @@ public class CreateTenantCommandHandler : ICommandHandler<CreateTenantCommand, R
         Role cajeroRole;
         try
         {
-            tenant = Tenant.Create(command.Name, command.DocumentNumber);
+            tenant = Tenant.Create(command.Name, command.DocumentNumber, _timeProvider);
             string passwordHash = _passwordHasher.HashPassword(command.AdminPassword);
 
             // Crear roles básicos (Seeder should ideally handle this, but for CreateTenant, we do it inline or we expect seeder to run)
             // But we need RoleId NOW to create the user.
-            adminRole = Role.Create(tenant.Id, "TenantAdmin", "Administrador de la Empresa");
-            cajeroRole = Role.Create(tenant.Id, "Cajero", "Cajero del Punto de Venta");
+            adminRole = Role.Create(tenant.Id, "TenantAdmin", "Administrador de la Empresa", _timeProvider);
+            cajeroRole = Role.Create(tenant.Id, "Cajero", "Cajero del Punto de Venta", _timeProvider);
 
             adminUser = User.Create(
                 command.AdminEmail,
@@ -83,17 +86,19 @@ public class CreateTenantCommandHandler : ICommandHandler<CreateTenantCommand, R
                 adminRole.Id,
                 tenant.Id,
                 firstName: command.Name,
-                lastName: "Admin");
+                lastName: "Admin",
+                _timeProvider);
 
             // Auto-generar Sucursal y Almacén por defecto para el tenant
             var address = Pos.Domain.ValueObjects.Address.Create("Principal", "Central", "Central", "00000");
-            defaultBranch = Branch.Create(tenant.Id, $"{command.Name} - Principal", address);
+            defaultBranch = Branch.Create(tenant.Id, $"{command.Name} - Principal", address, _timeProvider);
             defaultWarehouse = Warehouse.Create(
                 tenant.Id,
                 defaultBranch.Id,
                 "Almacén Principal",
                 "Almacén principal predeterminado del negocio",
-                isDefault: true);
+                isDefault: true,
+                _timeProvider);
         }
         catch (DomainException ex)
         {

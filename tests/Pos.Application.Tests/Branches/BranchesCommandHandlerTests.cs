@@ -27,7 +27,7 @@ public class BranchesCommandHandlerTests
             "PE",
             "+5184221100"
         );
-        var handler = new CreateBranchCommandHandler(_branchRepository, _unitOfWork, _tenantContext);
+        var handler = new CreateBranchCommandHandler(_branchRepository, _unitOfWork, _tenantContext, TimeProvider.System);
 
         // Act
         var result = await handler.HandleAsync(command, CancellationToken.None);
@@ -45,7 +45,7 @@ public class BranchesCommandHandlerTests
     {
         // Arrange
         var address = Address.Create("Av. Sol 100", "Cusco", "08000", "PE");
-        var existingBranch = Branch.Create(_tenantContext.TenantId!.Value, "Sucursal Centro", address, "+5184221100");
+        var existingBranch = Branch.Create(_tenantContext.TenantId!.Value, "Sucursal Centro", address, "+5184221100", TimeProvider.System);
         _branchRepository.Branches.Add(existingBranch);
 
         var command = new CreateBranchCommand(
@@ -55,7 +55,7 @@ public class BranchesCommandHandlerTests
             "08000",
             "PE"
         );
-        var handler = new CreateBranchCommandHandler(_branchRepository, _unitOfWork, _tenantContext);
+        var handler = new CreateBranchCommandHandler(_branchRepository, _unitOfWork, _tenantContext, TimeProvider.System);
 
         // Act
         var result = await handler.HandleAsync(command, CancellationToken.None);
@@ -81,7 +81,7 @@ public class BranchesCommandHandlerTests
             "PE",
             "+511000000"
         );
-        var handler = new UpdateBranchCommandHandler(_branchRepository, _unitOfWork);
+        var handler = new UpdateBranchCommandHandler(_branchRepository, _unitOfWork, TimeProvider.System);
 
         // Act
         var result = await handler.HandleAsync(command, CancellationToken.None);

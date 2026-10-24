@@ -33,19 +33,22 @@ public class ReceivePurchaseOrderCommandHandler : ICommandHandler<ReceivePurchas
     private readonly IInventoryRepository _inventoryRepository;
     private readonly ICurrentTenantContext _tenantContext;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly TimeProvider _timeProvider;
 
     public ReceivePurchaseOrderCommandHandler(
         IPurchaseOrderRepository orderRepository,
         IStockLevelRepository stockLevelRepository,
         IInventoryRepository inventoryRepository,
         ICurrentTenantContext tenantContext,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        TimeProvider timeProvider)
     {
         _orderRepository = orderRepository ?? throw new ArgumentNullException(nameof(orderRepository));
         _stockLevelRepository = stockLevelRepository ?? throw new ArgumentNullException(nameof(stockLevelRepository));
         _inventoryRepository = inventoryRepository ?? throw new ArgumentNullException(nameof(inventoryRepository));
         _tenantContext = tenantContext ?? throw new ArgumentNullException(nameof(tenantContext));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public async Task<Result<PurchaseOrderDto>> HandleAsync(ReceivePurchaseOrderCommand command, CancellationToken cancellationToken)
@@ -63,7 +66,7 @@ public class ReceivePurchaseOrderCommandHandler : ICommandHandler<ReceivePurchas
         try
         {
             var receivedItems = command.ReceivedLines.Select(r => (r.ProductId, r.ReceivedQuantity));
-            updatedLines = order.ReceiveLines(receivedItems);
+            updatedLines = order.ReceiveLines(receivedItems, _timeProvider);
         }
         catch (DomainException ex)
         {
@@ -104,7 +107,8 @@ public class ReceivePurchaseOrderCommandHandler : ICommandHandler<ReceivePurchas
                 referenceId: order.Id,
                 notes: $"Recepción OC {order.OrderNumber}",
                 batchNumber: receivedDto.BatchNumber,
-                expirationDate: receivedDto.ExpirationDate);
+                expirationDate: receivedDto.ExpirationDate,
+                timeProvider: _timeProvider);
 
             await _inventoryRepository.AddMovementAsync(movement, cancellationToken);
         }

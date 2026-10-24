@@ -20,11 +20,11 @@ public class GetDemandForecastQueryHandler : IQueryHandler<GetDemandForecastQuer
     public GetDemandForecastQueryHandler(
         IDemandForecastCapability forecastCapability,
         IProductRepository productRepository,
-        TimeProvider? timeProvider = null)
+        TimeProvider timeProvider)
     {
         _forecastCapability = forecastCapability ?? throw new ArgumentNullException(nameof(forecastCapability));
         _productRepository = productRepository ?? throw new ArgumentNullException(nameof(productRepository));
-        _timeProvider = timeProvider ?? TimeProvider.System;
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public async Task<Result<DemandForecastDto>> HandleAsync(GetDemandForecastQuery request, CancellationToken cancellationToken)

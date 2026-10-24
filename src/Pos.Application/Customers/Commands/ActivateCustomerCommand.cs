@@ -14,11 +14,13 @@ public class ActivateCustomerCommandHandler : ICommandHandler<ActivateCustomerCo
 {
     private readonly ICustomerRepository _customerRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly TimeProvider _timeProvider;
 
-    public ActivateCustomerCommandHandler(ICustomerRepository customerRepository, IUnitOfWork unitOfWork)
+    public ActivateCustomerCommandHandler(ICustomerRepository customerRepository, IUnitOfWork unitOfWork, TimeProvider timeProvider)
     {
         _customerRepository = customerRepository ?? throw new ArgumentNullException(nameof(customerRepository));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public async Task<Result<bool>> HandleAsync(ActivateCustomerCommand request, CancellationToken cancellationToken)
@@ -34,7 +36,7 @@ public class ActivateCustomerCommandHandler : ICommandHandler<ActivateCustomerCo
             return Result.Fail<bool>(DomainError.Conflict("Customer.AlreadyActive", $"El cliente con ID '{request.Id}' ya se encuentra activo."));
         }
 
-        customer.Activate();
+        customer.Activate(_timeProvider);
         _customerRepository.Update(customer);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 

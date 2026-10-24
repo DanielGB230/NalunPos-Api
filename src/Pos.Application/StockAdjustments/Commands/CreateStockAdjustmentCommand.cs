@@ -32,6 +32,7 @@ public class CreateStockAdjustmentCommandHandler : ICommandHandler<CreateStockAd
     private readonly IProductRepository _productRepository;
     private readonly ICurrentTenantContext _tenantContext;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly TimeProvider _timeProvider;
 
     public CreateStockAdjustmentCommandHandler(
         IStockAdjustmentRepository adjustmentRepository,
@@ -40,7 +41,8 @@ public class CreateStockAdjustmentCommandHandler : ICommandHandler<CreateStockAd
         IWarehouseRepository warehouseRepository,
         IProductRepository productRepository,
         ICurrentTenantContext tenantContext,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        TimeProvider timeProvider)
     {
         _adjustmentRepository = adjustmentRepository ?? throw new ArgumentNullException(nameof(adjustmentRepository));
         _stockLevelRepository = stockLevelRepository ?? throw new ArgumentNullException(nameof(stockLevelRepository));
@@ -49,6 +51,7 @@ public class CreateStockAdjustmentCommandHandler : ICommandHandler<CreateStockAd
         _productRepository = productRepository ?? throw new ArgumentNullException(nameof(productRepository));
         _tenantContext = tenantContext ?? throw new ArgumentNullException(nameof(tenantContext));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public async Task<Result<StockAdjustmentDto>> HandleAsync(CreateStockAdjustmentCommand command, CancellationToken cancellationToken)
@@ -85,7 +88,7 @@ public class CreateStockAdjustmentCommandHandler : ICommandHandler<CreateStockAd
         try
         {
             var lineItems = command.Lines.Select(l => (l.ProductId, l.Quantity));
-            adjustment = StockAdjustment.Create(tenantId, command.WarehouseId, command.Reason, lineItems, command.Notes);
+            adjustment = StockAdjustment.Create(tenantId, command.WarehouseId, command.Reason, lineItems, command.Notes, _timeProvider);
         }
         catch (DomainException ex)
         {
@@ -122,7 +125,8 @@ public class CreateStockAdjustmentCommandHandler : ICommandHandler<CreateStockAd
                 quantity: line.Quantity,
                 movementType: InventoryMovementType.Adjustment,
                 referenceId: adjustment.Id,
-                notes: $"Ajuste: {command.Reason} — {command.Notes ?? string.Empty}".TrimEnd(' ', '—'));
+                notes: $"Ajuste: {command.Reason} — {command.Notes ?? string.Empty}".TrimEnd(' ', '—'),
+                timeProvider: _timeProvider);
 
             await _inventoryRepository.AddMovementAsync(movement, cancellationToken);
         }

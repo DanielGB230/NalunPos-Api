@@ -19,15 +19,18 @@ public class CreateCategoryCommandHandler : ICommandHandler<CreateCategoryComman
     private readonly ICategoryRepository _categoryRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentTenantContext _tenantContext;
+    private readonly TimeProvider _timeProvider;
 
     public CreateCategoryCommandHandler(
         ICategoryRepository categoryRepository,
         IUnitOfWork unitOfWork,
-        ICurrentTenantContext tenantContext)
+        ICurrentTenantContext tenantContext,
+        TimeProvider timeProvider)
     {
         _categoryRepository = categoryRepository ?? throw new ArgumentNullException(nameof(categoryRepository));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         _tenantContext = tenantContext ?? throw new ArgumentNullException(nameof(tenantContext));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public async Task<Result<CategoryDto>> HandleAsync(CreateCategoryCommand request, CancellationToken cancellationToken)
@@ -41,7 +44,7 @@ public class CreateCategoryCommandHandler : ICommandHandler<CreateCategoryComman
         Category category;
         try
         {
-            category = Category.Create(_tenantContext.RequireTenantId(), request.Name, request.Description);
+            category = Category.Create(_tenantContext.RequireTenantId(), request.Name, request.Description, _timeProvider);
         }
         catch (DomainException ex)
         {

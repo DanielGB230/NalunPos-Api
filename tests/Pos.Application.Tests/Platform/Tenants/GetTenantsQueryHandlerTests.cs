@@ -1,4 +1,4 @@
-﻿using Pos.Application.Tests.Support.Fakes;
+using Pos.Application.Tests.Support.Fakes;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Platform.Tenants.DTOs;
 using Pos.Application.Platform.Tenants.Queries.GetTenants;
@@ -21,8 +21,8 @@ public class GetTenantsQueryHandlerTests
     public async Task HandleAsync_ShouldReturnPagedTenants()
     {
         // Arrange
-        _tenantRepository.Tenants.Add(Tenant.Create("Tenant Alpha S.A.", "20100000001"));
-        _tenantRepository.Tenants.Add(Tenant.Create("Tenant Beta EIRL", "20100000002"));
+        _tenantRepository.Tenants.Add(Tenant.Create("Tenant Alpha S.A.", "20100000001", TimeProvider.System));
+        _tenantRepository.Tenants.Add(Tenant.Create("Tenant Beta EIRL", "20100000002", TimeProvider.System));
 
         var query = new GetTenantsQuery(1, 10, null);
 

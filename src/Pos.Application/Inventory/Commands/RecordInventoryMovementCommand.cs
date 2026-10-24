@@ -29,6 +29,7 @@ public class RecordInventoryMovementCommandHandler : ICommandHandler<RecordInven
     private readonly IProductRepository _productRepository;
     private readonly ICurrentTenantContext _tenantContext;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly TimeProvider _timeProvider;
 
     public RecordInventoryMovementCommandHandler(
         IInventoryRepository inventoryRepository,
@@ -36,7 +37,8 @@ public class RecordInventoryMovementCommandHandler : ICommandHandler<RecordInven
         IWarehouseRepository warehouseRepository,
         IProductRepository productRepository,
         ICurrentTenantContext tenantContext,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        TimeProvider timeProvider)
     {
         _inventoryRepository = inventoryRepository ?? throw new ArgumentNullException(nameof(inventoryRepository));
         _stockLevelRepository = stockLevelRepository ?? throw new ArgumentNullException(nameof(stockLevelRepository));
@@ -44,6 +46,7 @@ public class RecordInventoryMovementCommandHandler : ICommandHandler<RecordInven
         _productRepository = productRepository ?? throw new ArgumentNullException(nameof(productRepository));
         _tenantContext = tenantContext ?? throw new ArgumentNullException(nameof(tenantContext));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public async Task<Result<InventoryMovementDto>> HandleAsync(RecordInventoryMovementCommand request, CancellationToken cancellationToken)
@@ -116,7 +119,8 @@ public class RecordInventoryMovementCommandHandler : ICommandHandler<RecordInven
                 quantity: request.Quantity,
                 movementType: request.MovementType,
                 referenceId: request.ReferenceId,
-                notes: request.Notes);
+                notes: request.Notes,
+                timeProvider: _timeProvider);
         }
         catch (DomainException ex)
         {

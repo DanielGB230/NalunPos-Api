@@ -21,11 +21,11 @@ public class PosDevicesCommandHandlerTests
     {
         // Arrange
         var tenantId = _tenantContext.TenantId!.Value;
-        var branch = Branch.Create(tenantId, "Sucursal Norte", Address.Create("Av. Norte 100", "Lima", "15001", "PE"), "+5112345678");
+        var branch = Branch.Create(tenantId, "Sucursal Norte", Address.Create("Av. Norte 100", "Lima", "15001", "PE"), "+5112345678", TimeProvider.System);
         _branchRepository.Branches.Add(branch);
 
         var command = new RegisterPosDeviceCommand(branch.Id, "Caja Principal 01", "MAC-00-11-22-33-44");
-        var handler = new RegisterPosDeviceCommandHandler(_posDeviceRepository, _branchRepository, _unitOfWork, _tenantContext);
+        var handler = new RegisterPosDeviceCommandHandler(_posDeviceRepository, _branchRepository, _unitOfWork, _tenantContext, TimeProvider.System);
 
         // Act
         var result = await handler.HandleAsync(command, CancellationToken.None);
@@ -43,7 +43,7 @@ public class PosDevicesCommandHandlerTests
     {
         // Arrange
         var command = new RegisterPosDeviceCommand(Guid.NewGuid(), "Caja Inexistente", "MAC-99-99-99");
-        var handler = new RegisterPosDeviceCommandHandler(_posDeviceRepository, _branchRepository, _unitOfWork, _tenantContext);
+        var handler = new RegisterPosDeviceCommandHandler(_posDeviceRepository, _branchRepository, _unitOfWork, _tenantContext, TimeProvider.System);
 
         // Act
         var result = await handler.HandleAsync(command, CancellationToken.None);
@@ -59,14 +59,14 @@ public class PosDevicesCommandHandlerTests
     {
         // Arrange
         var tenantId = _tenantContext.TenantId!.Value;
-        var branch = Branch.Create(tenantId, "Sucursal Sur", Address.Create("Av. Sur 200", "Lima", "15002", "PE"), "+5112345679");
+        var branch = Branch.Create(tenantId, "Sucursal Sur", Address.Create("Av. Sur 200", "Lima", "15002", "PE"), "+5112345679", TimeProvider.System);
         _branchRepository.Branches.Add(branch);
 
-        var existingDevice = PosDevice.Create(tenantId, branch.Id, "Caja Existente", "MAC-00-11-22-33-44");
+        var existingDevice = PosDevice.Create(tenantId, branch.Id, "Caja Existente", "MAC-00-11-22-33-44", TimeProvider.System);
         _posDeviceRepository.Devices.Add(existingDevice);
 
         var command = new RegisterPosDeviceCommand(branch.Id, "Nueva Caja", "MAC-00-11-22-33-44");
-        var handler = new RegisterPosDeviceCommandHandler(_posDeviceRepository, _branchRepository, _unitOfWork, _tenantContext);
+        var handler = new RegisterPosDeviceCommandHandler(_posDeviceRepository, _branchRepository, _unitOfWork, _tenantContext, TimeProvider.System);
 
         // Act
         var result = await handler.HandleAsync(command, CancellationToken.None);
@@ -81,11 +81,11 @@ public class PosDevicesCommandHandlerTests
     public async Task PingPosDevice_WhenDeviceExists_ShouldRecordPingAndReturnSuccess()
     {
         // Arrange
-        var device = PosDevice.Create(Guid.NewGuid(), Guid.NewGuid(), "POS Movil 01", "MAC-55-66-77");
+        var device = PosDevice.Create(Guid.NewGuid(), Guid.NewGuid(), "POS Movil 01", "MAC-55-66-77", TimeProvider.System);
         _posDeviceRepository.Devices.Add(device);
 
         var command = new PingPosDeviceCommand(device.Id);
-        var handler = new PingPosDeviceCommandHandler(_posDeviceRepository, _unitOfWork);
+        var handler = new PingPosDeviceCommandHandler(_posDeviceRepository, _unitOfWork, TimeProvider.System);
 
         // Act
         var result = await handler.HandleAsync(command, CancellationToken.None);
@@ -101,7 +101,7 @@ public class PosDevicesCommandHandlerTests
     {
         // Arrange
         var command = new PingPosDeviceCommand(Guid.NewGuid());
-        var handler = new PingPosDeviceCommandHandler(_posDeviceRepository, _unitOfWork);
+        var handler = new PingPosDeviceCommandHandler(_posDeviceRepository, _unitOfWork, TimeProvider.System);
 
         // Act
         var result = await handler.HandleAsync(command, CancellationToken.None);

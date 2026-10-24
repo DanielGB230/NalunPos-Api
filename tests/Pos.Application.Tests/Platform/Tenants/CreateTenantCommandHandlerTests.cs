@@ -33,7 +33,8 @@ public class CreateTenantCommandHandlerTests
             _warehouseRepository,
             _roleRepository,
             _passwordHasher,
-            _unitOfWork);
+            _unitOfWork,
+            TimeProvider.System);
     }
 
     [Fact]
@@ -71,7 +72,7 @@ public class CreateTenantCommandHandlerTests
     public async Task HandleAsync_WithDuplicateDocumentNumber_ShouldReturnConflictError()
     {
         // Arrange
-        var existingTenant = Tenant.Create("Empresa Existente", "20601234567");
+        var existingTenant = Tenant.Create("Empresa Existente", "20601234567", TimeProvider.System);
         _tenantRepository.Tenants.Add(existingTenant);
 
         var command = new CreateTenantCommand(
@@ -94,8 +95,8 @@ public class CreateTenantCommandHandlerTests
     public async Task HandleAsync_WithDuplicateAdminEmail_ShouldReturnConflictError()
     {
         // Arrange
-        var existingTenant = Tenant.Create("Tenant 1", "20609999999");
-        var existingUser = User.Create(new Email("admin@demopos.com"), new PasswordHash("HASH"), Guid.NewGuid(), existingTenant.Id);
+        var existingTenant = Tenant.Create("Tenant 1", "20609999999", TimeProvider.System);
+        var existingUser = User.Create(new Email("admin@demopos.com"), new PasswordHash("HASH"), Guid.NewGuid(), existingTenant.Id, firstName: "Admin", lastName: "Tenant", TimeProvider.System);
         _userRepository.Users.Add(existingUser);
 
         var command = new CreateTenantCommand(

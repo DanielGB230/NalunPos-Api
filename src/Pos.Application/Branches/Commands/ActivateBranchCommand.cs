@@ -14,11 +14,13 @@ public class ActivateBranchCommandHandler : ICommandHandler<ActivateBranchComman
 {
     private readonly IBranchRepository _branchRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly TimeProvider _timeProvider;
 
-    public ActivateBranchCommandHandler(IBranchRepository branchRepository, IUnitOfWork unitOfWork)
+    public ActivateBranchCommandHandler(IBranchRepository branchRepository, IUnitOfWork unitOfWork, TimeProvider timeProvider)
     {
         _branchRepository = branchRepository ?? throw new ArgumentNullException(nameof(branchRepository));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public async Task<Result<bool>> HandleAsync(ActivateBranchCommand request, CancellationToken cancellationToken)
@@ -34,7 +36,7 @@ public class ActivateBranchCommandHandler : ICommandHandler<ActivateBranchComman
             return Result.Fail<bool>(DomainError.Conflict("Branch.AlreadyActive", $"La sucursal con ID '{request.Id}' ya se encuentra activa."));
         }
 
-        branch.Activate();
+        branch.Activate(_timeProvider);
         _branchRepository.Update(branch);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 

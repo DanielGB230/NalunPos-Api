@@ -23,17 +23,20 @@ public class CreateCashRegisterCommandHandler : ICommandHandler<CreateCashRegist
     private readonly IBranchRepository _branchRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentTenantContext _tenantContext;
+    private readonly TimeProvider _timeProvider;
 
     public CreateCashRegisterCommandHandler(
         ICashRegisterRepository registerRepository,
         IBranchRepository branchRepository,
         IUnitOfWork unitOfWork,
-        ICurrentTenantContext tenantContext)
+        ICurrentTenantContext tenantContext,
+        TimeProvider timeProvider)
     {
         _registerRepository = registerRepository ?? throw new ArgumentNullException(nameof(registerRepository));
         _branchRepository = branchRepository ?? throw new ArgumentNullException(nameof(branchRepository));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         _tenantContext = tenantContext ?? throw new ArgumentNullException(nameof(tenantContext));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public async Task<Result<CashRegisterDto>> HandleAsync(CreateCashRegisterCommand request, CancellationToken cancellationToken)
@@ -48,7 +51,7 @@ public class CreateCashRegisterCommandHandler : ICommandHandler<CreateCashRegist
         CashRegister register;
         try
         {
-            register = CashRegister.Create(tenantId, request.BranchId, request.Name, request.SerialNumber);
+            register = CashRegister.Create(tenantId, request.BranchId, request.Name, request.SerialNumber, _timeProvider);
         }
         catch (DomainException ex)
         {

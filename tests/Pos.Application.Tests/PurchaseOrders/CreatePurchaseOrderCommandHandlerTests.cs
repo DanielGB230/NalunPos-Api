@@ -30,7 +30,8 @@ public class CreatePurchaseOrderCommandHandlerTests
             _warehouseRepository,
             _productRepository,
             _tenantContext,
-            _unitOfWork);
+            _unitOfWork,
+            TimeProvider.System);
     }
 
     [Fact]
@@ -47,14 +48,15 @@ public class CreatePurchaseOrderCommandHandlerTests
             Address.Create("Calle 1", "Ciudad", "0000", "País"),
             "Contacto",
             "prov@test.com",
-            "123456789");
-        supplier.Deactivate(); // Set to inactive
+            "123456789",
+            TimeProvider.System);
+        supplier.Deactivate(TimeProvider.System); // Set to inactive
         _supplierRepository.Suppliers.Add(supplier);
 
-        var warehouse = Warehouse.Create(tenantId, Guid.NewGuid(), "Almacén Principal", isDefault: true);
+        var warehouse = Warehouse.Create(tenantId, Guid.NewGuid(), "Almacén Principal", isDefault: true, TimeProvider.System);
         _warehouseRepository.Warehouses.Add(warehouse);
 
-        var product = Product.Create(tenantId, "Producto A", Sku.Create("PROD-A-001"), Money.Create(50m, "USD"), Guid.NewGuid());
+        var product = Product.Create(tenantId, "Producto A", Sku.Create("PROD-A-001"), Money.Create(50m, "USD"), Guid.NewGuid(), TimeProvider.System);
         _productRepository.Products.Add(product);
 
         var command = new CreatePurchaseOrderCommand(
@@ -89,14 +91,15 @@ public class CreatePurchaseOrderCommandHandlerTests
             Address.Create("Calle 1", "Ciudad", "0000", "País"),
             "Contacto",
             "prov@test.com",
-            "123456789");
+            "123456789",
+            TimeProvider.System);
         _supplierRepository.Suppliers.Add(supplier);
 
-        var warehouse = Warehouse.Create(tenantId, Guid.NewGuid(), "Almacén Principal", isDefault: true);
+        var warehouse = Warehouse.Create(tenantId, Guid.NewGuid(), "Almacén Principal", isDefault: true, TimeProvider.System);
         _warehouseRepository.Warehouses.Add(warehouse);
 
-        var product = Product.Create(tenantId, "Producto Inactivo", Sku.Create("PROD-A-002"), Money.Create(50m, "USD"), Guid.NewGuid());
-        product.Deactivate(); // Set to inactive
+        var product = Product.Create(tenantId, "Producto Inactivo", Sku.Create("PROD-A-002"), Money.Create(50m, "USD"), Guid.NewGuid(), TimeProvider.System);
+        product.Deactivate(TimeProvider.System); // Set to inactive
         _productRepository.Products.Add(product);
 
         var command = new CreatePurchaseOrderCommand(

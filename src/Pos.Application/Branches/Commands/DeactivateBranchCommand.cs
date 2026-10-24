@@ -14,11 +14,13 @@ public class DeactivateBranchCommandHandler : ICommandHandler<DeactivateBranchCo
 {
     private readonly IBranchRepository _branchRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly TimeProvider _timeProvider;
 
-    public DeactivateBranchCommandHandler(IBranchRepository branchRepository, IUnitOfWork unitOfWork)
+    public DeactivateBranchCommandHandler(IBranchRepository branchRepository, IUnitOfWork unitOfWork, TimeProvider timeProvider)
     {
         _branchRepository = branchRepository ?? throw new ArgumentNullException(nameof(branchRepository));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public async Task<Result<bool>> HandleAsync(DeactivateBranchCommand request, CancellationToken cancellationToken)
@@ -34,7 +36,7 @@ public class DeactivateBranchCommandHandler : ICommandHandler<DeactivateBranchCo
             return Result.Fail<bool>(DomainError.Conflict("Branch.AlreadyInactive", $"La sucursal con ID '{request.Id}' ya se encuentra inactiva."));
         }
 
-        branch.Deactivate();
+        branch.Deactivate(_timeProvider);
         _branchRepository.Update(branch);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 

@@ -1,4 +1,4 @@
-﻿using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Attributes;
 using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Suppliers.DTOs;
@@ -30,11 +30,13 @@ public class UpdateSupplierCommandHandler : ICommandHandler<UpdateSupplierComman
 {
     private readonly ISupplierRepository _supplierRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly TimeProvider _timeProvider;
 
-    public UpdateSupplierCommandHandler(ISupplierRepository supplierRepository, IUnitOfWork unitOfWork)
+    public UpdateSupplierCommandHandler(ISupplierRepository supplierRepository, IUnitOfWork unitOfWork, TimeProvider timeProvider)
     {
         _supplierRepository = supplierRepository ?? throw new ArgumentNullException(nameof(supplierRepository));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public async Task<Result<SupplierDto>> HandleAsync(UpdateSupplierCommand request, CancellationToken cancellationToken)
@@ -70,7 +72,8 @@ public class UpdateSupplierCommandHandler : ICommandHandler<UpdateSupplierComman
                 addressVo,
                 request.ContactName,
                 request.Email,
-                request.Phone);
+                request.Phone,
+                _timeProvider);
         }
         catch (DomainException ex)
         {

@@ -14,11 +14,13 @@ public class DeactivateSupplierCommandHandler : ICommandHandler<DeactivateSuppli
 {
     private readonly ISupplierRepository _supplierRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly TimeProvider _timeProvider;
 
-    public DeactivateSupplierCommandHandler(ISupplierRepository supplierRepository, IUnitOfWork unitOfWork)
+    public DeactivateSupplierCommandHandler(ISupplierRepository supplierRepository, IUnitOfWork unitOfWork, TimeProvider timeProvider)
     {
         _supplierRepository = supplierRepository ?? throw new ArgumentNullException(nameof(supplierRepository));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public async Task<Result<bool>> HandleAsync(DeactivateSupplierCommand request, CancellationToken cancellationToken)
@@ -34,7 +36,7 @@ public class DeactivateSupplierCommandHandler : ICommandHandler<DeactivateSuppli
             return Result.Fail<bool>(DomainError.Conflict("Supplier.AlreadyInactive", $"El proveedor con ID '{request.Id}' ya se encuentra inactivo."));
         }
 
-        supplier.Deactivate();
+        supplier.Deactivate(_timeProvider);
         _supplierRepository.Update(supplier);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 

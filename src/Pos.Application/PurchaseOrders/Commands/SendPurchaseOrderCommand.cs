@@ -16,13 +16,16 @@ public class SendPurchaseOrderCommandHandler : ICommandHandler<SendPurchaseOrder
 {
     private readonly IPurchaseOrderRepository _orderRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly TimeProvider _timeProvider;
 
     public SendPurchaseOrderCommandHandler(
         IPurchaseOrderRepository orderRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        TimeProvider timeProvider)
     {
         _orderRepository = orderRepository ?? throw new ArgumentNullException(nameof(orderRepository));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public async Task<Result<PurchaseOrderDto>> HandleAsync(SendPurchaseOrderCommand command, CancellationToken cancellationToken)
@@ -35,7 +38,7 @@ public class SendPurchaseOrderCommandHandler : ICommandHandler<SendPurchaseOrder
 
         try
         {
-            order.Send();
+            order.Send(_timeProvider);
         }
         catch (DomainException ex)
         {

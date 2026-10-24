@@ -31,15 +31,18 @@ public class CreateSupplierCommandHandler : ICommandHandler<CreateSupplierComman
     private readonly ISupplierRepository _supplierRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentTenantContext _tenantContext;
+    private readonly TimeProvider _timeProvider;
 
     public CreateSupplierCommandHandler(
         ISupplierRepository supplierRepository,
         IUnitOfWork unitOfWork,
-        ICurrentTenantContext tenantContext)
+        ICurrentTenantContext tenantContext,
+        TimeProvider timeProvider)
     {
         _supplierRepository = supplierRepository ?? throw new ArgumentNullException(nameof(supplierRepository));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         _tenantContext = tenantContext ?? throw new ArgumentNullException(nameof(tenantContext));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public async Task<Result<SupplierDto>> HandleAsync(CreateSupplierCommand request, CancellationToken cancellationToken)
@@ -72,7 +75,8 @@ public class CreateSupplierCommandHandler : ICommandHandler<CreateSupplierComman
                 addressVo,
                 request.ContactName,
                 request.Email,
-                request.Phone);
+                request.Phone,
+                _timeProvider);
         }
         catch (DomainException ex)
         {

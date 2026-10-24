@@ -25,7 +25,8 @@ public class ReconcileInvoiceCommandHandlerTests
             _invoiceRepository,
             _invoicingService,
             _unitOfWork,
-            _dispatcher);
+            _dispatcher,
+            TimeProvider.System);
     }
 
     [Fact]
@@ -49,9 +50,10 @@ public class ReconcileInvoiceCommandHandlerTests
             InvoiceDocumentType.Invoice,
             "F001-00000002",
             TaxId.Create("20123456789", "PE"),
-            Money.Create(100m, "USD"));
-        invoice.MarkAsSent();
-        invoice.MarkAsAccepted();
+            Money.Create(100m, "USD"),
+            TimeProvider.System);
+        invoice.MarkAsSent(TimeProvider.System);
+        invoice.MarkAsAccepted(TimeProvider.System);
         _invoiceRepository.Invoices.Add(invoice);
 
         var command = new ReconcileInvoiceCommand(invoice.Id);
@@ -75,7 +77,8 @@ public class ReconcileInvoiceCommandHandlerTests
             InvoiceDocumentType.Invoice,
             "F001-00000009",
             TaxId.Create("20123456789", "PE"),
-            Money.Create(150m, "USD"));
+            Money.Create(150m, "USD"),
+            TimeProvider.System);
         _invoiceRepository.Invoices.Add(invoice);
 
         _invoicingService.ReturnStatus(ElectronicInvoiceProviderStatus.Accepted);
@@ -100,7 +103,8 @@ public class ReconcileInvoiceCommandHandlerTests
             InvoiceDocumentType.Invoice,
             "F001-00000010",
             TaxId.Create("20123456789", "PE"),
-            Money.Create(200m, "USD"));
+            Money.Create(200m, "USD"),
+            TimeProvider.System);
         _invoiceRepository.Invoices.Add(invoice);
 
         _invoicingService.ReturnStatus(ElectronicInvoiceProviderStatus.Accepted);
@@ -124,7 +128,8 @@ public class ReconcileInvoiceCommandHandlerTests
             InvoiceDocumentType.Invoice,
             "F001-00000003",
             TaxId.Create("20123456789", "PE"),
-            Money.Create(100m, "USD"));
+            Money.Create(100m, "USD"),
+            TimeProvider.System);
         _invoiceRepository.Invoices.Add(invoice);
 
         _invoicingService.ReturnStatus(ElectronicInvoiceProviderStatus.Accepted);
@@ -147,7 +152,8 @@ public class ReconcileInvoiceCommandHandlerTests
             InvoiceDocumentType.Invoice,
             "F001-00000004",
             TaxId.Create("20123456789", "PE"),
-            Money.Create(100m, "USD"));
+            Money.Create(100m, "USD"),
+            TimeProvider.System);
         _invoiceRepository.Invoices.Add(invoice);
 
         _invoicingService.ReturnStatus(ElectronicInvoiceProviderStatus.NotFound);

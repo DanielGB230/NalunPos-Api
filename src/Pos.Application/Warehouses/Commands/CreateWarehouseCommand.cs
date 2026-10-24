@@ -26,17 +26,20 @@ public class CreateWarehouseCommandHandler : ICommandHandler<CreateWarehouseComm
     private readonly IBranchRepository _branchRepository;
     private readonly ICurrentTenantContext _tenantContext;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly TimeProvider _timeProvider;
 
     public CreateWarehouseCommandHandler(
         IWarehouseRepository warehouseRepository,
         IBranchRepository branchRepository,
         ICurrentTenantContext tenantContext,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        TimeProvider timeProvider)
     {
         _warehouseRepository = warehouseRepository ?? throw new ArgumentNullException(nameof(warehouseRepository));
         _branchRepository = branchRepository ?? throw new ArgumentNullException(nameof(branchRepository));
         _tenantContext = tenantContext ?? throw new ArgumentNullException(nameof(tenantContext));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public async Task<Result<WarehouseDto>> HandleAsync(CreateWarehouseCommand command, CancellationToken cancellationToken)
@@ -54,13 +57,13 @@ public class CreateWarehouseCommandHandler : ICommandHandler<CreateWarehouseComm
         {
             var currentDefault = await _warehouseRepository.GetDefaultAsync(cancellationToken);
             if (currentDefault is not null)
-                currentDefault.UnsetDefault();
+                currentDefault.UnsetDefault(_timeProvider);
         }
 
         Warehouse warehouse;
         try
         {
-            warehouse = Warehouse.Create(tenantId, command.BranchId, command.Name, command.Description, command.IsDefault);
+            warehouse = Warehouse.Create(tenantId, command.BranchId, command.Name, command.Description, command.IsDefault, _timeProvider);
         }
         catch (DomainException ex)
         {

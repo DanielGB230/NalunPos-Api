@@ -14,11 +14,13 @@ public class ActivateCategoryCommandHandler : ICommandHandler<ActivateCategoryCo
 {
     private readonly ICategoryRepository _categoryRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly TimeProvider _timeProvider;
 
-    public ActivateCategoryCommandHandler(ICategoryRepository categoryRepository, IUnitOfWork unitOfWork)
+    public ActivateCategoryCommandHandler(ICategoryRepository categoryRepository, IUnitOfWork unitOfWork, TimeProvider timeProvider)
     {
         _categoryRepository = categoryRepository ?? throw new ArgumentNullException(nameof(categoryRepository));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public async Task<Result<bool>> HandleAsync(ActivateCategoryCommand request, CancellationToken cancellationToken)
@@ -34,7 +36,7 @@ public class ActivateCategoryCommandHandler : ICommandHandler<ActivateCategoryCo
             return Result.Fail<bool>(DomainError.Conflict("Category.AlreadyActive", $"La categoría con ID '{request.Id}' ya se encuentra activa."));
         }
 
-        category.Activate();
+        category.Activate(_timeProvider);
         _categoryRepository.Update(category);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 

@@ -24,17 +24,20 @@ public class RegisterPosDeviceCommandHandler : ICommandHandler<RegisterPosDevice
     private readonly IBranchRepository _branchRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentTenantContext _tenantContext;
+    private readonly TimeProvider _timeProvider;
 
     public RegisterPosDeviceCommandHandler(
         IPosDeviceRepository posDeviceRepository,
         IBranchRepository branchRepository,
         IUnitOfWork unitOfWork,
-        ICurrentTenantContext tenantContext)
+        ICurrentTenantContext tenantContext,
+        TimeProvider timeProvider)
     {
         _posDeviceRepository = posDeviceRepository ?? throw new ArgumentNullException(nameof(posDeviceRepository));
         _branchRepository = branchRepository ?? throw new ArgumentNullException(nameof(branchRepository));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         _tenantContext = tenantContext ?? throw new ArgumentNullException(nameof(tenantContext));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public async Task<Result<PosDeviceDto>> HandleAsync(RegisterPosDeviceCommand request, CancellationToken cancellationToken)
@@ -54,7 +57,7 @@ public class RegisterPosDeviceCommandHandler : ICommandHandler<RegisterPosDevice
         PosDevice device;
         try
         {
-            device = PosDevice.Create(_tenantContext.RequireTenantId(), request.BranchId, request.Name, request.SerialNumber);
+            device = PosDevice.Create(_tenantContext.RequireTenantId(), request.BranchId, request.Name, request.SerialNumber, _timeProvider);
         }
         catch (DomainException ex)
         {

@@ -41,6 +41,7 @@ public class CreateSaleCommandHandler : ICommandHandler<CreateSaleCommand, Resul
     private readonly ICurrentTenantContext _tenantContext;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IDispatcher _dispatcher;
+    private readonly TimeProvider _timeProvider;
 
     public CreateSaleCommandHandler(
         ISaleRepository saleRepository,
@@ -52,7 +53,8 @@ public class CreateSaleCommandHandler : ICommandHandler<CreateSaleCommand, Resul
         IStockLevelRepository stockLevelRepository,
         ICurrentTenantContext tenantContext,
         IUnitOfWork unitOfWork,
-        IDispatcher dispatcher)
+        IDispatcher dispatcher,
+        TimeProvider timeProvider)
     {
         _saleRepository = saleRepository ?? throw new ArgumentNullException(nameof(saleRepository));
         _registerRepository = registerRepository ?? throw new ArgumentNullException(nameof(registerRepository));
@@ -64,6 +66,7 @@ public class CreateSaleCommandHandler : ICommandHandler<CreateSaleCommand, Resul
         _tenantContext = tenantContext ?? throw new ArgumentNullException(nameof(tenantContext));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public async Task<Result<SaleDto>> HandleAsync(CreateSaleCommand request, CancellationToken cancellationToken)
@@ -170,7 +173,8 @@ public class CreateSaleCommandHandler : ICommandHandler<CreateSaleCommand, Resul
                 request.CustomerId,
                 lineItems,
                 request.TaxRatePercentage,
-                request.Currency);
+                request.Currency,
+                _timeProvider);
         }
         catch (DomainException ex)
         {
@@ -192,7 +196,8 @@ public class CreateSaleCommandHandler : ICommandHandler<CreateSaleCommand, Resul
                 quantity: -item.Quantity,
                 movementType: InventoryMovementType.Sale,
                 referenceId: sale.Id,
-                notes: $"Venta N° {request.ReceiptNumber}");
+                notes: $"Venta N° {request.ReceiptNumber}",
+                timeProvider: _timeProvider);
 
             await _inventoryRepository.AddMovementAsync(movement, cancellationToken);
         }

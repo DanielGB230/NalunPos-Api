@@ -1,4 +1,4 @@
-﻿using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Attributes;
 using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.CashRegisters.DTOs;
@@ -23,11 +23,13 @@ public class CloseCashRegisterSessionCommandHandler : ICommandHandler<CloseCashR
 {
     private readonly ICashRegisterRepository _registerRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly TimeProvider _timeProvider;
 
-    public CloseCashRegisterSessionCommandHandler(ICashRegisterRepository registerRepository, IUnitOfWork unitOfWork)
+    public CloseCashRegisterSessionCommandHandler(ICashRegisterRepository registerRepository, IUnitOfWork unitOfWork, TimeProvider timeProvider)
     {
         _registerRepository = registerRepository ?? throw new ArgumentNullException(nameof(registerRepository));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public async Task<Result<CashRegisterSessionDto>> HandleAsync(CloseCashRegisterSessionCommand request, CancellationToken cancellationToken)
@@ -55,8 +57,8 @@ public class CloseCashRegisterSessionCommandHandler : ICommandHandler<CloseCashR
             var actualMoney = Money.Create(request.ActualFinalAmount, request.Currency);
             var expectedMoney = Money.Create(request.ExpectedFinalAmount, request.Currency);
 
-            session.Close(actualMoney, expectedMoney, request.Notes);
-            register.ClearCurrentSession();
+            session.Close(actualMoney, expectedMoney, request.Notes, _timeProvider);
+            register.ClearCurrentSession(_timeProvider);
         }
         catch (DomainException ex)
         {

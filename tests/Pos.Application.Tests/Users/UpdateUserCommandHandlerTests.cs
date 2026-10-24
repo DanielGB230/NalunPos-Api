@@ -1,4 +1,4 @@
-﻿using Pos.Application.Tests.Support.Fakes;
+using Pos.Application.Tests.Support.Fakes;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Users.Commands;
 using Pos.Domain.Common;
@@ -20,7 +20,7 @@ public class UpdateUserCommandHandlerTests
     public UpdateUserCommandHandlerTests()
     {
         _authUserLookup = new FakeAuthUserLookup(_userRepository.Users);
-        _handler = new UpdateUserCommandHandler(_userRepository, _unitOfWork, _authUserLookup);
+        _handler = new UpdateUserCommandHandler(_userRepository, _unitOfWork, _authUserLookup, TimeProvider.System);
     }
 
     [Fact]
@@ -33,7 +33,8 @@ public class UpdateUserCommandHandlerTests
             Guid.NewGuid(),
             Guid.NewGuid(),
             "Pedro",
-            "Gomez"
+            "Gomez",
+            TimeProvider.System
         );
         _userRepository.Users.Add(user);
 

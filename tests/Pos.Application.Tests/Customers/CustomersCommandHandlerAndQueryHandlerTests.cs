@@ -26,7 +26,8 @@ public class CustomersCommandHandlerAndQueryHandlerTests
             TaxId.Create("20123456789", "PE"),
             "cliente@test.com",
             "+51999888777",
-            Address.Create("Av. Principal 100", "Lima", "15001", "PE")
+            Address.Create("Av. Principal 100", "Lima", "15001", "PE"),
+            TimeProvider.System
         );
         _customerRepository.Customers.Add(customer);
 
@@ -73,7 +74,7 @@ public class CustomersCommandHandlerAndQueryHandlerTests
             "15002",
             "PE"
         );
-        var handler = new CreateCustomerCommandHandler(_customerRepository, _unitOfWork, _tenantContext);
+        var handler = new CreateCustomerCommandHandler(_customerRepository, _unitOfWork, _tenantContext, TimeProvider.System);
 
         // Act
         var result = await handler.HandleAsync(command, CancellationToken.None);
@@ -95,7 +96,9 @@ public class CustomersCommandHandlerAndQueryHandlerTests
             "Empresa Existente",
             TaxId.Create("20987654321", "PE"),
             "existente@test.pe",
-            "+51900000000"
+            "+51900000000",
+            address: null,
+            TimeProvider.System
         );
         _customerRepository.Customers.Add(existingCustomer);
 
@@ -104,7 +107,7 @@ public class CustomersCommandHandlerAndQueryHandlerTests
             "20987654321",
             "PE"
         );
-        var handler = new CreateCustomerCommandHandler(_customerRepository, _unitOfWork, _tenantContext);
+        var handler = new CreateCustomerCommandHandler(_customerRepository, _unitOfWork, _tenantContext, TimeProvider.System);
 
         // Act
         var result = await handler.HandleAsync(command, CancellationToken.None);

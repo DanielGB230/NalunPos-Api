@@ -26,15 +26,18 @@ public class ProposeAgentActionCommandHandler : ICommandHandler<ProposeAgentActi
     private readonly IAgentActionRecordRepository _repository;
     private readonly ICurrentTenantContext _tenantContext;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly TimeProvider _timeProvider;
 
     public ProposeAgentActionCommandHandler(
         IAgentActionRecordRepository repository,
         ICurrentTenantContext tenantContext,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        TimeProvider timeProvider)
     {
         _repository = repository ?? throw new ArgumentNullException(nameof(repository));
         _tenantContext = tenantContext ?? throw new ArgumentNullException(nameof(tenantContext));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public async Task<Result<AgentActionRecordDto>> HandleAsync(ProposeAgentActionCommand request, CancellationToken cancellationToken)
@@ -65,7 +68,8 @@ public class ProposeAgentActionCommandHandler : ICommandHandler<ProposeAgentActi
                 request.AgentId,
                 request.ProposedActionType,
                 request.PayloadJson,
-                request.RiskLevel);
+                request.RiskLevel,
+                _timeProvider);
         }
         catch (DomainException ex)
         {

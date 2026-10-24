@@ -29,6 +29,7 @@ public class ProcessPaymentCommandHandler : ICommandHandler<ProcessPaymentComman
     private readonly IUnitOfWork _unitOfWork;
     private readonly IDispatcher _dispatcher;
     private readonly ICurrentTenantContext _tenantContext;
+    private readonly TimeProvider _timeProvider;
 
     public ProcessPaymentCommandHandler(
         IPaymentRepository paymentRepository,
@@ -36,7 +37,8 @@ public class ProcessPaymentCommandHandler : ICommandHandler<ProcessPaymentComman
         IPaymentGateway paymentGateway,
         IUnitOfWork unitOfWork,
         IDispatcher dispatcher,
-        ICurrentTenantContext tenantContext)
+        ICurrentTenantContext tenantContext,
+        TimeProvider timeProvider)
     {
         _paymentRepository = paymentRepository ?? throw new ArgumentNullException(nameof(paymentRepository));
         _saleRepository = saleRepository ?? throw new ArgumentNullException(nameof(saleRepository));
@@ -44,6 +46,7 @@ public class ProcessPaymentCommandHandler : ICommandHandler<ProcessPaymentComman
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
         _tenantContext = tenantContext ?? throw new ArgumentNullException(nameof(tenantContext));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public async Task<Result<PaymentDto>> HandleAsync(ProcessPaymentCommand request, CancellationToken cancellationToken)
@@ -62,7 +65,7 @@ public class ProcessPaymentCommandHandler : ICommandHandler<ProcessPaymentComman
         try
         {
             var amountMoney = Money.Create(request.Amount, request.Currency);
-            payment = Payment.Create(_tenantContext.RequireTenantId(), request.SaleId, amountMoney, request.Method, request.ExternalReference);
+            payment = Payment.Create(_tenantContext.RequireTenantId(), request.SaleId, amountMoney, request.Method, request.ExternalReference, _timeProvider);
         }
         catch (DomainException ex)
         {
@@ -74,11 +77,11 @@ public class ProcessPaymentCommandHandler : ICommandHandler<ProcessPaymentComman
 
         if (gatewayResult.IsSuccess)
         {
-            payment.Process(gatewayResult.TransactionId);
+            payment.Process(gatewayResult.TransactionId, _timeProvider);
         }
         else
         {
-            payment.Fail(gatewayResult.ErrorMessage ?? "Rechazado por la pasarela de pagos.");
+            payment.Fail(gatewayResult.ErrorMessage ?? "Rechazado por la pasarela de pagos.", _timeProvider);
         }
 
         await _paymentRepository.AddAsync(payment, cancellationToken);

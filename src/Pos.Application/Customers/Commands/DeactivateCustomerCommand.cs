@@ -14,11 +14,13 @@ public class DeactivateCustomerCommandHandler : ICommandHandler<DeactivateCustom
 {
     private readonly ICustomerRepository _customerRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly TimeProvider _timeProvider;
 
-    public DeactivateCustomerCommandHandler(ICustomerRepository customerRepository, IUnitOfWork unitOfWork)
+    public DeactivateCustomerCommandHandler(ICustomerRepository customerRepository, IUnitOfWork unitOfWork, TimeProvider timeProvider)
     {
         _customerRepository = customerRepository ?? throw new ArgumentNullException(nameof(customerRepository));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public async Task<Result<bool>> HandleAsync(DeactivateCustomerCommand request, CancellationToken cancellationToken)
@@ -34,7 +36,7 @@ public class DeactivateCustomerCommandHandler : ICommandHandler<DeactivateCustom
             return Result.Fail<bool>(DomainError.Conflict("Customer.AlreadyInactive", $"El cliente con ID '{request.Id}' ya se encuentra inactivo."));
         }
 
-        customer.Deactivate();
+        customer.Deactivate(_timeProvider);
         _customerRepository.Update(customer);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 

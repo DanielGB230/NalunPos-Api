@@ -17,14 +17,14 @@ public class DeactivateProductCommandHandlerTests
 
     public DeactivateProductCommandHandlerTests()
     {
-        _handler = new DeactivateProductCommandHandler(_productRepository, _unitOfWork);
+        _handler = new DeactivateProductCommandHandler(_productRepository, _unitOfWork, TimeProvider.System);
     }
 
     [Fact]
     public async Task HandleAsync_WhenProductIsActive_ShouldDeactivateProductAndReturnSuccess()
     {
         // Arrange
-        var product = Product.Create(Guid.NewGuid(), "Laptop Gamer", Sku.Create("LAP-001"), Money.Create(1200m, "USD"), Guid.NewGuid());
+        var product = Product.Create(Guid.NewGuid(), "Laptop Gamer", Sku.Create("LAP-001"), Money.Create(1200m, "USD"), Guid.NewGuid(), TimeProvider.System);
         _productRepository.Products.Add(product);
 
         var command = new DeactivateProductCommand(product.Id);
@@ -44,8 +44,8 @@ public class DeactivateProductCommandHandlerTests
     public async Task HandleAsync_WhenProductIsAlreadyInactive_ShouldReturnConflictResult()
     {
         // Arrange
-        var product = Product.Create(Guid.NewGuid(), "Laptop Gamer", Sku.Create("LAP-001"), Money.Create(1200m, "USD"), Guid.NewGuid());
-        product.Deactivate();
+        var product = Product.Create(Guid.NewGuid(), "Laptop Gamer", Sku.Create("LAP-001"), Money.Create(1200m, "USD"), Guid.NewGuid(), TimeProvider.System);
+        product.Deactivate(TimeProvider.System);
         _productRepository.Products.Add(product);
 
         var command = new DeactivateProductCommand(product.Id);

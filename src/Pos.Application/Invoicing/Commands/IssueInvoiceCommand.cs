@@ -30,6 +30,7 @@ public class IssueInvoiceCommandHandler : ICommandHandler<IssueInvoiceCommand, R
     private readonly IUnitOfWork _unitOfWork;
     private readonly IDispatcher _dispatcher;
     private readonly ICurrentTenantContext _tenantContext;
+    private readonly TimeProvider _timeProvider;
 
     public IssueInvoiceCommandHandler(
         IInvoiceRepository invoiceRepository,
@@ -37,7 +38,8 @@ public class IssueInvoiceCommandHandler : ICommandHandler<IssueInvoiceCommand, R
         IElectronicInvoicingService invoicingService,
         IUnitOfWork unitOfWork,
         IDispatcher dispatcher,
-        ICurrentTenantContext tenantContext)
+        ICurrentTenantContext tenantContext,
+        TimeProvider timeProvider)
     {
         _invoiceRepository = invoiceRepository ?? throw new ArgumentNullException(nameof(invoiceRepository));
         _saleRepository = saleRepository ?? throw new ArgumentNullException(nameof(saleRepository));
@@ -45,6 +47,7 @@ public class IssueInvoiceCommandHandler : ICommandHandler<IssueInvoiceCommand, R
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
         _tenantContext = tenantContext ?? throw new ArgumentNullException(nameof(tenantContext));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public async Task<Result<InvoiceDto>> HandleAsync(IssueInvoiceCommand request, CancellationToken cancellationToken)
@@ -71,7 +74,8 @@ public class IssueInvoiceCommandHandler : ICommandHandler<IssueInvoiceCommand, R
                 request.DocumentType,
                 request.DocumentNumber,
                 taxIdVo,
-                sale.Total);
+                sale.Total,
+                _timeProvider);
         }
         catch (DomainException ex)
         {
@@ -85,12 +89,12 @@ public class IssueInvoiceCommandHandler : ICommandHandler<IssueInvoiceCommand, R
         var sendResult = await _invoicingService.SendInvoiceAsync(invoice, cancellationToken);
         if (sendResult.IsSuccess)
         {
-            invoice.MarkAsSent();
-            invoice.MarkAsAccepted();
+            invoice.MarkAsSent(_timeProvider);
+            invoice.MarkAsAccepted(_timeProvider);
         }
         else
         {
-            invoice.MarkAsRejected();
+            invoice.MarkAsRejected(_timeProvider);
         }
 
         _invoiceRepository.Update(invoice);

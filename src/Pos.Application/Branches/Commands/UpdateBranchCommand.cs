@@ -1,4 +1,4 @@
-﻿using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Attributes;
 using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Branches.DTOs;
@@ -25,11 +25,13 @@ public class UpdateBranchCommandHandler : ICommandHandler<UpdateBranchCommand, R
 {
     private readonly IBranchRepository _branchRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly TimeProvider _timeProvider;
 
-    public UpdateBranchCommandHandler(IBranchRepository branchRepository, IUnitOfWork unitOfWork)
+    public UpdateBranchCommandHandler(IBranchRepository branchRepository, IUnitOfWork unitOfWork, TimeProvider timeProvider)
     {
         _branchRepository = branchRepository ?? throw new ArgumentNullException(nameof(branchRepository));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public async Task<Result<BranchDto>> HandleAsync(UpdateBranchCommand request, CancellationToken cancellationToken)
@@ -49,7 +51,7 @@ public class UpdateBranchCommandHandler : ICommandHandler<UpdateBranchCommand, R
         try
         {
             var address = Address.Create(request.Street, request.City, request.ZipCode, request.Country);
-            branch.UpdateDetails(request.Name, address, request.PhoneNumber);
+            branch.UpdateDetails(request.Name, address, request.PhoneNumber, _timeProvider);
         }
         catch (DomainException ex)
         {

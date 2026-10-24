@@ -32,6 +32,7 @@ public class CreateStockTransferCommandHandler : ICommandHandler<CreateStockTran
     private readonly IProductRepository _productRepository;
     private readonly ICurrentTenantContext _tenantContext;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly TimeProvider _timeProvider;
 
     public CreateStockTransferCommandHandler(
         IStockTransferRepository transferRepository,
@@ -40,7 +41,8 @@ public class CreateStockTransferCommandHandler : ICommandHandler<CreateStockTran
         IWarehouseRepository warehouseRepository,
         IProductRepository productRepository,
         ICurrentTenantContext tenantContext,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        TimeProvider timeProvider)
     {
         _transferRepository = transferRepository ?? throw new ArgumentNullException(nameof(transferRepository));
         _stockLevelRepository = stockLevelRepository ?? throw new ArgumentNullException(nameof(stockLevelRepository));
@@ -49,6 +51,7 @@ public class CreateStockTransferCommandHandler : ICommandHandler<CreateStockTran
         _productRepository = productRepository ?? throw new ArgumentNullException(nameof(productRepository));
         _tenantContext = tenantContext ?? throw new ArgumentNullException(nameof(tenantContext));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public async Task<Result<StockTransferDto>> HandleAsync(CreateStockTransferCommand command, CancellationToken cancellationToken)
@@ -92,7 +95,7 @@ public class CreateStockTransferCommandHandler : ICommandHandler<CreateStockTran
         try
         {
             var lineItems = command.Lines.Select(l => (l.ProductId, l.Quantity));
-            transfer = StockTransfer.Create(tenantId, command.SourceWarehouseId, command.DestinationWarehouseId, lineItems, command.Notes);
+            transfer = StockTransfer.Create(tenantId, command.SourceWarehouseId, command.DestinationWarehouseId, lineItems, command.Notes, _timeProvider);
         }
         catch (DomainException ex)
         {
@@ -118,7 +121,8 @@ public class CreateStockTransferCommandHandler : ICommandHandler<CreateStockTran
                 quantity: -line.Quantity,
                 movementType: InventoryMovementType.TransferOut,
                 referenceId: transfer.Id,
-                notes: $"Traspaso hacia '{destWarehouse.Name}' — {command.Notes ?? string.Empty}".TrimEnd(' ', '—'));
+                notes: $"Traspaso hacia '{destWarehouse.Name}' — {command.Notes ?? string.Empty}".TrimEnd(' ', '—'),
+                timeProvider: _timeProvider);
 
             await _inventoryRepository.AddMovementAsync(movementOut, cancellationToken);
 
@@ -143,7 +147,8 @@ public class CreateStockTransferCommandHandler : ICommandHandler<CreateStockTran
                 quantity: line.Quantity,
                 movementType: InventoryMovementType.TransferIn,
                 referenceId: transfer.Id,
-                notes: $"Traspaso desde '{sourceWarehouse.Name}' — {command.Notes ?? string.Empty}".TrimEnd(' ', '—'));
+                notes: $"Traspaso desde '{sourceWarehouse.Name}' — {command.Notes ?? string.Empty}".TrimEnd(' ', '—'),
+                timeProvider: _timeProvider);
 
             await _inventoryRepository.AddMovementAsync(movementIn, cancellationToken);
         }

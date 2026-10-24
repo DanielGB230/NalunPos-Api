@@ -23,7 +23,8 @@ public class CreateCashRegisterCommandHandlerTests
             _tenantContext.TenantId!.Value,
             "Sucursal Centro",
             Address.Create("Calle Real 123", "Huancayo", "12001", "PE"),
-            "+5164223344");
+            "+5164223344",
+            TimeProvider.System);
         _branchRepository.Branches.Add(branch);
 
         var command = new CreateCashRegisterCommand(branch.Id, "Caja 01", "CR-001");
@@ -31,7 +32,8 @@ public class CreateCashRegisterCommandHandlerTests
             _cashRegisterRepository,
             _branchRepository,
             _unitOfWork,
-            _tenantContext);
+            _tenantContext,
+            TimeProvider.System);
 
         // Act
         var result = await handler.HandleAsync(command, CancellationToken.None);
@@ -57,7 +59,8 @@ public class CreateCashRegisterCommandHandlerTests
             _cashRegisterRepository,
             _branchRepository,
             _unitOfWork,
-            _tenantContext);
+            _tenantContext,
+            TimeProvider.System);
 
         // Act
         var result = await handler.HandleAsync(command, CancellationToken.None);
@@ -79,7 +82,8 @@ public class CreateCashRegisterCommandHandlerTests
             otherTenantId,
             "Sucursal Tenant B",
             Address.Create("Av. Otra 456", "Lima", "15002", "PE"),
-            "+511222333");
+            "+511222333",
+            TimeProvider.System);
         _branchRepository.Branches.Add(branchOfOtherTenant);
 
         // Request intentando asociar una caja de Tenant A a la sucursal de Tenant B
@@ -88,7 +92,8 @@ public class CreateCashRegisterCommandHandlerTests
             _cashRegisterRepository,
             _branchRepository,
             _unitOfWork,
-            _tenantContext);
+            _tenantContext,
+            TimeProvider.System);
 
         // Act
         var result = await handler.HandleAsync(command, CancellationToken.None);

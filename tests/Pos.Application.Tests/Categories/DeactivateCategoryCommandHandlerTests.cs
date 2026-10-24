@@ -16,14 +16,14 @@ public class DeactivateCategoryCommandHandlerTests
 
     public DeactivateCategoryCommandHandlerTests()
     {
-        _handler = new DeactivateCategoryCommandHandler(_categoryRepository, _unitOfWork);
+        _handler = new DeactivateCategoryCommandHandler(_categoryRepository, _unitOfWork, TimeProvider.System);
     }
 
     [Fact]
     public async Task HandleAsync_WhenCategoryIsActive_ShouldDeactivateCategoryAndReturnSuccess()
     {
         // Arrange
-        var category = Category.Create(Guid.NewGuid(), "Bebidas", "Categoría de bebidas");
+        var category = Category.Create(Guid.NewGuid(), "Bebidas", "Categoría de bebidas", TimeProvider.System);
         _categoryRepository.Categories.Add(category);
 
         var command = new DeactivateCategoryCommand(category.Id);
@@ -43,8 +43,8 @@ public class DeactivateCategoryCommandHandlerTests
     public async Task HandleAsync_WhenCategoryIsAlreadyInactive_ShouldReturnConflictResult()
     {
         // Arrange
-        var category = Category.Create(Guid.NewGuid(), "Bebidas", "Categoría de bebidas");
-        category.Deactivate();
+        var category = Category.Create(Guid.NewGuid(), "Bebidas", "Categoría de bebidas", TimeProvider.System);
+        category.Deactivate(TimeProvider.System);
         _categoryRepository.Categories.Add(category);
 
         var command = new DeactivateCategoryCommand(category.Id);

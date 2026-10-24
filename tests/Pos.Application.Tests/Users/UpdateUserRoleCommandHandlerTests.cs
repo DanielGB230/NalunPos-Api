@@ -1,4 +1,4 @@
-﻿using Pos.Application.Tests.Support.Fakes;
+using Pos.Application.Tests.Support.Fakes;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Users.Commands;
 using Pos.Domain.Common;
@@ -17,7 +17,7 @@ public class UpdateUserRoleCommandHandlerTests
 
     public UpdateUserRoleCommandHandlerTests()
     {
-        _handler = new UpdateUserRoleCommandHandler(_userRepository, _unitOfWork);
+        _handler = new UpdateUserRoleCommandHandler(_userRepository, _unitOfWork, TimeProvider.System);
     }
 
     [Fact]
@@ -30,7 +30,8 @@ public class UpdateUserRoleCommandHandlerTests
             Guid.NewGuid(),
             Guid.NewGuid(),
             "Pedro",
-            "Gomez"
+            "Gomez",
+            TimeProvider.System
         );
         _userRepository.Users.Add(user);
 

@@ -28,7 +28,8 @@ public class RecordInventoryMovementCommandHandlerTests
             _warehouseRepository,
             _productRepository,
             _tenantContext,
-            _unitOfWork);
+            _unitOfWork,
+            TimeProvider.System);
     }
 
     [Fact]
@@ -38,10 +39,10 @@ public class RecordInventoryMovementCommandHandlerTests
         Guid tenantId = Guid.NewGuid();
         _tenantContext.TenantId = tenantId;
 
-        var warehouse = Warehouse.Create(tenantId, Guid.NewGuid(), "Almacén Principal", isDefault: true);
+        var warehouse = Warehouse.Create(tenantId, Guid.NewGuid(), "Almacén Principal", isDefault: true, TimeProvider.System);
         _warehouseRepository.Warehouses.Add(warehouse);
 
-        var product = Product.Create(tenantId, "Laptop Gamer", Sku.Create("LAP-001"), Money.Create(1200m, "USD"), Guid.NewGuid());
+        var product = Product.Create(tenantId, "Laptop Gamer", Sku.Create("LAP-001"), Money.Create(1200m, "USD"), Guid.NewGuid(), TimeProvider.System);
         _productRepository.Products.Add(product);
 
         var stockLevel = StockLevel.Create(tenantId, product.Id, warehouse.Id);
@@ -74,10 +75,10 @@ public class RecordInventoryMovementCommandHandlerTests
         Guid tenantId = Guid.NewGuid();
         _tenantContext.TenantId = tenantId;
 
-        var warehouse = Warehouse.Create(tenantId, Guid.NewGuid(), "Almacén Principal", isDefault: true);
+        var warehouse = Warehouse.Create(tenantId, Guid.NewGuid(), "Almacén Principal", isDefault: true, TimeProvider.System);
         _warehouseRepository.Warehouses.Add(warehouse);
 
-        var product = Product.Create(tenantId, "Teclado Mecánico", Sku.Create("TEC-002"), Money.Create(80m, "USD"), Guid.NewGuid());
+        var product = Product.Create(tenantId, "Teclado Mecánico", Sku.Create("TEC-002"), Money.Create(80m, "USD"), Guid.NewGuid(), TimeProvider.System);
         _productRepository.Products.Add(product);
 
         var stockLevel = StockLevel.Create(tenantId, product.Id, warehouse.Id);

@@ -25,19 +25,22 @@ public class CreateSystemNotificationCommandHandler : ICommandHandler<CreateSyst
     private readonly IPushNotificationService _pushNotificationService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentTenantContext _tenantContext;
+    private readonly TimeProvider _timeProvider;
 
     public CreateSystemNotificationCommandHandler(
         ISystemNotificationRepository notificationRepository,
         IUserRepository userRepository,
         IPushNotificationService pushNotificationService,
         IUnitOfWork unitOfWork,
-        ICurrentTenantContext tenantContext)
+        ICurrentTenantContext tenantContext,
+        TimeProvider timeProvider)
     {
         _notificationRepository = notificationRepository ?? throw new ArgumentNullException(nameof(notificationRepository));
         _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
         _pushNotificationService = pushNotificationService ?? throw new ArgumentNullException(nameof(pushNotificationService));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         _tenantContext = tenantContext ?? throw new ArgumentNullException(nameof(tenantContext));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public async Task<Result<SystemNotificationDto>> HandleAsync(CreateSystemNotificationCommand request, CancellationToken cancellationToken)
@@ -51,7 +54,7 @@ public class CreateSystemNotificationCommandHandler : ICommandHandler<CreateSyst
         SystemNotification notification;
         try
         {
-            notification = SystemNotification.Create(_tenantContext.RequireTenantId(), request.UserId, request.Title, request.Message);
+            notification = SystemNotification.Create(_tenantContext.RequireTenantId(), request.UserId, request.Title, request.Message, _timeProvider);
         }
         catch (DomainException ex)
         {

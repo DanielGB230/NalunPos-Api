@@ -1,4 +1,4 @@
-﻿using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Attributes;
 using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Users.DTOs;
@@ -27,15 +27,18 @@ public class UpdateUserCommandHandler : ICommandHandler<UpdateUserCommand, Resul
     private readonly IUserRepository _userRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IAuthUserLookup _authUserLookup;
+    private readonly TimeProvider _timeProvider;
 
     public UpdateUserCommandHandler(
         IUserRepository userRepository,
         IUnitOfWork unitOfWork,
-        IAuthUserLookup authUserLookup)
+        IAuthUserLookup authUserLookup,
+        TimeProvider timeProvider)
     {
         _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         _authUserLookup = authUserLookup ?? throw new ArgumentNullException(nameof(authUserLookup));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public async Task<Result<UserDto>> HandleAsync(UpdateUserCommand request, CancellationToken cancellationToken)
@@ -54,8 +57,8 @@ public class UpdateUserCommandHandler : ICommandHandler<UpdateUserCommand, Resul
 
         try
         {
-            user.UpdateDetails(request.FirstName, request.LastName);
-            user.UpdateEmail(new Email(request.Email));
+            user.UpdateDetails(request.FirstName, request.LastName, _timeProvider);
+            user.UpdateEmail(new Email(request.Email), _timeProvider);
         }
         catch (DomainException ex)
         {

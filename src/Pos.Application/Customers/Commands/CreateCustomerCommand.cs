@@ -30,15 +30,18 @@ public class CreateCustomerCommandHandler : ICommandHandler<CreateCustomerComman
     private readonly ICustomerRepository _customerRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentTenantContext _tenantContext;
+    private readonly TimeProvider _timeProvider;
 
     public CreateCustomerCommandHandler(
         ICustomerRepository customerRepository,
         IUnitOfWork unitOfWork,
-        ICurrentTenantContext tenantContext)
+        ICurrentTenantContext tenantContext,
+        TimeProvider timeProvider)
     {
         _customerRepository = customerRepository ?? throw new ArgumentNullException(nameof(customerRepository));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         _tenantContext = tenantContext ?? throw new ArgumentNullException(nameof(tenantContext));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public async Task<Result<CustomerDto>> HandleAsync(CreateCustomerCommand request, CancellationToken cancellationToken)
@@ -74,7 +77,8 @@ public class CreateCustomerCommandHandler : ICommandHandler<CreateCustomerComman
                 taxIdVo,
                 request.Email,
                 request.Phone,
-                addressVo);
+                addressVo,
+                _timeProvider);
         }
         catch (DomainException ex)
         {

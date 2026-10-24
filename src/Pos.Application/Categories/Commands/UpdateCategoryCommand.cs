@@ -1,4 +1,4 @@
-﻿using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Attributes;
 using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Categories.DTOs;
@@ -17,11 +17,13 @@ public class UpdateCategoryCommandHandler : ICommandHandler<UpdateCategoryComman
 {
     private readonly ICategoryRepository _categoryRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly TimeProvider _timeProvider;
 
-    public UpdateCategoryCommandHandler(ICategoryRepository categoryRepository, IUnitOfWork unitOfWork)
+    public UpdateCategoryCommandHandler(ICategoryRepository categoryRepository, IUnitOfWork unitOfWork, TimeProvider timeProvider)
     {
         _categoryRepository = categoryRepository ?? throw new ArgumentNullException(nameof(categoryRepository));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public async Task<Result<CategoryDto>> HandleAsync(UpdateCategoryCommand request, CancellationToken cancellationToken)
@@ -40,7 +42,7 @@ public class UpdateCategoryCommandHandler : ICommandHandler<UpdateCategoryComman
 
         try
         {
-            category.Update(request.Name, request.Description);
+            category.Update(request.Name, request.Description, _timeProvider);
         }
         catch (DomainException ex)
         {

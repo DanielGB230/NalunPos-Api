@@ -14,11 +14,13 @@ public class DeactivateCategoryCommandHandler : ICommandHandler<DeactivateCatego
 {
     private readonly ICategoryRepository _categoryRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly TimeProvider _timeProvider;
 
-    public DeactivateCategoryCommandHandler(ICategoryRepository categoryRepository, IUnitOfWork unitOfWork)
+    public DeactivateCategoryCommandHandler(ICategoryRepository categoryRepository, IUnitOfWork unitOfWork, TimeProvider timeProvider)
     {
         _categoryRepository = categoryRepository ?? throw new ArgumentNullException(nameof(categoryRepository));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public async Task<Result<bool>> HandleAsync(DeactivateCategoryCommand request, CancellationToken cancellationToken)
@@ -34,7 +36,7 @@ public class DeactivateCategoryCommandHandler : ICommandHandler<DeactivateCatego
             return Result.Fail<bool>(DomainError.Conflict("Category.AlreadyInactive", $"La categoría con ID '{request.Id}' ya se encuentra inactiva."));
         }
 
-        category.Deactivate();
+        category.Deactivate(_timeProvider);
         _categoryRepository.Update(category);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 

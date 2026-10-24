@@ -18,7 +18,7 @@ public class CreateRoleCommandHandlerTests
     public CreateRoleCommandHandlerTests()
     {
         _currentTenantContext.TenantId = Guid.NewGuid();
-        _handler = new CreateRoleCommandHandler(_roleRepository, _unitOfWork, _currentTenantContext);
+        _handler = new CreateRoleCommandHandler(_roleRepository, _unitOfWork, _currentTenantContext, TimeProvider.System);
     }
 
     [Fact]
@@ -46,7 +46,7 @@ public class CreateRoleCommandHandlerTests
     public async Task HandleAsync_WhenRoleNameAlreadyExists_ShouldReturnConflictResult()
     {
         // Arrange
-        var existingRole = Role.Create(Guid.NewGuid(), "SupervisorDeInventario", "Rol existente");
+        var existingRole = Role.Create(Guid.NewGuid(), "SupervisorDeInventario", "Rol existente", TimeProvider.System);
         _roleRepository.Roles.Add(existingRole);
 
         var command = new CreateRoleCommand(

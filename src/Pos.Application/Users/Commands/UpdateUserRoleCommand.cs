@@ -1,4 +1,4 @@
-﻿using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Attributes;
 using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Users.DTOs;
@@ -22,13 +22,16 @@ public class UpdateUserRoleCommandHandler : ICommandHandler<UpdateUserRoleComman
 {
     private readonly IUserRepository _userRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly TimeProvider _timeProvider;
 
     public UpdateUserRoleCommandHandler(
         IUserRepository userRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        TimeProvider timeProvider)
     {
         _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public async Task<Result<UserDto>> HandleAsync(UpdateUserRoleCommand request, CancellationToken cancellationToken)
@@ -41,7 +44,7 @@ public class UpdateUserRoleCommandHandler : ICommandHandler<UpdateUserRoleComman
 
         try
         {
-            user.ChangeRole(request.RoleId, request.TenantId);
+            user.ChangeRole(request.RoleId, request.TenantId, _timeProvider);
         }
         catch (DomainException ex)
         {

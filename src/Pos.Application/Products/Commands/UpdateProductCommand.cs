@@ -1,4 +1,4 @@
-﻿using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Attributes;
 using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Products.DTOs;
@@ -24,15 +24,18 @@ public class UpdateProductCommandHandler : ICommandHandler<UpdateProductCommand,
     private readonly IProductRepository _productRepository;
     private readonly ICategoryRepository _categoryRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly TimeProvider _timeProvider;
 
     public UpdateProductCommandHandler(
         IProductRepository productRepository,
         ICategoryRepository categoryRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        TimeProvider timeProvider)
     {
         _productRepository = productRepository ?? throw new ArgumentNullException(nameof(productRepository));
         _categoryRepository = categoryRepository ?? throw new ArgumentNullException(nameof(categoryRepository));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public async Task<Result<ProductDto>> HandleAsync(UpdateProductCommand request, CancellationToken cancellationToken)
@@ -57,13 +60,13 @@ public class UpdateProductCommandHandler : ICommandHandler<UpdateProductCommand,
                     $"No se encontró la categoría con ID '{request.CategoryId}'."));
             }
 
-            product.ChangeCategory(category.Id);
+            product.ChangeCategory(category.Id, _timeProvider);
         }
 
         try
         {
             var barcodeVo = !string.IsNullOrWhiteSpace(request.Barcode) ? Barcode.Create(request.Barcode) : null;
-            product.UpdateDetails(request.Name, request.Description, barcodeVo);
+            product.UpdateDetails(request.Name, request.Description, barcodeVo, _timeProvider);
         }
         catch (DomainException ex)
         {

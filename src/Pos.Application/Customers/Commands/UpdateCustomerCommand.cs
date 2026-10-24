@@ -1,4 +1,4 @@
-﻿using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Attributes;
 using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Customers.DTOs;
@@ -29,11 +29,13 @@ public class UpdateCustomerCommandHandler : ICommandHandler<UpdateCustomerComman
 {
     private readonly ICustomerRepository _customerRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly TimeProvider _timeProvider;
 
-    public UpdateCustomerCommandHandler(ICustomerRepository customerRepository, IUnitOfWork unitOfWork)
+    public UpdateCustomerCommandHandler(ICustomerRepository customerRepository, IUnitOfWork unitOfWork, TimeProvider timeProvider)
     {
         _customerRepository = customerRepository ?? throw new ArgumentNullException(nameof(customerRepository));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public async Task<Result<CustomerDto>> HandleAsync(UpdateCustomerCommand request, CancellationToken cancellationToken)
@@ -68,7 +70,7 @@ public class UpdateCustomerCommandHandler : ICommandHandler<UpdateCustomerComman
                 addressVo = Address.Create(request.Street, request.City, request.ZipCode ?? "", request.Country);
             }
 
-            customer.UpdateDetails(request.FullName, taxIdVo, request.Email, request.Phone, addressVo);
+            customer.UpdateDetails(request.FullName, taxIdVo, request.Email, request.Phone, addressVo, _timeProvider);
         }
         catch (DomainException ex)
         {

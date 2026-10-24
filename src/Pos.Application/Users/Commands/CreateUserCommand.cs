@@ -1,4 +1,4 @@
-﻿using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Attributes;
 using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Users.DTOs;
@@ -31,17 +31,20 @@ public class CreateUserCommandHandler : ICommandHandler<CreateUserCommand, Resul
     private readonly IPasswordHasher _passwordHasher;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IAuthUserLookup _authUserLookup;
+    private readonly TimeProvider _timeProvider;
 
     public CreateUserCommandHandler(
         IUserRepository userRepository,
         IPasswordHasher passwordHasher,
         IUnitOfWork unitOfWork,
-        IAuthUserLookup authUserLookup)
+        IAuthUserLookup authUserLookup,
+        TimeProvider timeProvider)
     {
         _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
         _passwordHasher = passwordHasher ?? throw new ArgumentNullException(nameof(passwordHasher));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         _authUserLookup = authUserLookup ?? throw new ArgumentNullException(nameof(authUserLookup));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public async Task<Result<UserDto>> HandleAsync(CreateUserCommand request, CancellationToken cancellationToken)
@@ -63,7 +66,8 @@ public class CreateUserCommandHandler : ICommandHandler<CreateUserCommand, Resul
                 request.RoleId,
                 request.TenantId,
                 request.FirstName,
-                request.LastName);
+                request.LastName,
+                _timeProvider);
         }
         catch (DomainException ex)
         {

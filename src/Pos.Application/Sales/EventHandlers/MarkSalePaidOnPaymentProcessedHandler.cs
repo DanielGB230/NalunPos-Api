@@ -14,13 +14,16 @@ public sealed class MarkSalePaidOnPaymentProcessedHandler
 {
     private readonly ISaleRepository _saleRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly TimeProvider _timeProvider;
 
     public MarkSalePaidOnPaymentProcessedHandler(
         ISaleRepository saleRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        TimeProvider timeProvider)
     {
         _saleRepository = saleRepository ?? throw new ArgumentNullException(nameof(saleRepository));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public async Task HandleAsync(PaymentProcessedDomainEvent domainEvent, CancellationToken cancellationToken = default)
@@ -33,7 +36,7 @@ public sealed class MarkSalePaidOnPaymentProcessedHandler
             return;
         }
 
-        sale.MarkAsPaid();
+        sale.MarkAsPaid(_timeProvider);
 
         _saleRepository.Update(sale);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

@@ -37,6 +37,7 @@ public class CreatePurchaseOrderCommandHandler : ICommandHandler<CreatePurchaseO
     private readonly IProductRepository _productRepository;
     private readonly ICurrentTenantContext _tenantContext;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly TimeProvider _timeProvider;
 
     public CreatePurchaseOrderCommandHandler(
         IPurchaseOrderRepository orderRepository,
@@ -44,7 +45,8 @@ public class CreatePurchaseOrderCommandHandler : ICommandHandler<CreatePurchaseO
         IWarehouseRepository warehouseRepository,
         IProductRepository productRepository,
         ICurrentTenantContext tenantContext,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        TimeProvider timeProvider)
     {
         _orderRepository = orderRepository ?? throw new ArgumentNullException(nameof(orderRepository));
         _supplierRepository = supplierRepository ?? throw new ArgumentNullException(nameof(supplierRepository));
@@ -52,6 +54,7 @@ public class CreatePurchaseOrderCommandHandler : ICommandHandler<CreatePurchaseO
         _productRepository = productRepository ?? throw new ArgumentNullException(nameof(productRepository));
         _tenantContext = tenantContext ?? throw new ArgumentNullException(nameof(tenantContext));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public async Task<Result<PurchaseOrderDto>> HandleAsync(CreatePurchaseOrderCommand command, CancellationToken cancellationToken)
@@ -87,7 +90,7 @@ public class CreatePurchaseOrderCommandHandler : ICommandHandler<CreatePurchaseO
             var lines = command.Lines.Select(l =>
                 (l.ProductId, l.Quantity, Money.Create(l.UnitCostAmount, l.Currency)));
 
-            order = PurchaseOrder.Create(tenantId, command.SupplierId, command.WarehouseId, command.OrderNumber, lines, command.Notes);
+            order = PurchaseOrder.Create(tenantId, command.SupplierId, command.WarehouseId, command.OrderNumber, lines, command.Notes, _timeProvider);
         }
         catch (DomainException ex)
         {

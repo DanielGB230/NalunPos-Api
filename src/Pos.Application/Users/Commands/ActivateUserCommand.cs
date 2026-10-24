@@ -14,11 +14,13 @@ public class ActivateUserCommandHandler : ICommandHandler<ActivateUserCommand, R
 {
     private readonly IUserRepository _userRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly TimeProvider _timeProvider;
 
-    public ActivateUserCommandHandler(IUserRepository userRepository, IUnitOfWork unitOfWork)
+    public ActivateUserCommandHandler(IUserRepository userRepository, IUnitOfWork unitOfWork, TimeProvider timeProvider)
     {
         _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public async Task<Result<bool>> HandleAsync(ActivateUserCommand request, CancellationToken cancellationToken)
@@ -34,7 +36,7 @@ public class ActivateUserCommandHandler : ICommandHandler<ActivateUserCommand, R
             return Result.Fail<bool>(DomainError.Conflict("User.AlreadyActive", $"El usuario con ID '{request.Id}' ya se encuentra activo."));
         }
 
-        user.Activate();
+        user.Activate(_timeProvider);
         _userRepository.Update(user);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 

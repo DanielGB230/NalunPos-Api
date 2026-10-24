@@ -1,4 +1,4 @@
-﻿using Pos.Application.Tests.Support.Fakes;
+using Pos.Application.Tests.Support.Fakes;
 using Pos.Application.CashRegisters.Commands;
 using Pos.Domain.Common;
 using Pos.Domain.Entities;
@@ -17,14 +17,14 @@ public class OpenCashRegisterSessionCommandHandlerTests
 
     public OpenCashRegisterSessionCommandHandlerTests()
     {
-        _handler = new OpenCashRegisterSessionCommandHandler(_registerRepository, _unitOfWork);
+        _handler = new OpenCashRegisterSessionCommandHandler(_registerRepository, _unitOfWork, TimeProvider.System);
     }
 
     [Fact]
     public async Task HandleAsync_WithClosedRegister_ShouldOpenSessionAndReturnSuccess()
     {
         // Arrange
-        var register = CashRegister.Create(Guid.NewGuid(), Guid.NewGuid(), "Caja Principal 01", "POS-001");
+        var register = CashRegister.Create(Guid.NewGuid(), Guid.NewGuid(), "Caja Principal 01", "POS-001", TimeProvider.System);
         _registerRepository.Registers.Add(register);
 
         var command = new OpenCashRegisterSessionCommand(
@@ -50,11 +50,11 @@ public class OpenCashRegisterSessionCommandHandlerTests
     public async Task HandleAsync_WithAlreadyOpenSessionInRegister_ShouldReturnConflictResult()
     {
         // Arrange
-        var register = CashRegister.Create(Guid.NewGuid(), Guid.NewGuid(), "Caja Secundaria 02", "POS-002");
+        var register = CashRegister.Create(Guid.NewGuid(), Guid.NewGuid(), "Caja Secundaria 02", "POS-002", TimeProvider.System);
         _registerRepository.Registers.Add(register);
 
-        var activeSession = CashRegisterSession.Open(register.Id, Guid.NewGuid(), Money.Create(100m, "USD"), "Apertura previa");
-        register.SetCurrentSession(activeSession.Id);
+        var activeSession = CashRegisterSession.Open(register.Id, Guid.NewGuid(), Money.Create(100m, "USD"), "Apertura previa", TimeProvider.System);
+        register.SetCurrentSession(activeSession.Id, TimeProvider.System);
         _registerRepository.Sessions.Add(activeSession);
 
         var command = new OpenCashRegisterSessionCommand(
