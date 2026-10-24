@@ -39,16 +39,16 @@ public class SaleFullIntegrationTests
         var stockLevelRepo = sp.GetRequiredService<IStockLevelRepository>();
 
         var address = Address.Create("Av. Larco 456", "Lima", "15074", "PE");
-        var branch = Branch.Create(tenantId, $"Sucursal Sur_{Guid.NewGuid()}", address, "+511987654321");
+        var branch = Branch.Create(tenantId, $"Sucursal Sur_{Guid.NewGuid()}", address, "+511987654321", TimeProvider.System);
         dbContext.Branches.Add(branch);
 
-        var warehouse = Warehouse.Create(tenantId, branch.Id, "Almacén Principal", isDefault: true);
+        var warehouse = Warehouse.Create(tenantId, branch.Id, "Almacén Principal", isDefault: true, TimeProvider.System);
         dbContext.Warehouses.Add(warehouse);
 
-        var register = CashRegister.Create(tenantId, branch.Id, $"Caja Principal_{Guid.NewGuid()}", $"CR-{Guid.NewGuid().ToString()[..6]}");
+        var register = CashRegister.Create(tenantId, branch.Id, $"Caja Principal_{Guid.NewGuid()}", $"CR-{Guid.NewGuid().ToString()[..6]}", TimeProvider.System);
         dbContext.CashRegisters.Add(register);
 
-        var category = Category.Create(tenantId, $"Bebidas_{Guid.NewGuid()}", "Categoría de prueba");
+        var category = Category.Create(tenantId, $"Bebidas_{Guid.NewGuid()}", "Categoría de prueba", TimeProvider.System);
         dbContext.Categories.Add(category);
 
         var product = Product.Create(
@@ -57,8 +57,10 @@ public class SaleFullIntegrationTests
             Sku.Create($"SKU-{Guid.NewGuid().ToString()[..8]}"),
             Money.Create(4.00m, "USD"),
             category.Id,
+            description: null,
             barcode: Barcode.Create("7750001000111"),
-            cost: Money.Create(2.50m, "USD")
+            cost: Money.Create(2.50m, "USD"),
+            TimeProvider.System
         );
         dbContext.Products.Add(product);
         await dbContext.SaveChangesAsync();
@@ -138,16 +140,16 @@ public class SaleFullIntegrationTests
         var stockLevelRepo = sp.GetRequiredService<IStockLevelRepository>();
 
         var address = Address.Create("Calle Real 100", "Lima", "15000", "PE");
-        var branch = Branch.Create(tenantId, $"Sucursal Norte_{Guid.NewGuid()}", address, "+51111111111");
+        var branch = Branch.Create(tenantId, $"Sucursal Norte_{Guid.NewGuid()}", address, "+51111111111", TimeProvider.System);
         dbContext.Branches.Add(branch);
 
-        var warehouse = Warehouse.Create(tenantId, branch.Id, "Almacén Principal", isDefault: true);
+        var warehouse = Warehouse.Create(tenantId, branch.Id, "Almacén Principal", isDefault: true, timeProvider: TimeProvider.System);
         dbContext.Warehouses.Add(warehouse);
 
-        var register = CashRegister.Create(tenantId, branch.Id, $"Caja Express_{Guid.NewGuid()}", $"CR-{Guid.NewGuid().ToString()[..6]}");
+        var register = CashRegister.Create(tenantId, branch.Id, $"Caja Express_{Guid.NewGuid()}", $"CR-{Guid.NewGuid().ToString()[..6]}", TimeProvider.System);
         dbContext.CashRegisters.Add(register);
 
-        var category = Category.Create(tenantId, $"Snacks_{Guid.NewGuid()}", "Categoría snacks");
+        var category = Category.Create(tenantId, $"Snacks_{Guid.NewGuid()}", "Categoría snacks", TimeProvider.System);
         dbContext.Categories.Add(category);
 
         var product = Product.Create(
@@ -155,7 +157,8 @@ public class SaleFullIntegrationTests
             $"Papas Fritas 100g_{Guid.NewGuid()}",
             Sku.Create($"SKU-{Guid.NewGuid().ToString()[..8]}"),
             Money.Create(2.50m, "USD"),
-            category.Id
+            category.Id,
+            TimeProvider.System
         );
         dbContext.Products.Add(product);
         await dbContext.SaveChangesAsync();
@@ -210,16 +213,16 @@ public class SaleFullIntegrationTests
         var dbContext = sp.GetRequiredService<PosDbContext>();
 
         var address = Address.Create("Av. Marina 200", "Lima", "15088", "PE");
-        var branch = Branch.Create(tenantId, $"Sucursal Oeste_{Guid.NewGuid()}", address, "+51122222222");
+        var branch = Branch.Create(tenantId, $"Sucursal Oeste_{Guid.NewGuid()}", address, "+51122222222", TimeProvider.System);
         dbContext.Branches.Add(branch);
 
-        var warehouse = Warehouse.Create(tenantId, branch.Id, "Almacén Principal", isDefault: true);
+        var warehouse = Warehouse.Create(tenantId, branch.Id, "Almacén Principal", isDefault: true, timeProvider: TimeProvider.System);
         dbContext.Warehouses.Add(warehouse);
 
-        var register = CashRegister.Create(tenantId, branch.Id, $"Caja 03_{Guid.NewGuid()}", $"CR-{Guid.NewGuid().ToString()[..6]}");
+        var register = CashRegister.Create(tenantId, branch.Id, $"Caja 03_{Guid.NewGuid()}", $"CR-{Guid.NewGuid().ToString()[..6]}", TimeProvider.System);
         dbContext.CashRegisters.Add(register);
 
-        var category = Category.Create(tenantId, $"Limpieza_{Guid.NewGuid()}", "Categoría limpieza");
+        var category = Category.Create(tenantId, $"Limpieza_{Guid.NewGuid()}", "Categoría limpieza", TimeProvider.System);
         dbContext.Categories.Add(category);
 
         var product = Product.Create(
@@ -227,7 +230,8 @@ public class SaleFullIntegrationTests
             $"Detergente 1L_{Guid.NewGuid()}",
             Sku.Create($"SKU-{Guid.NewGuid().ToString()[..8]}"),
             Money.Create(5.00m, "USD"),
-            category.Id
+            category.Id,
+            TimeProvider.System
         );
         dbContext.Products.Add(product);
         await dbContext.SaveChangesAsync();
@@ -244,7 +248,7 @@ public class SaleFullIntegrationTests
 
         // Cerrar la sesión de caja
         var sessionEntity = await dbContext.CashRegisterSessions.FirstAsync(s => s.Id == closedSessionId);
-        sessionEntity.Close(Money.Create(50m, "USD"), Money.Create(50m, "USD"), "Cierre de prueba");
+        sessionEntity.Close(Money.Create(50m, "USD"), Money.Create(50m, "USD"), "Cierre de prueba", TimeProvider.System);
         await dbContext.SaveChangesAsync();
 
         string receiptNumber = $"V-CLOSED-{Guid.NewGuid().ToString()[..8]}";
@@ -288,15 +292,15 @@ public class SaleFullIntegrationTests
         var stockRepoA = scopeA.ServiceProvider.GetRequiredService<IStockLevelRepository>();
 
         var addrA = Address.Create("Av. A 123", "Lima", "15001", "PE");
-        var branchA = Branch.Create(tenantA, $"BranchA_{Guid.NewGuid()}", addrA, "+511111111");
+        var branchA = Branch.Create(tenantA, $"BranchA_{Guid.NewGuid()}", addrA, "+511111111", TimeProvider.System);
         dbA.Branches.Add(branchA);
-        var whA = Warehouse.Create(tenantA, branchA.Id, "Almacén A", isDefault: true);
+        var whA = Warehouse.Create(tenantA, branchA.Id, "Almacén A", isDefault: true, timeProvider: TimeProvider.System);
         dbA.Warehouses.Add(whA);
-        var regA = CashRegister.Create(tenantA, branchA.Id, "Caja A", $"CRA-{Guid.NewGuid().ToString()[..4]}");
+        var regA = CashRegister.Create(tenantA, branchA.Id, "Caja A", $"CRA-{Guid.NewGuid().ToString()[..4]}", TimeProvider.System);
         dbA.CashRegisters.Add(regA);
-        var catA = Category.Create(tenantA, $"CatA_{Guid.NewGuid()}", "Cat Tenant A");
+        var catA = Category.Create(tenantA, $"CatA_{Guid.NewGuid()}", "Cat Tenant A", TimeProvider.System);
         dbA.Categories.Add(catA);
-        var prodA = Product.Create(tenantA, $"ProdA_{Guid.NewGuid()}", Sku.Create($"SKUA-{Guid.NewGuid().ToString()[..6]}"), Money.Create(10m, "USD"), catA.Id);
+        var prodA = Product.Create(tenantA, $"ProdA_{Guid.NewGuid()}", Sku.Create($"SKUA-{Guid.NewGuid().ToString()[..6]}"), Money.Create(10m, "USD"), catA.Id, TimeProvider.System);
         dbA.Products.Add(prodA);
         await dbA.SaveChangesAsync();
         await dispatcherA.SendAsync(new RecordInventoryMovementCommand(prodA.Id, whA.Id, 10m, InventoryMovementType.Adjustment));
@@ -308,13 +312,13 @@ public class SaleFullIntegrationTests
         var stockRepoB = scopeB.ServiceProvider.GetRequiredService<IStockLevelRepository>();
 
         var addrB = Address.Create("Av. B 456", "Lima", "15002", "PE");
-        var branchB = Branch.Create(tenantB, $"BranchB_{Guid.NewGuid()}", addrB, "+512222222");
+        var branchB = Branch.Create(tenantB, $"BranchB_{Guid.NewGuid()}", addrB, "+512222222", TimeProvider.System);
         dbB.Branches.Add(branchB);
-        var whB = Warehouse.Create(tenantB, branchB.Id, "Almacén B", isDefault: true);
+        var whB = Warehouse.Create(tenantB, branchB.Id, "Almacén B", isDefault: true, timeProvider: TimeProvider.System);
         dbB.Warehouses.Add(whB);
-        var catB = Category.Create(tenantB, $"CatB_{Guid.NewGuid()}", "Cat Tenant B");
+        var catB = Category.Create(tenantB, $"CatB_{Guid.NewGuid()}", "Cat Tenant B", TimeProvider.System);
         dbB.Categories.Add(catB);
-        var prodB = Product.Create(tenantB, $"ProdB_{Guid.NewGuid()}", Sku.Create($"SKUB-{Guid.NewGuid().ToString()[..6]}"), Money.Create(20m, "USD"), catB.Id);
+        var prodB = Product.Create(tenantB, $"ProdB_{Guid.NewGuid()}", Sku.Create($"SKUB-{Guid.NewGuid().ToString()[..6]}"), Money.Create(20m, "USD"), catB.Id, TimeProvider.System);
         dbB.Products.Add(prodB);
         await dbB.SaveChangesAsync();
         await dispatcherB.SendAsync(new RecordInventoryMovementCommand(prodB.Id, whB.Id, 20m, InventoryMovementType.Adjustment));

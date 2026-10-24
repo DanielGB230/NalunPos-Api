@@ -17,10 +17,10 @@ public class JwtTokenGenerator : ITokenGenerator
     private readonly IConfiguration _configuration;
     private readonly TimeProvider _timeProvider;
 
-    public JwtTokenGenerator(IConfiguration configuration, TimeProvider? timeProvider = null)
+    public JwtTokenGenerator(IConfiguration configuration, TimeProvider timeProvider)
     {
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-        _timeProvider = timeProvider ?? TimeProvider.System;
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public string GenerateToken(User user)

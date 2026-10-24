@@ -10,11 +10,13 @@ public class DefaultRoleSeeder
 {
     private readonly PosDbContext _context;
     private readonly ILogger<DefaultRoleSeeder> _logger;
+    private readonly TimeProvider _timeProvider;
 
-    public DefaultRoleSeeder(PosDbContext context, ILogger<DefaultRoleSeeder> logger)
+    public DefaultRoleSeeder(PosDbContext context, ILogger<DefaultRoleSeeder> logger, TimeProvider timeProvider)
     {
-        _context = context;
-        _logger = logger;
+        _context = context ?? throw new ArgumentNullException(nameof(context));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public async Task SeedRolesForTenantAsync(Guid tenantId, CancellationToken cancellationToken = default)
@@ -105,7 +107,7 @@ public class DefaultRoleSeeder
         var role = await _context.Roles.FirstOrDefaultAsync(r => r.TenantId == tenantId && r.Name == name, cancellationToken);
         if (role == null)
         {
-            role = Role.Create(tenantId, name, description);
+            role = Role.Create(tenantId, name, description, _timeProvider);
             foreach (var perm in permissions)
             {
                 role.AddPermission(perm);

@@ -32,13 +32,13 @@ public class TenantIsolationIntegrationTests
         // Seed Tenant A Data
         using (var dbA = _fixture.CreateDbContext(tenantAId))
         {
-            var catA1 = Category.Create(tenantAId, "Cat A1 Active", "Active cat for Tenant A");
-            var catA2 = Category.Create(tenantAId, "Cat A2 Inactive", "Inactive cat for Tenant A");
-            catA2.Deactivate();
+            var catA1 = Category.Create(tenantAId, "Cat A1 Active", "Active cat for Tenant A", TimeProvider.System);
+            var catA2 = Category.Create(tenantAId, "Cat A2 Inactive", "Inactive cat for Tenant A", TimeProvider.System);
+            catA2.Deactivate(TimeProvider.System);
 
-            var prodA1 = Product.Create(tenantAId, "Prod A1 Active", Sku.Create("SKU-A1"), Money.Create(10.0m), catA1.Id);
-            var prodA2 = Product.Create(tenantAId, "Prod A2 Inactive", Sku.Create("SKU-A2"), Money.Create(20.0m), catA1.Id);
-            prodA2.Deactivate();
+            var prodA1 = Product.Create(tenantAId, "Prod A1 Active", Sku.Create("SKU-A1"), Money.Create(10.0m), catA1.Id, TimeProvider.System);
+            var prodA2 = Product.Create(tenantAId, "Prod A2 Inactive", Sku.Create("SKU-A2"), Money.Create(20.0m), catA1.Id, TimeProvider.System);
+            prodA2.Deactivate(TimeProvider.System);
 
             dbA.Categories.AddRange(catA1, catA2);
             dbA.Products.AddRange(prodA1, prodA2);
@@ -48,13 +48,13 @@ public class TenantIsolationIntegrationTests
         // Seed Tenant B Data
         using (var dbB = _fixture.CreateDbContext(tenantBId))
         {
-            var catB1 = Category.Create(tenantBId, "Cat B1 Active", "Active cat for Tenant B");
-            var catB2 = Category.Create(tenantBId, "Cat B2 Inactive", "Inactive cat for Tenant B");
-            catB2.Deactivate();
+            var catB1 = Category.Create(tenantBId, "Cat B1 Active", "Active cat for Tenant B", TimeProvider.System);
+            var catB2 = Category.Create(tenantBId, "Cat B2 Inactive", "Inactive cat for Tenant B", TimeProvider.System);
+            catB2.Deactivate(TimeProvider.System);
 
-            var prodB1 = Product.Create(tenantBId, "Prod B1 Active", Sku.Create("SKU-B1"), Money.Create(30.0m), catB1.Id);
-            var prodB2 = Product.Create(tenantBId, "Prod B2 Inactive", Sku.Create("SKU-B2"), Money.Create(40.0m), catB1.Id);
-            prodB2.Deactivate();
+            var prodB1 = Product.Create(tenantBId, "Prod B1 Active", Sku.Create("SKU-B1"), Money.Create(30.0m), catB1.Id, TimeProvider.System);
+            var prodB2 = Product.Create(tenantBId, "Prod B2 Inactive", Sku.Create("SKU-B2"), Money.Create(40.0m), catB1.Id, TimeProvider.System);
+            prodB2.Deactivate(TimeProvider.System);
 
             dbB.Categories.AddRange(catB1, catB2);
             dbB.Products.AddRange(prodB1, prodB2);
@@ -127,18 +127,18 @@ public class TenantIsolationIntegrationTests
         User userA, userB, superAdmin;
         using (var dbA = _fixture.CreateDbContext(tenantAId))
         {
-            roleA = Role.Create(tenantAId, "RoleA", "Role for Tenant A");
+            roleA = Role.Create(tenantAId, "RoleA", "Role for Tenant A", TimeProvider.System);
             dbA.Roles.Add(roleA);
-            userA = User.Create(new Email("userA@tenantA.com"), new PasswordHash("hashA"), roleA.Id, tenantAId, "User", "A");
+            userA = User.Create(new Email("userA@tenantA.com"), new PasswordHash("hashA"), roleA.Id, tenantAId, "User", "A", TimeProvider.System);
             dbA.Users.Add(userA);
             await dbA.SaveChangesAsync();
         }
 
         using (var dbB = _fixture.CreateDbContext(tenantBId))
         {
-            roleB = Role.Create(tenantBId, "RoleB", "Role for Tenant B");
+            roleB = Role.Create(tenantBId, "RoleB", "Role for Tenant B", TimeProvider.System);
             dbB.Roles.Add(roleB);
-            userB = User.Create(new Email("userB@tenantB.com"), new PasswordHash("hashB"), roleB.Id, tenantBId, "User", "B");
+            userB = User.Create(new Email("userB@tenantB.com"), new PasswordHash("hashB"), roleB.Id, tenantBId, "User", "B", TimeProvider.System);
             dbB.Users.Add(userB);
             await dbB.SaveChangesAsync();
         }
@@ -148,11 +148,11 @@ public class TenantIsolationIntegrationTests
             var superAdminRole = await dbSuper.Roles.IgnoreQueryFilters().FirstOrDefaultAsync(r => r.Id == Role.SuperAdminRoleId);
             if (superAdminRole == null)
             {
-                superAdminRole = Role.Create(Guid.Empty, "SuperAdminRole", "Super Admin Role");
+                superAdminRole = Role.CreatePlatformRole(Role.SuperAdminRoleId, Guid.Empty, "SuperAdminRole", "Super Admin Role", TimeProvider.System);
                 dbSuper.Roles.Add(superAdminRole);
             }
 
-            superAdmin = User.Create(new Email("superadmin@platform.com"), new PasswordHash("hashSuper"), superAdminRole.Id, null, "Super", "Admin");
+            superAdmin = User.Create(new Email("superadmin@platform.com"), new PasswordHash("hashSuper"), superAdminRole.Id, null, "Super", "Admin", TimeProvider.System);
             dbSuper.Users.Add(superAdmin);
             await dbSuper.SaveChangesAsync();
         }
@@ -189,7 +189,7 @@ public class TenantIsolationIntegrationTests
         Role roleB;
         using (var dbB = _fixture.CreateDbContext(tenantBId))
         {
-            roleB = Role.Create(tenantBId, "RoleInTenantB", "Desc B");
+            roleB = Role.Create(tenantBId, "RoleInTenantB", "Desc B", TimeProvider.System);
             dbB.Roles.Add(roleB);
             await dbB.SaveChangesAsync();
         }
@@ -203,7 +203,8 @@ public class TenantIsolationIntegrationTests
                 roleB.Id, // RoleId de Tenant B
                 tenantAId, // User de Tenant A
                 "Cross",
-                "User");
+                "User",
+                TimeProvider.System);
 
             dbA.Users.Add(userCross);
 
@@ -227,7 +228,8 @@ public class TenantIsolationIntegrationTests
                 randomInvalidRoleId, // Invalid RoleId for platform user!
                 tenantId: null,
                 "Invalid",
-                "PlatformUser");
+                "PlatformUser",
+                TimeProvider.System);
 
             dbSuper.Users.Add(invalidPlatformUser);
 
@@ -247,9 +249,9 @@ public class TenantIsolationIntegrationTests
         // Create user in Tenant A
         using (var dbA = _fixture.CreateDbContext(tenantAId))
         {
-            var roleA = Role.Create(tenantAId, "RoleA", "Desc A");
+            var roleA = Role.Create(tenantAId, "RoleA", "Desc A", TimeProvider.System);
             dbA.Roles.Add(roleA);
-            var userA = User.Create(new Email(sharedEmail), new PasswordHash("hashA"), roleA.Id, tenantAId, "User", "A");
+            var userA = User.Create(new Email(sharedEmail), new PasswordHash("hashA"), roleA.Id, tenantAId, "User", "A", TimeProvider.System);
             dbA.Users.Add(userA);
             await dbA.SaveChangesAsync();
         }
@@ -258,7 +260,7 @@ public class TenantIsolationIntegrationTests
         Role roleB;
         using (var dbB = _fixture.CreateDbContext(tenantBId))
         {
-            roleB = Role.Create(tenantBId, "RoleB", "Desc B");
+            roleB = Role.Create(tenantBId, "RoleB", "Desc B", TimeProvider.System);
             dbB.Roles.Add(roleB);
             await dbB.SaveChangesAsync();
         }
@@ -287,7 +289,7 @@ public class TenantIsolationIntegrationTests
 
         using (var db = _fixture.CreateDbContext(tenantId))
         {
-            var cat = Pos.Domain.Entities.Category.Create(tenantId, "Test Cat", "Desc");
+            var cat = Pos.Domain.Entities.Category.Create(tenantId, "Test Cat", "Desc", TimeProvider.System);
             db.Categories.Add(cat);
 
             string json = System.Text.Json.JsonSerializer.Serialize(dummyEvent);

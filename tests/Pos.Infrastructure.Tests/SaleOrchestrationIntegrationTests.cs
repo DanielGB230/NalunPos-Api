@@ -105,11 +105,11 @@ public class SaleOrchestrationIntegrationTests : IDisposable
 
         // 0. Sembrar Rol y Usuario para la autorización
         var logger = sp.GetRequiredService<ILogger<Pos.Infrastructure.Persistence.Seed.DefaultRoleSeeder>>();
-        var seeder = new Pos.Infrastructure.Persistence.Seed.DefaultRoleSeeder(dbContext, logger);
+        var seeder = new Pos.Infrastructure.Persistence.Seed.DefaultRoleSeeder(dbContext, logger, TimeProvider.System);
         await seeder.SeedRolesForTenantAsync(tenantId);
         var adminRole = dbContext.Roles.First(r => r.TenantId == tenantId && r.Name == "TenantAdmin");
 
-        var activeUser = User.Create(new Email("activeadmin@test.com"), new PasswordHash("passhash"), adminRole.Id, tenantId, "Active", "Admin");
+        var activeUser = User.Create(new Email("activeadmin@test.com"), new PasswordHash("passhash"), adminRole.Id, tenantId, "Active", "Admin", TimeProvider.System);
         dbContext.Users.Add(activeUser);
         await dbContext.SaveChangesAsync();
 
@@ -118,16 +118,16 @@ public class SaleOrchestrationIntegrationTests : IDisposable
 
         // 1. SEMILLA — Crear Sucursal y Almacén por defecto
         var address = Address.Create("Av. Central 123", "Lima", "15001", "PE");
-        var branch = Branch.Create(tenantId, "Sucursal Principal", address, "+511999888777");
+        var branch = Branch.Create(tenantId, "Sucursal Principal", address, "+511999888777", TimeProvider.System);
         dbContext.Branches.Add(branch);
 
-        var warehouse = Warehouse.Create(tenantId, branch.Id, "Almacén Principal", isDefault: true);
+        var warehouse = Warehouse.Create(tenantId, branch.Id, "Almacén Principal", isDefault: true, TimeProvider.System);
         dbContext.Warehouses.Add(warehouse);
 
-        var register = CashRegister.Create(tenantId, branch.Id, "Caja 01", "CR-001");
+        var register = CashRegister.Create(tenantId, branch.Id, "Caja 01", "CR-001", TimeProvider.System);
         dbContext.CashRegisters.Add(register);
 
-        var category = Category.Create(tenantId, "Bebidas", "Categoría de bebidas");
+        var category = Category.Create(tenantId, "Bebidas", "Categoría de bebidas", TimeProvider.System);
         dbContext.Categories.Add(category);
 
         var product = Product.Create(
@@ -136,8 +136,10 @@ public class SaleOrchestrationIntegrationTests : IDisposable
             Sku.Create("BEB-COL-500"),
             Money.Create(3.50m, "USD"),
             category.Id,
+            description: null,
             barcode: Barcode.Create("7751234567890"),
-            cost: Money.Create(2.00m, "USD")
+            cost: Money.Create(2.00m, "USD"),
+            TimeProvider.System
         );
         dbContext.Products.Add(product);
         await dbContext.SaveChangesAsync();

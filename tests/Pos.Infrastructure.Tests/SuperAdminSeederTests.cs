@@ -32,7 +32,7 @@ public class SuperAdminSeederTests
         });
 
         await using var context = new PosDbContext(options);
-        var seeder = new SuperAdminSeeder(context, _passwordHasher, settings, NullLogger<SuperAdminSeeder>.Instance);
+        var seeder = new SuperAdminSeeder(context, _passwordHasher, settings, NullLogger<SuperAdminSeeder>.Instance, TimeProvider.System);
 
         // Act
         await seeder.SeedAsync();
@@ -62,7 +62,7 @@ public class SuperAdminSeederTests
         });
 
         await using var context = new PosDbContext(options);
-        var seeder = new SuperAdminSeeder(context, _passwordHasher, settings, NullLogger<SuperAdminSeeder>.Instance);
+        var seeder = new SuperAdminSeeder(context, _passwordHasher, settings, NullLogger<SuperAdminSeeder>.Instance, TimeProvider.System);
 
         // Act — primera ejecución
         await seeder.SeedAsync();

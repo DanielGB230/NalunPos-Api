@@ -36,11 +36,11 @@ public class OutboxInterceptorIntegrationTests
         // 1. Arrange: Insert a user and role using a tenant context
         using (var dbSetup = _fixture.CreateDbContext(tenantId))
         {
-            role = Role.Create(tenantId, "InitialRole", "Desc");
-            newRole = Role.Create(tenantId, "NewRole", "Desc");
+            role = Role.Create(tenantId, "InitialRole", "Desc", TimeProvider.System);
+            newRole = Role.Create(tenantId, "NewRole", "Desc", TimeProvider.System);
             dbSetup.Roles.Add(role);
             dbSetup.Roles.Add(newRole);
-            user = User.Create(new Email("test@tenant.com"), new PasswordHash("hash"), role.Id, tenantId, "Test", "User");
+            user = User.Create(new Email("test@tenant.com"), new PasswordHash("hash"), role.Id, tenantId, "Test", "User", TimeProvider.System);
             dbSetup.Users.Add(user);
             await dbSetup.SaveChangesAsync();
         }
@@ -54,7 +54,7 @@ public class OutboxInterceptorIntegrationTests
         using (var dbSuperAdmin = _fixture.CreateDbContext(tenantId: null, isSuperAdmin: true))
         {
             dbSuperAdmin.Users.Attach(user);
-            user.ChangeRole(newRole.Id, tenantId);
+            user.ChangeRole(newRole.Id, tenantId, TimeProvider.System);
             await dbSuperAdmin.SaveChangesAsync();
         }
 
@@ -89,10 +89,10 @@ public class OutboxInterceptorIntegrationTests
         // 1. Arrange: Insert a user and role using a tenant context
         using (var dbSetup = _fixture.CreateDbContext(tenantId))
         {
-            initialRole = Role.Create(tenantId, "InitialRole", "Desc");
-            newRole = Role.Create(tenantId, "NewRole", "Desc");
+            initialRole = Role.Create(tenantId, "InitialRole", "Desc", TimeProvider.System);
+            newRole = Role.Create(tenantId, "NewRole", "Desc", TimeProvider.System);
             dbSetup.Roles.AddRange(initialRole, newRole);
-            user = User.Create(new Email("tenant@tenant.com"), new PasswordHash("hash"), initialRole.Id, tenantId, "Test", "User");
+            user = User.Create(new Email("tenant@tenant.com"), new PasswordHash("hash"), initialRole.Id, tenantId, "Test", "User", TimeProvider.System);
             dbSetup.Users.Add(user);
             await dbSetup.SaveChangesAsync();
         }
@@ -103,7 +103,7 @@ public class OutboxInterceptorIntegrationTests
         {
             var dbTenantContext = scope.ServiceProvider.GetRequiredService<PosDbContext>();
             var fetchedUser = await dbTenantContext.Users.FirstAsync(u => u.Id == user.Id);
-            fetchedUser.ChangeRole(newRole.Id, tenantId);
+            fetchedUser.ChangeRole(newRole.Id, tenantId, TimeProvider.System);
             await dbTenantContext.SaveChangesAsync();
         }
 
@@ -129,9 +129,9 @@ public class OutboxInterceptorIntegrationTests
         // 1. Arrange
         using (var dbSetup = _fixture.CreateDbContext(tenantId))
         {
-            role = Role.Create(tenantId, "InitialRole", "Desc");
+            role = Role.Create(tenantId, "InitialRole", "Desc", TimeProvider.System);
             dbSetup.Roles.Add(role);
-            user = User.Create(new Email("noop@tenant.com"), new PasswordHash("hash"), role.Id, tenantId, "Test", "User");
+            user = User.Create(new Email("noop@tenant.com"), new PasswordHash("hash"), role.Id, tenantId, "Test", "User", TimeProvider.System);
             dbSetup.Users.Add(user);
             await dbSetup.SaveChangesAsync();
             
@@ -143,7 +143,7 @@ public class OutboxInterceptorIntegrationTests
         using (var dbTenantContext = _fixture.CreateDbContext(tenantId))
         {
             var fetchedUser = await dbTenantContext.Users.FirstAsync(u => u.Id == user.Id);
-            fetchedUser.ChangeRole(role.Id, tenantId); // Should be No-Op
+            fetchedUser.ChangeRole(role.Id, tenantId, TimeProvider.System); // Should be No-Op
             await dbTenantContext.SaveChangesAsync();
         }
 
@@ -167,16 +167,16 @@ public class OutboxInterceptorIntegrationTests
         // 1. Arrange: Insert roles in Tenant A and Tenant B, and user in Tenant A
         using (var dbSetupA = _fixture.CreateDbContext(tenantA))
         {
-            roleA = Role.Create(tenantA, "RoleA", "Desc");
+            roleA = Role.Create(tenantA, "RoleA", "Desc", TimeProvider.System);
             dbSetupA.Roles.Add(roleA);
-            user = User.Create(new Email("move@tenant.com"), new PasswordHash("hash"), roleA.Id, tenantA, "Test", "User");
+            user = User.Create(new Email("move@tenant.com"), new PasswordHash("hash"), roleA.Id, tenantA, "Test", "User", TimeProvider.System);
             dbSetupA.Users.Add(user);
             await dbSetupA.SaveChangesAsync();
         }
 
         using (var dbSetupB = _fixture.CreateDbContext(tenantB))
         {
-            roleB = Role.Create(tenantB, "RoleB", "Desc");
+            roleB = Role.Create(tenantB, "RoleB", "Desc", TimeProvider.System);
             dbSetupB.Roles.Add(roleB);
             await dbSetupB.SaveChangesAsync();
         }
@@ -190,7 +190,7 @@ public class OutboxInterceptorIntegrationTests
         using (var dbSuperAdmin = _fixture.CreateDbContext(tenantId: null, isSuperAdmin: true))
         {
             dbSuperAdmin.Users.Attach(user);
-            user.ChangeRole(roleB.Id, tenantB);
+            user.ChangeRole(roleB.Id, tenantB, TimeProvider.System);
             await dbSuperAdmin.SaveChangesAsync();
         }
 
@@ -223,9 +223,9 @@ public class OutboxInterceptorIntegrationTests
         // 1. Arrange
         using (var dbSetup = _fixture.CreateDbContext(tenantId))
         {
-            var role = Role.Create(tenantId, "Role", "Desc");
+            var role = Role.Create(tenantId, "Role", "Desc", TimeProvider.System);
             dbSetup.Roles.Add(role);
-            user = User.Create(new Email("status@tenant.com"), new PasswordHash("hash"), role.Id, tenantId, "Test", "User");
+            user = User.Create(new Email("status@tenant.com"), new PasswordHash("hash"), role.Id, tenantId, "Test", "User", TimeProvider.System);
             dbSetup.Users.Add(user);
             await dbSetup.SaveChangesAsync();
         }
@@ -236,7 +236,7 @@ public class OutboxInterceptorIntegrationTests
         {
             var dbTenantContext = scope.ServiceProvider.GetRequiredService<PosDbContext>();
             var fetchedUser = await dbTenantContext.Users.FirstAsync(u => u.Id == user.Id);
-            fetchedUser.Deactivate();
+            fetchedUser.Deactivate(TimeProvider.System);
             await dbTenantContext.SaveChangesAsync();
         }
 
@@ -267,9 +267,9 @@ public class OutboxInterceptorIntegrationTests
         // 1. Arrange
         using (var dbSetup = _fixture.CreateDbContext(tenantId))
         {
-            var role = Role.Create(tenantId, "Role", "Desc");
+            var role = Role.Create(tenantId, "Role", "Desc", TimeProvider.System);
             dbSetup.Roles.Add(role);
-            user = User.Create(new Email("superstatus@tenant.com"), new PasswordHash("hash"), role.Id, tenantId, "Test", "User");
+            user = User.Create(new Email("superstatus@tenant.com"), new PasswordHash("hash"), role.Id, tenantId, "Test", "User", TimeProvider.System);
             dbSetup.Users.Add(user);
             await dbSetup.SaveChangesAsync();
         }
@@ -283,7 +283,7 @@ public class OutboxInterceptorIntegrationTests
         using (var dbSuperAdmin = _fixture.CreateDbContext(tenantId: null, isSuperAdmin: true))
         {
             dbSuperAdmin.Users.Attach(user);
-            user.Deactivate();
+            user.Deactivate(TimeProvider.System);
             await dbSuperAdmin.SaveChangesAsync();
         }
 
@@ -309,9 +309,9 @@ public class OutboxInterceptorIntegrationTests
     public async Task SuperAdminContext_ActivatingAndSuspendingTenants_ShouldGenerateOutboxMessagesWithRespectiveTenantIds()
     {
         // 1. Arrange
-        var tenant1 = Tenant.Create("Tenant 1", "TAX1");
-        var tenant2 = Tenant.Create("Tenant 2", "TAX2");
-        tenant2.Activate(); // For suspending later
+        var tenant1 = Tenant.Create("Tenant 1", "TAX1", TimeProvider.System);
+        var tenant2 = Tenant.Create("Tenant 2", "TAX2", TimeProvider.System);
+        tenant2.Activate(TimeProvider.System); // For suspending later
         tenant1.ClearDomainEvents();
         tenant2.ClearDomainEvents();
 
@@ -328,8 +328,8 @@ public class OutboxInterceptorIntegrationTests
             tenant1 = await dbSuperAdmin.Tenants.FirstAsync(t => t.Id == tenant1.Id);
             tenant2 = await dbSuperAdmin.Tenants.FirstAsync(t => t.Id == tenant2.Id);
 
-            tenant1.Activate();
-            tenant2.Suspend();
+            tenant1.Activate(TimeProvider.System);
+            tenant2.Suspend(TimeProvider.System);
 
             await dbSuperAdmin.SaveChangesAsync();
         }
@@ -366,7 +366,7 @@ public class OutboxInterceptorIntegrationTests
     {
         // 1. Arrange
         Guid wrongContextTenantId = Guid.NewGuid();
-        var targetTenant = Tenant.Create("Target Tenant", "TAX-TARGET");
+        var targetTenant = Tenant.Create("Target Tenant", "TAX-TARGET", TimeProvider.System);
         targetTenant.ClearDomainEvents();
 
         using (var dbSetup = _fixture.CreateDbContext(tenantId: null, isSuperAdmin: true))
@@ -380,7 +380,7 @@ public class OutboxInterceptorIntegrationTests
         using (var dbAdmin = _fixture.CreateDbContext(tenantId: wrongContextTenantId, isSuperAdmin: true))
         {
             targetTenant = await dbAdmin.Tenants.FirstAsync(t => t.Id == targetTenant.Id);
-            targetTenant.Activate();
+            targetTenant.Activate(TimeProvider.System);
             await dbAdmin.SaveChangesAsync();
         }
 
@@ -407,10 +407,10 @@ public class OutboxInterceptorIntegrationTests
         // 1. Arrange
         using (var dbSetup = _fixture.CreateDbContext(tenantId))
         {
-            var category = Category.Create(tenantId, "Electrónica", "Desc");
+            var category = Category.Create(tenantId, "Electrónica", "Desc", TimeProvider.System);
             dbSetup.Categories.Add(category);
             
-            product = Product.Create(tenantId, "Producto", Sku.Create("SKU-1"), Money.Create(10, "USD"), category.Id);
+            product = Product.Create(tenantId, "Producto", Sku.Create("SKU-1"), Money.Create(10, "USD"), category.Id, TimeProvider.System);
             dbSetup.Products.Add(product);
             
             await dbSetup.SaveChangesAsync();
@@ -420,7 +420,7 @@ public class OutboxInterceptorIntegrationTests
         using (var dbTenantContext = _fixture.CreateDbContext(tenantId))
         {
             var fetchedProduct = await dbTenantContext.Products.FirstAsync(p => p.Id == product.Id);
-            fetchedProduct.Deactivate();
+            fetchedProduct.Deactivate(TimeProvider.System);
             await dbTenantContext.SaveChangesAsync();
         }
 
@@ -451,10 +451,10 @@ public class OutboxInterceptorIntegrationTests
         // 1. Arrange
         using (var dbSetup = _fixture.CreateDbContext(tenantId))
         {
-            var category = Category.Create(tenantId, "Electrónica", "Desc");
+            var category = Category.Create(tenantId, "Electrónica", "Desc", TimeProvider.System);
             dbSetup.Categories.Add(category);
             
-            product = Product.Create(tenantId, "Producto Admin", Sku.Create("SKU-ADM"), Money.Create(10, "USD"), category.Id);
+            product = Product.Create(tenantId, "Producto Admin", Sku.Create("SKU-ADM"), Money.Create(10, "USD"), category.Id, TimeProvider.System);
             dbSetup.Products.Add(product);
             
             await dbSetup.SaveChangesAsync();
@@ -469,7 +469,7 @@ public class OutboxInterceptorIntegrationTests
         using (var dbSuperAdmin = _fixture.CreateDbContext(tenantId: null, isSuperAdmin: true))
         {
             dbSuperAdmin.Products.Attach(product);
-            product.Deactivate();
+            product.Deactivate(TimeProvider.System);
             await dbSuperAdmin.SaveChangesAsync();
         }
 
@@ -502,24 +502,24 @@ public class OutboxInterceptorIntegrationTests
         // 1. Arrange
         using (var dbSetup = _fixture.CreateDbContext(tenantId))
         {
-            var category = Category.Create(tenantId, "Categoria", "Desc");
+            var category = Category.Create(tenantId, "Categoria", "Desc", TimeProvider.System);
             dbSetup.Categories.Add(category);
-            var product = Product.Create(tenantId, "Product", Sku.Create("SKU-1"), Money.Create(10, "USD"), category.Id);
+            var product = Product.Create(tenantId, "Product", Sku.Create("SKU-1"), Money.Create(10, "USD"), category.Id, TimeProvider.System);
             dbSetup.Products.Add(product);
             
-            var supplier = Supplier.Create(tenantId, "Supplier", TaxId.Create("TAX-001"), Address.Create("Street", "City", "Zip", "Country"), "Contact", "email@sup.com", "123456");
+            var supplier = Supplier.Create(tenantId, "Supplier", TaxId.Create("TAX-001"), Address.Create("Street", "City", "Zip", "Country"), "Contact", "email@sup.com", "123456", TimeProvider.System);
             dbSetup.Suppliers.Add(supplier);
             supplierId = supplier.Id;
 
-            var branch = Branch.Create(tenantId, "Branch", Address.Create("Street", "City", "Zip", "Country"));
+            var branch = Branch.Create(tenantId, "Branch", Address.Create("Street", "City", "Zip", "Country"), TimeProvider.System);
             dbSetup.Branches.Add(branch);
 
-            var warehouse = Warehouse.Create(tenantId, branch.Id, "Warehouse");
+            var warehouse = Warehouse.Create(tenantId, branch.Id, "Warehouse", isDefault: false, timeProvider: TimeProvider.System);
             dbSetup.Warehouses.Add(warehouse);
             warehouseId = warehouse.Id;
             
             var lines = new List<(Guid, decimal, Money)> { (product.Id, 5m, Money.Create(10, "USD")) };
-            order = PurchaseOrder.Create(tenantId, supplierId, warehouseId, "PO-001", lines);
+            order = PurchaseOrder.Create(tenantId, supplierId, warehouseId, "PO-001", lines, TimeProvider.System);
             dbSetup.PurchaseOrders.Add(order);
             
             await dbSetup.SaveChangesAsync();
@@ -529,7 +529,7 @@ public class OutboxInterceptorIntegrationTests
         using (var dbTenantContext = _fixture.CreateDbContext(tenantId))
         {
             var fetchedOrder = await dbTenantContext.PurchaseOrders.FirstAsync(p => p.Id == order.Id);
-            fetchedOrder.Send();
+            fetchedOrder.Send(TimeProvider.System);
             await dbTenantContext.SaveChangesAsync();
         }
 
@@ -564,24 +564,24 @@ public class OutboxInterceptorIntegrationTests
         // 1. Arrange
         using (var dbSetup = _fixture.CreateDbContext(tenantId))
         {
-            var category = Category.Create(tenantId, "Categoria Admin", "Desc");
+            var category = Category.Create(tenantId, "Categoria Admin", "Desc", TimeProvider.System);
             dbSetup.Categories.Add(category);
-            var product = Product.Create(tenantId, "Product Admin PO", Sku.Create("SKU-ADM-PO"), Money.Create(10, "USD"), category.Id);
+            var product = Product.Create(tenantId, "Product Admin PO", Sku.Create("SKU-ADM-PO"), Money.Create(10, "USD"), category.Id, TimeProvider.System);
             dbSetup.Products.Add(product);
             
-            var supplier = Supplier.Create(tenantId, "Supplier Admin", TaxId.Create("TAX-002"), Address.Create("Street", "City", "Zip", "Country"), "Contact", "email2@sup.com", "123456");
+            var supplier = Supplier.Create(tenantId, "Supplier Admin", TaxId.Create("TAX-002"), Address.Create("Street", "City", "Zip", "Country"), "Contact", "email2@sup.com", "123456", TimeProvider.System);
             dbSetup.Suppliers.Add(supplier);
             supplierId = supplier.Id;
 
-            var branch = Branch.Create(tenantId, "Branch Admin", Address.Create("Street", "City", "Zip", "Country"));
+            var branch = Branch.Create(tenantId, "Branch Admin", Address.Create("Street", "City", "Zip", "Country"), TimeProvider.System);
             dbSetup.Branches.Add(branch);
 
-            var warehouse = Warehouse.Create(tenantId, branch.Id, "Warehouse Admin");
+            var warehouse = Warehouse.Create(tenantId, branch.Id, "Warehouse Admin", isDefault: false, timeProvider: TimeProvider.System);
             dbSetup.Warehouses.Add(warehouse);
             warehouseId = warehouse.Id;
             
             var lines = new List<(Guid, decimal, Money)> { (product.Id, 5m, Money.Create(10, "USD")) };
-            order = PurchaseOrder.Create(tenantId, supplierId, warehouseId, "PO-ADM", lines);
+            order = PurchaseOrder.Create(tenantId, supplierId, warehouseId, "PO-ADM", lines, TimeProvider.System);
             dbSetup.PurchaseOrders.Add(order);
             
             await dbSetup.SaveChangesAsync();
@@ -597,7 +597,7 @@ public class OutboxInterceptorIntegrationTests
         using (var dbSuperAdmin = _fixture.CreateDbContext(tenantId: null, isSuperAdmin: true))
         {
             dbSuperAdmin.PurchaseOrders.Attach(order);
-            order.Send();
+            order.Send(TimeProvider.System);
             await dbSuperAdmin.SaveChangesAsync();
         }
 
@@ -632,24 +632,24 @@ public class OutboxInterceptorIntegrationTests
         // 1. Arrange
         using (var dbSetup = _fixture.CreateDbContext(tenantId))
         {
-            var category = Category.Create(tenantId, "Categoria Cancel", "Desc");
+            var category = Category.Create(tenantId, "Categoria Cancel", "Desc", TimeProvider.System);
             dbSetup.Categories.Add(category);
-            var product = Product.Create(tenantId, "Product Cancel", Sku.Create("SKU-CANCEL"), Money.Create(10, "USD"), category.Id);
+            var product = Product.Create(tenantId, "Product Cancel", Sku.Create("SKU-CANCEL"), Money.Create(10, "USD"), category.Id, TimeProvider.System);
             dbSetup.Products.Add(product);
             
-            var supplier = Supplier.Create(tenantId, "Supplier Cancel", TaxId.Create("TAX-CANCEL"), Address.Create("Street", "City", "Zip", "Country"), "Contact", "email3@sup.com", "123456");
+            var supplier = Supplier.Create(tenantId, "Supplier Cancel", TaxId.Create("TAX-CANCEL"), Address.Create("Street", "City", "Zip", "Country"), "Contact", "email3@sup.com", "123456", TimeProvider.System);
             dbSetup.Suppliers.Add(supplier);
             supplierId = supplier.Id;
 
-            var branch = Branch.Create(tenantId, "Branch Cancel", Address.Create("Street", "City", "Zip", "Country"));
+            var branch = Branch.Create(tenantId, "Branch Cancel", Address.Create("Street", "City", "Zip", "Country"), TimeProvider.System);
             dbSetup.Branches.Add(branch);
 
-            var warehouse = Warehouse.Create(tenantId, branch.Id, "Warehouse Cancel");
+            var warehouse = Warehouse.Create(tenantId, branch.Id, "Warehouse Cancel", isDefault: false, timeProvider: TimeProvider.System);
             dbSetup.Warehouses.Add(warehouse);
             warehouseId = warehouse.Id;
             
             var lines = new List<(Guid, decimal, Money)> { (product.Id, 5m, Money.Create(10, "USD")) };
-            order = PurchaseOrder.Create(tenantId, supplierId, warehouseId, "PO-CANCEL", lines);
+            order = PurchaseOrder.Create(tenantId, supplierId, warehouseId, "PO-CANCEL", lines, TimeProvider.System);
             dbSetup.PurchaseOrders.Add(order);
             
             await dbSetup.SaveChangesAsync();
@@ -659,7 +659,7 @@ public class OutboxInterceptorIntegrationTests
         using (var dbTenantContext = _fixture.CreateDbContext(tenantId))
         {
             var fetchedOrder = await dbTenantContext.PurchaseOrders.FirstAsync(p => p.Id == order.Id);
-            fetchedOrder.Cancel();
+            fetchedOrder.Cancel(TimeProvider.System);
             await dbTenantContext.SaveChangesAsync();
         }
 
@@ -695,25 +695,25 @@ public class OutboxInterceptorIntegrationTests
         // 1. Arrange
         using (var dbSetup = _fixture.CreateDbContext(tenantId))
         {
-            var category = Category.Create(tenantId, "Categoria Cancel Admin", "Desc");
+            var category = Category.Create(tenantId, "Categoria Cancel Admin", "Desc", TimeProvider.System);
             dbSetup.Categories.Add(category);
-            var product = Product.Create(tenantId, "Product Cancel Admin", Sku.Create("SKU-CANCEL-ADM"), Money.Create(10, "USD"), category.Id);
+            var product = Product.Create(tenantId, "Product Cancel Admin", Sku.Create("SKU-CANCEL-ADM"), Money.Create(10, "USD"), category.Id, TimeProvider.System);
             dbSetup.Products.Add(product);
             
-            var supplier = Supplier.Create(tenantId, "Supplier Cancel Admin", TaxId.Create("TAX-CANCEL2"), Address.Create("Street", "City", "Zip", "Country"), "Contact", "email4@sup.com", "123456");
+            var supplier = Supplier.Create(tenantId, "Supplier Cancel Admin", TaxId.Create("TAX-CANCEL2"), Address.Create("Street", "City", "Zip", "Country"), "Contact", "email4@sup.com", "123456", TimeProvider.System);
             dbSetup.Suppliers.Add(supplier);
             supplierId = supplier.Id;
 
-            var branch = Branch.Create(tenantId, "Branch Cancel Admin", Address.Create("Street", "City", "Zip", "Country"));
+            var branch = Branch.Create(tenantId, "Branch Cancel Admin", Address.Create("Street", "City", "Zip", "Country"), TimeProvider.System);
             dbSetup.Branches.Add(branch);
 
-            var warehouse = Warehouse.Create(tenantId, branch.Id, "Warehouse Cancel Admin");
+            var warehouse = Warehouse.Create(tenantId, branch.Id, "Warehouse Cancel Admin", isDefault: false, timeProvider: TimeProvider.System);
             dbSetup.Warehouses.Add(warehouse);
             warehouseId = warehouse.Id;
             
             var lines = new List<(Guid, decimal, Money)> { (product.Id, 5m, Money.Create(10, "USD")) };
-            order = PurchaseOrder.Create(tenantId, supplierId, warehouseId, "PO-CANCEL-ADM", lines);
-            order.Send(); // Emits Sent event
+            order = PurchaseOrder.Create(tenantId, supplierId, warehouseId, "PO-CANCEL-ADM", lines, TimeProvider.System);
+            order.Send(TimeProvider.System); // Emits Sent event
             dbSetup.PurchaseOrders.Add(order);
             
             await dbSetup.SaveChangesAsync();
@@ -728,7 +728,7 @@ public class OutboxInterceptorIntegrationTests
         using (var dbSuperAdmin = _fixture.CreateDbContext(tenantId: null, isSuperAdmin: true))
         {
             dbSuperAdmin.PurchaseOrders.Attach(order);
-            order.Cancel();
+            order.Cancel(TimeProvider.System);
             await dbSuperAdmin.SaveChangesAsync();
         }
 
@@ -762,9 +762,9 @@ public class OutboxInterceptorIntegrationTests
 
         using (var dbSetup = _fixture.CreateDbContext(tenantId))
         {
-            role = Role.Create(tenantId, "Role Dup", "Desc");
+            role = Role.Create(tenantId, "Role Dup", "Desc", TimeProvider.System);
             dbSetup.Roles.Add(role);
-            user = User.Create(new Email("dup@test.com"), new PasswordHash("hash"), role.Id, tenantId, "T", "T");
+            user = User.Create(new Email("dup@test.com"), new PasswordHash("hash"), role.Id, tenantId, "T", "T", TimeProvider.System);
             dbSetup.Users.Add(user);
             await dbSetup.SaveChangesAsync();
         }
@@ -774,7 +774,7 @@ public class OutboxInterceptorIntegrationTests
             user = await db.Users.FirstAsync(u => u.Id == user.Id);
             
             // Act
-            user.Deactivate();
+            user.Deactivate(TimeProvider.System);
             await db.SaveChangesAsync(); // First save
             await db.SaveChangesAsync(); // Second save (should be no-op, domain events cleared)
         }
@@ -799,9 +799,9 @@ public class OutboxInterceptorIntegrationTests
 
         using (var dbSetup = _fixture.CreateDbContext(tenantId))
         {
-            role = Role.Create(tenantId, "Role Succ", "Desc");
+            role = Role.Create(tenantId, "Role Succ", "Desc", TimeProvider.System);
             dbSetup.Roles.Add(role);
-            user = User.Create(new Email("succ@test.com"), new PasswordHash("hash"), role.Id, tenantId, "T", "T");
+            user = User.Create(new Email("succ@test.com"), new PasswordHash("hash"), role.Id, tenantId, "T", "T", TimeProvider.System);
             dbSetup.Users.Add(user);
             await dbSetup.SaveChangesAsync();
         }
@@ -811,11 +811,11 @@ public class OutboxInterceptorIntegrationTests
             user = await db.Users.FirstAsync(u => u.Id == user.Id);
             
             // Act 1
-            user.Deactivate();
+            user.Deactivate(TimeProvider.System);
             await db.SaveChangesAsync();
             
             // Act 2
-            user.Activate();
+            user.Activate(TimeProvider.System);
             await db.SaveChangesAsync();
         }
 
@@ -846,9 +846,9 @@ public class OutboxInterceptorIntegrationTests
 
         using (var dbSetup = _fixture.CreateDbContext(tenantId))
         {
-            role = Role.Create(tenantId, "Role Ctx", "Desc");
+            role = Role.Create(tenantId, "Role Ctx", "Desc", TimeProvider.System);
             dbSetup.Roles.Add(role);
-            user = User.Create(new Email("ctx@test.com"), new PasswordHash("hash"), role.Id, tenantId, "T", "T");
+            user = User.Create(new Email("ctx@test.com"), new PasswordHash("hash"), role.Id, tenantId, "T", "T", TimeProvider.System);
             dbSetup.Users.Add(user);
             await dbSetup.SaveChangesAsync();
         }
@@ -856,14 +856,14 @@ public class OutboxInterceptorIntegrationTests
         using (var db1 = _fixture.CreateDbContext(tenantId))
         {
             var u1 = await db1.Users.FirstAsync(u => u.Id == user.Id);
-            u1.Deactivate();
+            u1.Deactivate(TimeProvider.System);
             await db1.SaveChangesAsync();
         }
 
         using (var db2 = _fixture.CreateDbContext(tenantId))
         {
             var u2 = await db2.Users.FirstAsync(u => u.Id == user.Id);
-            u2.Activate();
+            u2.Activate(TimeProvider.System);
             await db2.SaveChangesAsync();
         }
 
@@ -885,9 +885,9 @@ public class OutboxInterceptorIntegrationTests
 
         using (var dbSetup = _fixture.CreateDbContext(tenantId))
         {
-            role = Role.Create(tenantId, "Role Fail", "Desc");
+            role = Role.Create(tenantId, "Role Fail", "Desc", TimeProvider.System);
             dbSetup.Roles.Add(role);
-            var user1 = User.Create(new Email("fail@dup.com"), new PasswordHash("hash"), role.Id, tenantId, "U1", "L1");
+            var user1 = User.Create(new Email("fail@dup.com"), new PasswordHash("hash"), role.Id, tenantId, "U1", "L1", TimeProvider.System);
             dbSetup.Users.Add(user1);
             await dbSetup.SaveChangesAsync();
         }
@@ -895,9 +895,9 @@ public class OutboxInterceptorIntegrationTests
         using (var dbFail = _fixture.CreateDbContext(tenantId))
         {
             // Intentamos crear un usuario con el mismo email para forzar error de BD (Unique Index)
-            var user2 = User.Create(new Email("fail@dup.com"), new PasswordHash("hash"), role.Id, tenantId, "U2", "L2");
+            var user2 = User.Create(new Email("fail@dup.com"), new PasswordHash("hash"), role.Id, tenantId, "U2", "L2", TimeProvider.System);
             // Mutamos para generar un evento
-            user2.Deactivate();
+            user2.Deactivate(TimeProvider.System);
             dbFail.Users.Add(user2);
 
             // Act
@@ -925,9 +925,9 @@ public class OutboxInterceptorIntegrationTests
 
         using (var dbSetup = _fixture.CreateDbContext(tenantId))
         {
-            role = Role.Create(tenantId, "Role RetryFail", "Desc");
+            role = Role.Create(tenantId, "Role RetryFail", "Desc", TimeProvider.System);
             dbSetup.Roles.Add(role);
-            var existingUser = User.Create(new Email("existing@retry.com"), new PasswordHash("hash"), role.Id, tenantId, "U1", "L1");
+            var existingUser = User.Create(new Email("existing@retry.com"), new PasswordHash("hash"), role.Id, tenantId, "U1", "L1", TimeProvider.System);
             dbSetup.Users.Add(existingUser);
             await dbSetup.SaveChangesAsync();
         }
@@ -935,10 +935,10 @@ public class OutboxInterceptorIntegrationTests
         using (var db = _fixture.CreateDbContext(tenantId))
         {
             var fetchedUser = await db.Users.FirstAsync(u => u.Email == "existing@retry.com");
-            fetchedUser.Deactivate(); // Genera 1 DomainEvent
+            fetchedUser.Deactivate(TimeProvider.System); // Genera 1 DomainEvent
 
             // Añadir entidad inválida que causará fallo por duplicado de email en SaveChanges
-            var invalidUser = User.Create(new Email("existing@retry.com"), new PasswordHash("hash"), role.Id, tenantId, "U2", "L2");
+            var invalidUser = User.Create(new Email("existing@retry.com"), new PasswordHash("hash"), role.Id, tenantId, "U2", "L2", TimeProvider.System);
             db.Users.Add(invalidUser);
 
             // Intentar primer SaveChanges (debe fallar y disparar SaveChangesFailed, desenganchando los OutboxMessage staged)

@@ -39,7 +39,7 @@ public class TenantFullE2EIntegrationTests
         configuration["JwtSettings:Issuer"] = "NalunPosApi";
         configuration["JwtSettings:Audience"] = "NalunPosClients";
 
-        var tokenGenerator = new JwtTokenGenerator(configuration);
+        var tokenGenerator = new JwtTokenGenerator(configuration, TimeProvider.System);
 
         string timestamp = DateTime.UtcNow.ToString("HHmmssff", System.Globalization.CultureInfo.InvariantCulture);
         string companyName = $"Empresa E2E Real {timestamp} S.A.C.";

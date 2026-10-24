@@ -142,6 +142,7 @@ public class MsSqlTestFixture : IAsyncLifetime, IDisposable
 
         services.AddScoped<ICurrentTenantContext>(_ => tenantContext);
         services.AddScoped<ICurrentUserService>(_ => currentUserService);
+        services.AddSingleton(TimeProvider.System);
         services.AddScoped<AuditSaveChangesInterceptor>();
         services.AddScoped<InsertOutboxMessagesInterceptor>();
         services.AddScoped<TenantSaveChangesInterceptor>();
@@ -245,7 +246,7 @@ public class MsSqlTestFixture : IAsyncLifetime, IDisposable
                 if (adminRole == null)
                 {
                     var logger = scope.ServiceProvider.GetRequiredService<ILogger<Pos.Infrastructure.Persistence.Seed.DefaultRoleSeeder>>();
-                    var seeder = new Pos.Infrastructure.Persistence.Seed.DefaultRoleSeeder(db, logger);
+                    var seeder = new Pos.Infrastructure.Persistence.Seed.DefaultRoleSeeder(db, logger, TimeProvider.System);
                     seeder.SeedRolesForTenantAsync(tenantId.Value).GetAwaiter().GetResult();
                     adminRole = db.Roles.First(r => r.TenantId == tenantId.Value && r.Name == "TenantAdmin");
                 }
@@ -254,7 +255,7 @@ public class MsSqlTestFixture : IAsyncLifetime, IDisposable
                 var defaultUser = db.Users.FirstOrDefault(u => u.TenantId == tenantId.Value && u.Email == defaultEmail);
                 if (defaultUser == null)
                 {
-                    defaultUser = User.Create(defaultEmail, new PasswordHash("hashedpass"), adminRole.Id, tenantId.Value, "Tenant", "Admin");
+                    defaultUser = User.Create(defaultEmail, new PasswordHash("hashedpass"), adminRole.Id, tenantId.Value, "Tenant", "Admin", TimeProvider.System);
                     db.Users.Add(defaultUser);
                     db.SaveChangesAsync().GetAwaiter().GetResult();
                 }
@@ -276,13 +277,7 @@ public class MsSqlTestFixture : IAsyncLifetime, IDisposable
 
                 if (superAdminRole == null)
                 {
-                    var constructor = typeof(Role).GetConstructor(
-                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance,
-                        null,
-                        new[] { typeof(Guid), typeof(Guid), typeof(string), typeof(string), typeof(IEnumerable<string>) },
-                        null);
-
-                    superAdminRole = (Role)constructor!.Invoke(new object[] { Role.SuperAdminRoleId, Guid.Empty, "SuperAdminRole", "Super Admin Role", permissions });
+                    superAdminRole = Role.CreatePlatformRole(Role.SuperAdminRoleId, Guid.Empty, "SuperAdminRole", "Super Admin Role", permissions, TimeProvider.System);
                     db.Roles.Add(superAdminRole);
                     db.SaveChangesAsync().GetAwaiter().GetResult();
                 }
@@ -299,7 +294,7 @@ public class MsSqlTestFixture : IAsyncLifetime, IDisposable
                 var superAdminUser = db.Users.IgnoreQueryFilters().FirstOrDefault(u => u.Email == superAdminEmail);
                 if (superAdminUser == null)
                 {
-                    superAdminUser = User.Create(superAdminEmail, new PasswordHash("hashedpass"), Role.SuperAdminRoleId, null, "Super", "Admin");
+                    superAdminUser = User.Create(superAdminEmail, new PasswordHash("hashedpass"), Role.SuperAdminRoleId, null, "Super", "Admin", TimeProvider.System);
                     db.Users.Add(superAdminUser);
                     db.SaveChangesAsync().GetAwaiter().GetResult();
                 }

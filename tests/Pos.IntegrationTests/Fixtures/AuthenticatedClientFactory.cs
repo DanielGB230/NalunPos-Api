@@ -34,7 +34,7 @@ public static class AuthenticatedClientFactory
         IEnumerable<string>? permissions = null)
     {
         var config = factory.Services.GetRequiredService<IConfiguration>();
-        var generator = new JwtTokenGenerator(config);
+        var generator = new JwtTokenGenerator(config, TimeProvider.System);
 
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<PosDbContext>();
@@ -44,7 +44,8 @@ public static class AuthenticatedClientFactory
             effectiveTenantId,
             $"TestRole_{Guid.NewGuid():N}"[..16],
             "Test Role",
-            permissions);
+            permissions,
+            TimeProvider.System);
 
         db.Roles.Add(role);
         Guid roleId = role.Id;
@@ -57,7 +58,8 @@ public static class AuthenticatedClientFactory
             roleId,
             tenantId,
             "Test",
-            "User");
+            "User",
+            TimeProvider.System);
 
         db.Users.Add(user);
         await db.SaveChangesAsync();

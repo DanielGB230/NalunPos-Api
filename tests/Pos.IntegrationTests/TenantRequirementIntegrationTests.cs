@@ -169,11 +169,12 @@ public class TenantRequirementIntegrationTests
         {
             var tenant = Tenant.Create(
                 $"Tenant Corp {validTenantId.ToString()[..8]}",
-                $"208{DateTime.UtcNow:HHmmssff}");
+                $"208{DateTime.UtcNow:HHmmssff}",
+                TimeProvider.System);
             typeof(Tenant).GetProperty("Id")!.SetValue(tenant, validTenantId);
 
             var address = Address.Create("Av. Principal 123", "Lima", "15001", "PE");
-            var branch = Branch.Create(validTenantId, "Sucursal Central", address, "+51999999999");
+            var branch = Branch.Create(validTenantId, "Sucursal Central", address, "+51999999999", TimeProvider.System);
 
             seedDb.Tenants.Add(tenant);
             seedDb.Branches.Add(branch);

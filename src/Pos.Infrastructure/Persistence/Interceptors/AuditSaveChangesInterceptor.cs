@@ -16,13 +16,16 @@ public class AuditSaveChangesInterceptor : SaveChangesInterceptor
 {
     private readonly ICurrentUserService _currentUserService;
     private readonly ICurrentTenantContext _tenantContext;
+    private readonly TimeProvider _timeProvider;
 
     public AuditSaveChangesInterceptor(
         ICurrentUserService currentUserService,
-        ICurrentTenantContext tenantContext)
+        ICurrentTenantContext tenantContext,
+        TimeProvider timeProvider)
     {
         _currentUserService = currentUserService ?? throw new ArgumentNullException(nameof(currentUserService));
         _tenantContext = tenantContext ?? throw new ArgumentNullException(nameof(tenantContext));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
@@ -112,7 +115,8 @@ public class AuditSaveChangesInterceptor : SaveChangesInterceptor
                 action,
                 currentUserId,
                 oldValuesJson,
-                newValuesJson
+                newValuesJson,
+                _timeProvider
             );
 
             auditEntries.Add(auditLog);

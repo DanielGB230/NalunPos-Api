@@ -46,7 +46,8 @@ public class InvoiceReconciliationIntegrationTests
                 InvoiceDocumentType.Invoice,
                 $"F001-{Guid.NewGuid().ToString()[..6]}",
                 TaxId.Create("20123456789"),
-                Money.Create(100m));
+                Money.Create(100m),
+                TimeProvider.System);
             SetPrivateProperty(invoice1A, nameof(Invoice.IssueDateUtc), tenMinutesAgo);
 
             var invoice1B = Invoice.Create(
@@ -55,7 +56,8 @@ public class InvoiceReconciliationIntegrationTests
                 InvoiceDocumentType.Invoice,
                 $"F001-{Guid.NewGuid().ToString()[..6]}",
                 TaxId.Create("20123456789"),
-                Money.Create(200m));
+                Money.Create(200m),
+                TimeProvider.System);
             SetPrivateProperty(invoice1B, nameof(Invoice.IssueDateUtc), fifteenMinutesAgo);
             SetPrivateProperty(invoice1B, nameof(Invoice.ReconciliationAttempts), 5); // Max attempts alcanzado
 
@@ -72,7 +74,8 @@ public class InvoiceReconciliationIntegrationTests
                 InvoiceDocumentType.Receipt,
                 $"B001-{Guid.NewGuid().ToString()[..6]}",
                 TaxId.Create("10123456789"),
-                Money.Create(50m));
+                Money.Create(50m),
+                TimeProvider.System);
             SetPrivateProperty(invoice2A, nameof(Invoice.IssueDateUtc), tenMinutesAgo);
 
             var invoice2B = Invoice.Create(
@@ -81,7 +84,8 @@ public class InvoiceReconciliationIntegrationTests
                 InvoiceDocumentType.Receipt,
                 $"B001-{Guid.NewGuid().ToString()[..6]}",
                 TaxId.Create("10123456789"),
-                Money.Create(75m));
+                Money.Create(75m),
+                TimeProvider.System);
             SetPrivateProperty(invoice2B, nameof(Invoice.IssueDateUtc), twoMinutesAgo); // No vencida aún (< 5m)
 
             db2.Invoices.AddRange(invoice2A, invoice2B);
@@ -162,7 +166,8 @@ public class InvoiceReconciliationIntegrationTests
                     InvoiceDocumentType.Invoice,
                     $"F002-{Guid.NewGuid().ToString()[..6]}",
                     TaxId.Create("20123456789"),
-                    Money.Create(10m * (i + 1)));
+                    Money.Create(10m * (i + 1)),
+                    TimeProvider.System);
                 SetPrivateProperty(invoice, nameof(Invoice.IssueDateUtc), tenMinutesAgo);
                 db.Invoices.Add(invoice);
             }
@@ -220,7 +225,8 @@ public class InvoiceReconciliationIntegrationTests
                     InvoiceDocumentType.Invoice,
                     $"F060-{Guid.NewGuid().ToString()[..6]}",
                     TaxId.Create("20123456789"),
-                    Money.Create(15m + i));
+                    Money.Create(15m + i),
+                    TimeProvider.System);
                 SetPrivateProperty(exhaustedInv, nameof(Invoice.IssueDateUtc), thirtyMinutesAgo);
                 SetPrivateProperty(exhaustedInv, nameof(Invoice.ReconciliationAttempts), 5); // Agotada
                 db.Invoices.Add(exhaustedInv);
@@ -236,7 +242,8 @@ public class InvoiceReconciliationIntegrationTests
                     InvoiceDocumentType.Invoice,
                     $"F003-{Guid.NewGuid().ToString()[..6]}",
                     TaxId.Create("20123456789"),
-                    Money.Create(100m + i));
+                    Money.Create(100m + i),
+                    TimeProvider.System);
                 SetPrivateProperty(dueInv, nameof(Invoice.IssueDateUtc), tenMinutesAgo);
                 SetPrivateProperty(dueInv, nameof(Invoice.ReconciliationAttempts), 0); // Nueva
                 db.Invoices.Add(dueInv);

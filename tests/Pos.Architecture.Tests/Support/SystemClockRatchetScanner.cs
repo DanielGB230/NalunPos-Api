@@ -13,8 +13,7 @@ public sealed record SystemClockFinding(
 public static class SystemClockRatchetScanner
 {
     /// <summary>
-    /// Lista ratchet explícita de archivos de entidad en Pos.Domain que tienen pendiente su migración
-    /// a TimeProvider (se migrarán en los pasos 7.2, 7.3 y 7.4).
+    /// Lista ratchet explícita sellada en 0 (ADR 0018).
     /// </summary>
     public static readonly HashSet<string> AllowedDomainEntitiesRatchet = new(StringComparer.OrdinalIgnoreCase);
 
@@ -22,6 +21,7 @@ public static class SystemClockRatchetScanner
     {
         var findings = new List<SystemClockFinding>();
 
+        // 1. Prohibir DateTime.UtcNow/Now, DateTimeOffset.UtcNow/Now y TimeProvider.System en MemberAccess
         var memberAccessExpressions = root.DescendantNodes().OfType<MemberAccessExpressionSyntax>();
 
         foreach (var memberAccess in memberAccessExpressions)
@@ -41,6 +41,20 @@ public static class SystemClockRatchetScanner
             {
                 isProhibitedAccess = true;
             }
+            else if ((expressionText == "TimeProvider" || expressionText == "System.TimeProvider") &&
+                     nameText == "System")
+            {
+                // Permitido exclusivamente en el registro de DI en DependencyInjection.cs de Pos.Application y Pos.Infrastructure
+                var normalizedPath = filePath.Replace('\\', '/');
+                bool isAuthorizedDiRegistration =
+                    normalizedPath.EndsWith("src/Pos.Application/DependencyInjection.cs", StringComparison.OrdinalIgnoreCase) ||
+                    normalizedPath.EndsWith("src/Pos.Infrastructure/DependencyInjection.cs", StringComparison.OrdinalIgnoreCase);
+
+                if (!isAuthorizedDiRegistration)
+                {
+                    isProhibitedAccess = true;
+                }
+            }
 
             if (isProhibitedAccess)
             {
@@ -49,6 +63,40 @@ public static class SystemClockRatchetScanner
                 string snippet = memberAccess.ToString();
 
                 findings.Add(new SystemClockFinding(filePath, $"{expressionText}.{nameText}", lineNumber, snippet));
+            }
+        }
+
+        // 2. Prohibir parámetros TimeProvider? con valor por defecto (= null o = default)
+        var parameters = root.DescendantNodes().OfType<ParameterSyntax>();
+        foreach (var parameter in parameters)
+        {
+            var typeText = parameter.Type?.ToString();
+            if (typeText != null &&
+                (typeText == "TimeProvider?" ||
+                 typeText == "System.TimeProvider?" ||
+                 typeText == "Nullable<TimeProvider>" ||
+                 typeText == "Nullable<System.TimeProvider>"))
+            {
+                if (parameter.Default != null)
+                {
+                    var lineSpan = parameter.GetLocation().GetLineSpan();
+                    int lineNumber = lineSpan.StartLinePosition.Line + 1;
+                    findings.Add(new SystemClockFinding(filePath, "TimeProvider? with default value", lineNumber, parameter.ToString()));
+                }
+            }
+        }
+
+        // 3. Prohibir fallbacks silenciosos con operador de coalescencia nula: ?? TimeProvider.System
+        var binaryExpressions = root.DescendantNodes().OfType<BinaryExpressionSyntax>()
+            .Where(b => b.IsKind(SyntaxKind.CoalesceExpression));
+        foreach (var binary in binaryExpressions)
+        {
+            var rightText = binary.Right.ToString();
+            if (rightText == "TimeProvider.System" || rightText == "System.TimeProvider.System")
+            {
+                var lineSpan = binary.GetLocation().GetLineSpan();
+                int lineNumber = lineSpan.StartLinePosition.Line + 1;
+                findings.Add(new SystemClockFinding(filePath, "?? TimeProvider.System", lineNumber, binary.ToString()));
             }
         }
 

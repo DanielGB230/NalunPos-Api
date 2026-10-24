@@ -32,9 +32,9 @@ public class RowLevelSecurityIntegrationTests
 
         using (var dbA = _fixture.CreateDbContext(tenantAId))
         {
-            var catA = Category.Create(tenantAId, "Cat RLS A", "Desc A");
-            var prodA1 = Product.Create(tenantAId, "Product RLS A1", Sku.Create("SKU-RLS-A1"), Money.Create(15.0m), catA.Id);
-            var prodA2 = Product.Create(tenantAId, "Product RLS A2", Sku.Create("SKU-RLS-A2"), Money.Create(25.0m), catA.Id);
+            var catA = Category.Create(tenantAId, "Cat RLS A", "Desc A", TimeProvider.System);
+            var prodA1 = Product.Create(tenantAId, "Product RLS A1", Sku.Create("SKU-RLS-A1"), Money.Create(15.0m), catA.Id, TimeProvider.System);
+            var prodA2 = Product.Create(tenantAId, "Product RLS A2", Sku.Create("SKU-RLS-A2"), Money.Create(25.0m), catA.Id, TimeProvider.System);
 
             dbA.Categories.Add(catA);
             dbA.Products.AddRange(prodA1, prodA2);
@@ -43,8 +43,8 @@ public class RowLevelSecurityIntegrationTests
 
         using (var dbB = _fixture.CreateDbContext(tenantBId))
         {
-            var catB = Category.Create(tenantBId, "Cat RLS B", "Desc B");
-            var prodB1 = Product.Create(tenantBId, "Product RLS B1", Sku.Create("SKU-RLS-B1"), Money.Create(35.0m), catB.Id);
+            var catB = Category.Create(tenantBId, "Cat RLS B", "Desc B", TimeProvider.System);
+            var prodB1 = Product.Create(tenantBId, "Product RLS B1", Sku.Create("SKU-RLS-B1"), Money.Create(35.0m), catB.Id, TimeProvider.System);
 
             dbB.Categories.Add(catB);
             dbB.Products.Add(prodB1);
@@ -91,8 +91,8 @@ public class RowLevelSecurityIntegrationTests
         Guid tenantAId = Guid.NewGuid();
         using (var dbA = _fixture.CreateDbContext(tenantAId))
         {
-            var catA = Category.Create(tenantAId, "Cat FailClosed RLS", "Desc");
-            var prodA = Product.Create(tenantAId, "Product FailClosed RLS", Sku.Create("SKU-RLS-FC"), Money.Create(10.0m), catA.Id);
+            var catA = Category.Create(tenantAId, "Cat FailClosed RLS", "Desc", TimeProvider.System);
+            var prodA = Product.Create(tenantAId, "Product FailClosed RLS", Sku.Create("SKU-RLS-FC"), Money.Create(10.0m), catA.Id, TimeProvider.System);
 
             dbA.Categories.Add(catA);
             dbA.Products.Add(prodA);
@@ -129,7 +129,7 @@ public class RowLevelSecurityIntegrationTests
         Role roleB;
         using (var dbB = _fixture.CreateDbContext(tenantBId))
         {
-            roleB = Role.Create(tenantBId, "RoleInTenantBForRLSTest", "Desc");
+            roleB = Role.Create(tenantBId, "RoleInTenantBForRLSTest", "Desc", TimeProvider.System);
             dbB.Roles.Add(roleB);
             await dbB.SaveChangesAsync();
         }
@@ -137,7 +137,7 @@ public class RowLevelSecurityIntegrationTests
         // 2. Act & Assert 1: Context scoped to Tenant A attempts to INSERT a Role for Tenant B
         using (var dbContextA = _fixture.CreateDbContext(tenantAId))
         {
-            var crossRole = Role.Create(tenantBId, "ForbiddenCrossRole", "Desc");
+            var crossRole = Role.Create(tenantBId, "ForbiddenCrossRole", "Desc", TimeProvider.System);
             dbContextA.Roles.Add(crossRole);
 
             var exRole = await Assert.ThrowsAsync<DbUpdateException>(async () => await dbContextA.SaveChangesAsync());
@@ -153,7 +153,8 @@ public class RowLevelSecurityIntegrationTests
                 roleB.Id,
                 tenantBId, // Tenant B ID inside Tenant A context!
                 "Cross",
-                "User");
+                "User",
+                TimeProvider.System);
 
             dbContextA.Users.Add(crossUser);
 
@@ -169,8 +170,8 @@ public class RowLevelSecurityIntegrationTests
         Guid tenantAId = Guid.NewGuid();
         using (var dbA = _fixture.CreateDbContext(tenantAId))
         {
-            var catA = Category.Create(tenantAId, "Cat Pool Leak Test", "Desc");
-            var prodA = Product.Create(tenantAId, "Product Pool Leak Test", Sku.Create("SKU-POOL-1"), Money.Create(50.0m), catA.Id);
+            var catA = Category.Create(tenantAId, "Cat Pool Leak Test", "Desc", TimeProvider.System);
+            var prodA = Product.Create(tenantAId, "Product Pool Leak Test", Sku.Create("SKU-POOL-1"), Money.Create(50.0m), catA.Id, TimeProvider.System);
 
             dbA.Categories.Add(catA);
             dbA.Products.Add(prodA);
@@ -217,9 +218,9 @@ public class RowLevelSecurityIntegrationTests
         Product prodA;
         using (var dbA = _fixture.CreateDbContext(tenantAId))
         {
-            roleA = Role.Create(tenantAId, "Role Global Lookup Test", "Desc");
-            var catA = Category.Create(tenantAId, "Cat Global Lookup Test", "Desc");
-            prodA = Product.Create(tenantAId, "Product Global Lookup Test", Sku.Create("SKU-GLOBAL-1"), Money.Create(100.0m), catA.Id);
+            roleA = Role.Create(tenantAId, "Role Global Lookup Test", "Desc", TimeProvider.System);
+            var catA = Category.Create(tenantAId, "Cat Global Lookup Test", "Desc", TimeProvider.System);
+            prodA = Product.Create(tenantAId, "Product Global Lookup Test", Sku.Create("SKU-GLOBAL-1"), Money.Create(100.0m), catA.Id, TimeProvider.System);
 
             dbA.Roles.Add(roleA);
             dbA.Categories.Add(catA);
@@ -298,11 +299,11 @@ public class RowLevelSecurityIntegrationTests
         using var db = _fixture.CreateDbContext(tenantId);
 
         var address = Address.Create("Av. Central 123", "Lima", "15001", "PE");
-        var branch = Branch.Create(tenantId, $"Branch_{Guid.NewGuid()}", address, "123456789");
+        var branch = Branch.Create(tenantId, $"Branch_{Guid.NewGuid()}", address, "123456789", TimeProvider.System);
         db.Branches.Add(branch);
         await db.SaveChangesAsync();
 
-        var cashRegister = CashRegister.Create(tenantId, branch.Id, $"CR_{Guid.NewGuid()}", "CR-101");
+        var cashRegister = CashRegister.Create(tenantId, branch.Id, $"CR_{Guid.NewGuid()}", "CR-101", TimeProvider.System);
         db.CashRegisters.Add(cashRegister);
         await db.SaveChangesAsync();
 

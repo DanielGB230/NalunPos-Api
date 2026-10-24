@@ -29,7 +29,8 @@ public class UserPersistenceTests
             roleId: Role.SuperAdminRoleId,
             tenantId: null,
             firstName: "Admin",
-            lastName: "Enterprise"
+            lastName: "Enterprise",
+            timeProvider: TimeProvider.System
         );
 
         // Act - Guardar en base de datos

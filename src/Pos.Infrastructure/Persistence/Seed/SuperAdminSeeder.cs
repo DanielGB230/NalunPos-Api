@@ -20,17 +20,20 @@ public sealed partial class SuperAdminSeeder
     private readonly IPasswordHasher _passwordHasher;
     private readonly SuperAdminSettings _settings;
     private readonly ILogger<SuperAdminSeeder> _logger;
+    private readonly TimeProvider _timeProvider;
 
     public SuperAdminSeeder(
         PosDbContext context,
         IPasswordHasher passwordHasher,
         IOptions<SuperAdminSettings> settings,
-        ILogger<SuperAdminSeeder> logger)
+        ILogger<SuperAdminSeeder> logger,
+        TimeProvider timeProvider)
     {
         _context = context ?? throw new ArgumentNullException(nameof(context));
         _passwordHasher = passwordHasher ?? throw new ArgumentNullException(nameof(passwordHasher));
         _settings = settings?.Value ?? throw new ArgumentNullException(nameof(settings));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public async Task SeedAsync(CancellationToken cancellationToken = default)
@@ -51,7 +54,7 @@ public sealed partial class SuperAdminSeeder
                 if (!matchesCurrentSecret)
                 {
                     string newHash = _passwordHasher.HashPassword(rawPassword);
-                    existingSuperAdmin.UpdatePassword(new PasswordHash(newHash));
+                    existingSuperAdmin.UpdatePassword(new PasswordHash(newHash), _timeProvider);
                     await _context.SaveChangesAsync(cancellationToken);
                     LogSuperAdminPasswordUpdated(_logger, existingSuperAdmin.Email.Value);
                 }
@@ -90,7 +93,8 @@ public sealed partial class SuperAdminSeeder
                 Role.SuperAdminRoleId,
                 PlatformScope.TenantId,
                 "SuperAdmin",
-                "Administrador Global del Sistema");
+                "Administrador Global del Sistema",
+                _timeProvider);
             await _context.Set<Role>().AddAsync(superAdminRole, cancellationToken);
         }
 
@@ -100,7 +104,8 @@ public sealed partial class SuperAdminSeeder
             roleId:       Role.SuperAdminRoleId,
             tenantId:     null,
             firstName:    firstName,
-            lastName:     lastName);
+            lastName:     lastName,
+            timeProvider: _timeProvider);
 
         await _context.Users.AddAsync(superAdmin, cancellationToken);
         await _context.SaveChangesAsync(cancellationToken);

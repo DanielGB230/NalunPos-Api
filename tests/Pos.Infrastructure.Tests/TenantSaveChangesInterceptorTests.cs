@@ -52,7 +52,7 @@ public class TenantSaveChangesInterceptorTests
             typeof(Branch),
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance,
             null,
-            [Guid.NewGuid(), Guid.NewGuid(), "Sucursal Test", Address.Create("Calle 1", "Ciudad", "12345", "Peru"), ""],
+            [Guid.NewGuid(), Guid.NewGuid(), "Sucursal Test", Address.Create("Calle 1", "Ciudad", "12345", "Peru"), "", TimeProvider.System],
             null)!;
         typeof(Branch).GetProperty("TenantId")!.SetValue(branch, Guid.Empty);
 
@@ -79,8 +79,8 @@ public class TenantSaveChangesInterceptorTests
         await using var context = new PosDbContext(options, tenantInterceptor: interceptor);
 
         // Role y AuditLog son IPlatformScopedEntity y pueden existir con TenantId == Guid.Empty
-        var role = Role.Create(Guid.Empty, "SuperAdminRoleTest", "Rol de plataforma");
-        var auditLog = AuditLog.Create(Guid.Empty, "Tenants", "rec-1", AuditAction.Insert);
+        var role = Role.Create(Guid.Empty, "SuperAdminRoleTest", "Rol de plataforma", TimeProvider.System);
+        var auditLog = AuditLog.Create(Guid.Empty, "Tenants", "rec-1", AuditAction.Insert, null, null, null, TimeProvider.System);
 
         await context.Roles.AddAsync(role);
         await context.AuditLogs.AddAsync(auditLog);
@@ -119,7 +119,7 @@ public class TenantSaveChangesInterceptorTests
             typeof(Branch),
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance,
             null,
-            [Guid.NewGuid(), Guid.NewGuid(), "Sucursal AutoTenant", Address.Create("Calle 2", "Ciudad", "12345", "Peru"), ""],
+            [Guid.NewGuid(), Guid.NewGuid(), "Sucursal AutoTenant", Address.Create("Calle 2", "Ciudad", "12345", "Peru"), "", TimeProvider.System],
             null)!;
         typeof(Branch).GetProperty("TenantId")!.SetValue(branch, Guid.Empty);
 
