@@ -113,6 +113,7 @@ public static class DependencyInjection
         services.AddScoped<IAuthUserLookup, AuthUserLookup>();
         services.AddScoped<IPendingInvoicePlatformReader, Pos.Infrastructure.Persistence.PendingInvoicePlatformReader>();
         services.AddScoped<IOutboxPlatformReader, Pos.Infrastructure.Persistence.OutboxPlatformReader>();
+        services.AddScoped<IOutboxLeaseClaimer, Pos.Infrastructure.Persistence.Outbox.SqlOutboxLeaseClaimer>();
         services.AddScoped<Pos.Application.Common.Authorization.ICurrentUserPermissions, CurrentUserPermissions>();
 
         // ── Seeders ───────────────────────────────────────────────────────────

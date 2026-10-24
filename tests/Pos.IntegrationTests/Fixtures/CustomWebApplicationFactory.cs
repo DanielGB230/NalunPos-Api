@@ -57,11 +57,18 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
 
         builder.ConfigureTestServices(services =>
         {
-            var descriptor = services.FirstOrDefault(d =>
+            var outboxDescriptor = services.FirstOrDefault(d =>
                 d.ImplementationType == typeof(Pos.Api.BackgroundServices.OutboxProcessorBackgroundService));
-            if (descriptor != null)
+            if (outboxDescriptor != null)
             {
-                services.Remove(descriptor);
+                services.Remove(outboxDescriptor);
+            }
+
+            var reconciliationDescriptor = services.FirstOrDefault(d =>
+                d.ImplementationType == typeof(Pos.Api.BackgroundServices.InvoiceReconciliationBackgroundService));
+            if (reconciliationDescriptor != null)
+            {
+                services.Remove(reconciliationDescriptor);
             }
 
             services.RemoveAll<DbContextOptions<PosDbContext>>();

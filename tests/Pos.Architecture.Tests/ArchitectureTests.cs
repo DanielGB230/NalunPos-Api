@@ -1284,6 +1284,49 @@ public class ArchitectureTests
             $"Violaciones de activación de ISystemExecutionScope detectadas:\n{string.Join("\n", violations)}"
         );
     }
+
+    [Fact]
+    public void NoProductionCode_UsesDatabaseProviderConditionals()
+    {
+        var srcDir = Path.Combine(SolutionDirectory.Root, "src");
+        Assert.True(Directory.Exists(srcDir), $"El directorio de código fuente '{srcDir}' no existe.");
+
+        var csFiles = Directory.GetFiles(srcDir, "*.cs", SearchOption.AllDirectories);
+        Assert.NotEmpty(csFiles);
+
+        // Prohibir IsRelational, IsInMemory, ProviderName y Database.Is* en src/ (lista cerrada vacía - H11)
+        var providerRegex = new System.Text.RegularExpressions.Regex(
+            @"\b(IsRelational|IsInMemory|ProviderName|Database\.Is\w+)\b",
+            System.Text.RegularExpressions.RegexOptions.Compiled);
+
+        var violations = new List<string>();
+
+        foreach (var file in csFiles)
+        {
+            var lines = File.ReadAllLines(file);
+            for (int i = 0; i < lines.Length; i++)
+            {
+                var line = lines[i];
+                var trimmed = line.Trim();
+                if (trimmed.StartsWith("//", StringComparison.Ordinal) ||
+                    trimmed.StartsWith("/*", StringComparison.Ordinal) ||
+                    trimmed.StartsWith('*'))
+                {
+                    continue;
+                }
+
+                if (providerRegex.IsMatch(line))
+                {
+                    var relativePath = Path.GetRelativePath(SolutionDirectory.Root, file);
+                    violations.Add($"{relativePath} (Línea {i + 1}): {trimmed}");
+                }
+            }
+        }
+
+        Assert.True(
+            violations.Count == 0,
+            $"Se detectaron condicionales o referencias a proveedores de base de datos en código de producción (src/):\n{string.Join("\n", violations)}");
+    }
 }
 
 

@@ -216,6 +216,7 @@ public class MsSqlTestFixture : IAsyncLifetime, IDisposable
         services.AddScoped<IElectronicInvoicingService, DummyElectronicInvoicingService>();
         services.AddScoped<IPendingInvoicePlatformReader, Pos.Infrastructure.Persistence.PendingInvoicePlatformReader>();
         services.AddScoped<IOutboxPlatformReader, Pos.Infrastructure.Persistence.OutboxPlatformReader>();
+        services.AddScoped<IOutboxLeaseClaimer, Pos.Infrastructure.Persistence.Outbox.SqlOutboxLeaseClaimer>();
         services.AddScoped<IAgentActionRecordRepository, AgentActionRecordRepository>();
         services.AddScoped<ISystemNotificationRepository, SystemNotificationRepository>();
 

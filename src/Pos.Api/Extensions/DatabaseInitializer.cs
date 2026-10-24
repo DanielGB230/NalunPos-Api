@@ -17,11 +17,11 @@ public static class DatabaseInitializer
         var env = services.GetRequiredService<IHostEnvironment>();
         var dbContext = services.GetRequiredService<PosDbContext>();
 
-        // Solo ejecutar migraciones automáticas en Development si la base de datos es relacional (SQL Server).
+        // Solo ejecutar migraciones automáticas en entorno Development.
         // En Producción y Staging, las migraciones se ejecutan de manera aislada y pre-despliegue
         // mediante 'dotnet ef migrations bundle' en el pipeline CI/CD (ADR 0019), nunca de forma concurrente
         // desde réplicas de la aplicación.
-        if (env.IsDevelopment() && dbContext.Database.IsRelational())
+        if (env.IsDevelopment())
         {
             logger.LogInformation("Aplicando migraciones relacionales pendientes en entorno Development...");
             await dbContext.Database.MigrateAsync(cancellationToken);

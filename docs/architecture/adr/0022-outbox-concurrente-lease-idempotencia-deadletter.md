@@ -20,9 +20,10 @@
 
 ## 2. Decisión Arquitectónica
 
-### A. Reclamo Concurrente mediante Lease Atómico en SQL Server
+### A. Reclamo Concurrente mediante Lease Atómico y Puerto IOutboxLeaseClaimer
 - Se incorporan los campos `LockedUntilUtc` (timestamp) y `LockedBy` (identificador de instancia/réplica) en la entidad `OutboxMessage`, indexados junto a `ProcessedOnUtc`, `IsDeadLetter` y `NextRetryAtUtc`.
-- Cada instancia de `OutboxProcessorBackgroundService` reclama su lote de mensajes de forma atómica utilizando la técnica de colas transaccionales de SQL Server:
+- Se aísla el reclamo de lease y la persistencia del outbox tras el puerto `IOutboxLeaseClaimer` (`Pos.Application.Common.Interfaces`) y su implementación `SqlOutboxLeaseClaimer` (`Pos.Infrastructure.Persistence.Outbox`), erradicando cualquier SQL crudo y eliminando condicionales de proveedor de base de datos (`IsRelational`) del background worker `OutboxProcessorBackgroundService` (patrón H11).
+- La implementación SQL Server reclama el lote de mensajes de forma atómica utilizando la técnica de colas transaccionales de SQL Server:
   ```sql
   WITH cte AS (
       SELECT TOP (@BatchSize) *
