@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [ "main" ]
 
+env:
+  MSSQL_SA_PASSWORD: "Your_password123!"
+  SQL_CONNECTION_STRING_INTEGRATION: "Server=localhost,1433;Database=PosIntegrationTests;User Id=sa;Password=Your_password123!;TrustServerCertificate=True;"
+  SQL_CONNECTION_STRING_INFRASTRUCTURE: "Server=localhost,1433;Database=PosInfrastructureTests;User Id=sa;Password=Your_password123!;TrustServerCertificate=True;"
+
 jobs:
   build-and-test:
     name: Build & Test (.NET 10 & SQL Server 2022)
@@ -48,21 +53,19 @@ jobs:
 
       - name: Verify No Pending Model Changes (dotnet ef migrations has-pending-model-changes)
         env:
-          EFCORE_CONNECTIONSTRING: "Server=localhost,1433;Database=PosIntegrationTests;User Id=sa;Password=Your_password123!;TrustServerCertificate=True;"
+          EFCORE_CONNECTIONSTRING: ${{ env.SQL_CONNECTION_STRING_INTEGRATION }}
         run: dotnet ef migrations has-pending-model-changes --project src/Pos.Infrastructure --startup-project src/Pos.Api --configuration Release --no-build
 
       - name: Generate Migrations Bundle (dotnet ef migrations bundle)
         env:
-          EFCORE_CONNECTIONSTRING: "Server=localhost,1433;Database=PosIntegrationTests;User Id=sa;Password=Your_password123!;TrustServerCertificate=True;"
+          EFCORE_CONNECTIONSTRING: ${{ env.SQL_CONNECTION_STRING_INTEGRATION }}
         run: dotnet ef migrations bundle --project src/Pos.Infrastructure --startup-project src/Pos.Api --output ./efbundle --configuration Release --verbose
 
       - name: Apply Migrations Bundle to SQL Server 2022
-        env:
-          EFCORE_CONNECTIONSTRING: "Server=localhost,1433;Database=PosIntegrationTests;User Id=sa;Password=Your_password123!;TrustServerCertificate=True;"
         run: |
           chmod +x ./efbundle
-          ./efbundle --verbose --connection "Server=localhost,1433;Database=PosIntegrationTests;User Id=sa;Password=Your_password123!;TrustServerCertificate=True;"
-          ./efbundle --verbose --connection "Server=localhost,1433;Database=PosInfrastructureTests;User Id=sa;Password=Your_password123!;TrustServerCertificate=True;"
+          ./efbundle --verbose --connection "${{ env.SQL_CONNECTION_STRING_INTEGRATION }}"
+          ./efbundle --verbose --connection "${{ env.SQL_CONNECTION_STRING_INFRASTRUCTURE }}"
 
       - name: Run Domain Tests
         run: dotnet test tests/Pos.Domain.Tests/Pos.Domain.Tests.csproj -c Release --no-build --verbosity normal
@@ -75,10 +78,10 @@ jobs:
 
       - name: Run Infrastructure Tests
         env:
-          IntegrationTests__ConnectionString: "Server=localhost,1433;Database=PosInfrastructureTests;User Id=sa;Password=Your_password123!;TrustServerCertificate=True;"
+          IntegrationTests__ConnectionString: ${{ env.SQL_CONNECTION_STRING_INFRASTRUCTURE }}
         run: dotnet test tests/Pos.Infrastructure.Tests/Pos.Infrastructure.Tests.csproj -c Release --no-build --verbosity normal
 
       - name: Run Integration Tests
         env:
-          IntegrationTests__ConnectionString: "Server=localhost,1433;Database=PosIntegrationTests;User Id=sa;Password=Your_password123!;TrustServerCertificate=True;"
+          IntegrationTests__ConnectionString: ${{ env.SQL_CONNECTION_STRING_INTEGRATION }}
         run: dotnet test tests/Pos.IntegrationTests/Pos.IntegrationTests.csproj -c Release --no-build --verbosity normal
