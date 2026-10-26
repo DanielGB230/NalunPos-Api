@@ -1,6 +1,7 @@
 using Pos.Application.Common.Attributes;
 using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
+using Pos.Application.Invoicing.Common;
 using Pos.Application.Invoicing.DTOs;
 using Pos.Domain.Entities;
 using Pos.Domain.Enums;
@@ -61,7 +62,7 @@ public class IssueInvoiceCommandHandler : ICommandHandler<IssueInvoiceCommand, R
         var existingInvoice = await _invoiceRepository.GetBySaleIdAsync(request.SaleId, cancellationToken);
         if (existingInvoice != null)
         {
-            return Result.Fail<InvoiceDto>(DomainError.Conflict("Invoice.AlreadyIssued", $"Ya existe un documento de facturación emitido para la venta (ID: {existingInvoice.Id})."));
+            return Result.Fail<InvoiceDto>(DomainError.Conflict(InvoiceErrors.AlreadyIssued, $"Ya existe un documento de facturación emitido para la venta (ID: {existingInvoice.Id})."));
         }
 
         Invoice invoice;
@@ -79,7 +80,7 @@ public class IssueInvoiceCommandHandler : ICommandHandler<IssueInvoiceCommand, R
         }
         catch (DomainException ex)
         {
-            return Result.Fail<InvoiceDto>(DomainError.Validation("Invoice.Invalid", ex.Message));
+            return Result.Fail<InvoiceDto>(DomainError.Validation(InvoiceErrors.Invalid, ex.Message));
         }
 
         await _invoiceRepository.AddAsync(invoice, cancellationToken);

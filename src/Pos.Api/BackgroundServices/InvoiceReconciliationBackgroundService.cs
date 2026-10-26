@@ -2,6 +2,7 @@ using Microsoft.Extensions.Options;
 using Pos.Api.Options;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Invoicing.Commands;
+using Pos.Application.Invoicing.Common;
 using Pos.Infrastructure.Multitenancy;
 
 namespace Pos.Api.BackgroundServices;
@@ -98,7 +99,7 @@ public class InvoiceReconciliationBackgroundService : BackgroundService
 
                 if (!result.IsSuccess)
                 {
-                    if (result.Error.Code == "Invoice.ConcurrencyConflict")
+                    if (result.Error.Code == InvoiceErrors.ConcurrencyConflict)
                     {
                         if (_logger.IsEnabled(LogLevel.Information))
                         {

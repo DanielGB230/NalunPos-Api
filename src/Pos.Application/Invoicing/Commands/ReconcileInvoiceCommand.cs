@@ -1,6 +1,7 @@
 using Pos.Application.Common.Attributes;
 using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
+using Pos.Application.Invoicing.Common;
 using Pos.Application.Invoicing.DTOs;
 using Pos.Domain.Common;
 using Pos.Domain.Entities;
@@ -42,13 +43,13 @@ public class ReconcileInvoiceCommandHandler : ICommandHandler<ReconcileInvoiceCo
         var invoice = await _invoiceRepository.GetByIdAsync(request.InvoiceId, cancellationToken);
         if (invoice == null)
         {
-            return Result.Fail<InvoiceDto>(DomainError.NotFound("Invoice.NotFound", $"No se encontró la factura con el ID '{request.InvoiceId}'."));
+            return Result.Fail<InvoiceDto>(DomainError.NotFound(InvoiceErrors.NotFound, $"No se encontró la factura con el ID '{request.InvoiceId}'."));
         }
 
         if (invoice.Status == InvoiceStatus.RequiresManualIntervention)
         {
             return Result.Fail<InvoiceDto>(DomainError.Conflict(
-                "Invoice.ReconciliationExhausted",
+                InvoiceErrors.ReconciliationExhausted,
                 $"La factura con ID '{request.InvoiceId}' se encuentra en estado 'RequiresManualIntervention'."));
         }
 
@@ -68,7 +69,7 @@ public class ReconcileInvoiceCommandHandler : ICommandHandler<ReconcileInvoiceCo
             catch (ConcurrencyException)
             {
                 return Result.Fail<InvoiceDto>(DomainError.Conflict(
-                    "Invoice.ConcurrencyConflict",
+                    InvoiceErrors.ConcurrencyConflict,
                     $"Conflicto de concurrencia al actualizar la factura con ID '{request.InvoiceId}' a intervención manual."));
             }
 
@@ -78,13 +79,13 @@ public class ReconcileInvoiceCommandHandler : ICommandHandler<ReconcileInvoiceCo
             }
 
             return Result.Fail<InvoiceDto>(DomainError.Conflict(
-                "Invoice.ReconciliationExhausted",
+                InvoiceErrors.ReconciliationExhausted,
                 $"La factura con ID '{request.InvoiceId}' alcanzó el límite de intentos ({request.MaxAttempts}) y fue marcada para intervención manual."));
         }
 
         if (invoice.Status != InvoiceStatus.Pending)
         {
-            return Result.Fail<InvoiceDto>(DomainError.Conflict("Invoice.AlreadyProcessed", $"La factura con ID '{request.InvoiceId}' ya fue procesada y se encuentra en estado '{invoice.Status}'."));
+            return Result.Fail<InvoiceDto>(DomainError.Conflict(InvoiceErrors.AlreadyProcessed, $"La factura con ID '{request.InvoiceId}' ya fue procesada y se encuentra en estado '{invoice.Status}'."));
         }
 
         var statusResult = await _invoicingService.GetStatusAsync(invoice, cancellationToken);
@@ -131,7 +132,7 @@ public class ReconcileInvoiceCommandHandler : ICommandHandler<ReconcileInvoiceCo
         catch (ConcurrencyException)
         {
             return Result.Fail<InvoiceDto>(DomainError.Conflict(
-                "Invoice.ConcurrencyConflict",
+                InvoiceErrors.ConcurrencyConflict,
                 $"Conflicto de concurrencia al conciliar la factura con ID '{request.InvoiceId}'."));
         }
 
@@ -143,7 +144,7 @@ public class ReconcileInvoiceCommandHandler : ICommandHandler<ReconcileInvoiceCo
         if (invoice.Status == InvoiceStatus.RequiresManualIntervention)
         {
             return Result.Fail<InvoiceDto>(DomainError.Conflict(
-                "Invoice.ReconciliationExhausted",
+                InvoiceErrors.ReconciliationExhausted,
                 $"La factura con ID '{request.InvoiceId}' alcanzó el límite de intentos ({request.MaxAttempts}) y fue marcada para intervención manual."));
         }
 

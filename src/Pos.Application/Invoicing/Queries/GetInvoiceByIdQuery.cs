@@ -1,6 +1,7 @@
 using Pos.Application.Common.Attributes;
 using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
+using Pos.Application.Invoicing.Common;
 using Pos.Application.Invoicing.DTOs;
 using Pos.Domain.Common;
 using Pos.Domain.Interfaces;
@@ -24,7 +25,7 @@ public class GetInvoiceByIdQueryHandler : IQueryHandler<GetInvoiceByIdQuery, Res
         var invoice = await _invoiceRepository.GetByIdAsync(request.Id, cancellationToken);
         if (invoice == null)
         {
-            return Result.Fail<InvoiceDto>(DomainError.NotFound("Invoice.NotFound", $"No se encontró la factura con el ID '{request.Id}'."));
+            return Result.Fail<InvoiceDto>(DomainError.NotFound(InvoiceErrors.NotFound, $"No se encontró la factura con el ID '{request.Id}'."));
         }
 
         return Result.Ok(InvoiceDto.FromEntity(invoice));

@@ -1,6 +1,7 @@
 using Pos.Application.Tests.Support.Fakes;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Invoicing.Commands;
+using Pos.Application.Invoicing.Common;
 using Pos.Domain.Common;
 using Pos.Domain.Entities;
 using Pos.Domain.Enums;
@@ -38,7 +39,7 @@ public class ReconcileInvoiceCommandHandlerTests
 
         Assert.True(result.IsFailure);
         Assert.Equal(ErrorType.NotFound, result.Error.Type);
-        Assert.Equal("Invoice.NotFound", result.Error.Code);
+        Assert.Equal(InvoiceErrors.NotFound, result.Error.Code);
     }
 
     [Fact]
@@ -62,7 +63,7 @@ public class ReconcileInvoiceCommandHandlerTests
 
         Assert.True(result.IsFailure);
         Assert.Equal(ErrorType.Conflict, result.Error.Type);
-        Assert.Equal("Invoice.AlreadyProcessed", result.Error.Code);
+        Assert.Equal(InvoiceErrors.AlreadyProcessed, result.Error.Code);
         Assert.Equal(0, _invoicingService.GetStatusCallCount);
         Assert.Equal(0, _invoicingService.SendInvoiceCallCount);
         Assert.Empty(_dispatcher.PublishedDomainEvents);
@@ -90,7 +91,7 @@ public class ReconcileInvoiceCommandHandlerTests
 
         Assert.True(result.IsFailure);
         Assert.Equal(ErrorType.Conflict, result.Error.Type);
-        Assert.Equal("Invoice.ConcurrencyConflict", result.Error.Code);
+        Assert.Equal(InvoiceErrors.ConcurrencyConflict, result.Error.Code);
         Assert.Empty(_dispatcher.PublishedDomainEvents);
     }
 
