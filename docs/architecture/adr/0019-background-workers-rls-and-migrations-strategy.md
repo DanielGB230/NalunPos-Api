@@ -27,6 +27,11 @@
      ```
    - El ejecutable generado (`efbundle`) se ejecuta como un paso atómico de migración antes de desplegar o actualizar los pods/instancias de la API, garantizando que ninguna réplica atienda tráfico sin que el esquema esté 100% aplicado y validado.
 
+3. **Interacción con `MsSqlTestFixture` en Pruebas de Integración y CI:**
+   - En CI, el paso previo a los tests ejecuta `./efbundle` sobre SQL Server para garantizar la viabilidad del artefacto ejecutable.
+   - A continuación, los tests de integración (`Pos.IntegrationTests`) se ejecutan mediante `MsSqlTestFixture`. Para asegurar determinismo hermético e independencia entre ejecuciones locales, el fixture por defecto ejecuta `EnsureDeletedAsync()` seguido de `MigrateAsync()` sobre la base de datos de pruebas (nombre restringido a `*Tests`).
+   - Para evitar la destrucción innecesaria de una base pre-migrada en pipelines que así lo requieran, `MsSqlTestFixture` evalúa la variable `IntegrationTests__SkipEnsureDeleted=true`: si está activa, omite `EnsureDeletedAsync()` y ejecuta únicamente `MigrateAsync()` de forma idempotente, preservando el estado inicializado por `efbundle`.
+
 ---
 
 ## 2. Patrón de Workers en Segundo Plano Cross-Tenant bajo RLS

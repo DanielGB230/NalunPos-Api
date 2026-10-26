@@ -59,6 +59,13 @@ dotnet ef migrations bundle --project src/Pos.Infrastructure --startup-project s
 ./efbundle --connection "Server=localhost,1433;Database=PosIntegrationTests;User Id=sa;Password=Your_password123!;TrustServerCertificate=True;"
 ```
 
+### Interacción entre `efbundle` en CI y `MsSqlTestFixture`
+En el pipeline de integración continua (CI) y en pruebas locales:
+1. **Validación de Artefacto Ejecutable (`efbundle`)**: En CI se construye y ejecuta `./efbundle` contra SQL Server para verificar que el bundle autocontenido de producción compila y aplica limpiamente todas las migraciones relacionales sin requerir el SDK de .NET.
+2. **Ciclo de Vida de Pruebas de Integración (`MsSqlTestFixture`)**:
+   - Por defecto, `MsSqlTestFixture.InitializeAsync()` invoca `EnsureDeletedAsync()` seguido de `MigrateAsync()` sobre la base de pruebas (que obligatoriamente debe llamarse `*Tests`) para garantizar aislamiento y determinismo absoluto en cada ejecución.
+   - **Preservación opcional del esquema migrado por el bundle**: Si se define la variable de entorno `IntegrationTests__SkipEnsureDeleted=true`, el fixture omite `EnsureDeletedAsync()` y ejecuta únicamente `MigrateAsync()` de forma idempotente, preservando la base de datos previamente inicializada por `efbundle`.
+
 ---
 
 ## 2. Gestión de Seguridad (User Secrets)

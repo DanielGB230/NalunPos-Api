@@ -97,8 +97,17 @@ public class MsSqlTestFixture : IAsyncLifetime, IDisposable
         // 2. Validación Fail-Closed: prohibido ejecutar contra bases que no terminen en 'Tests'
         ValidateDatabaseName(_connectionString);
 
+        // 3. Inicialización del esquema: recreación por defecto o preservación de base migrada por efbundle
+        var skipEnsureDeleted = string.Equals(
+            Environment.GetEnvironmentVariable("IntegrationTests__SkipEnsureDeleted"),
+            "true",
+            StringComparison.OrdinalIgnoreCase);
+
         using var dbContext = CreateDbContext(tenantId: null, isSuperAdmin: true);
-        await dbContext.Database.EnsureDeletedAsync();
+        if (!skipEnsureDeleted)
+        {
+            await dbContext.Database.EnsureDeletedAsync();
+        }
         await dbContext.Database.MigrateAsync();
 
         Console.ForegroundColor = ConsoleColor.Green;
