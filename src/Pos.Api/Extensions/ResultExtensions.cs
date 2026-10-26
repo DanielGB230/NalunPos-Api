@@ -20,6 +20,19 @@ public static class ResultExtensions
         return MapErrorToActionResult(controller, result.Error);
     }
 
+    public static ActionResult ToActionResult<TSource, TDestination>(
+        this ControllerBase controller,
+        Result<TSource> result,
+        Func<TSource, TDestination> mapper)
+    {
+        if (result.IsSuccess)
+        {
+            return controller.Ok(mapper(result.Value));
+        }
+
+        return MapErrorToActionResult(controller, result.Error);
+    }
+
     /// <summary>
     /// Convierte un Result&lt;T&gt; a 201 Created con cabecera Location calculada a partir de routeValues o URI absoluta/relativa.
     /// </summary>

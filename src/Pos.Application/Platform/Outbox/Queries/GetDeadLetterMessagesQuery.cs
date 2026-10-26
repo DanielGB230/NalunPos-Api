@@ -10,6 +10,7 @@ using Pos.Domain.Common;
 /// Consulta operativa para listar mensajes del Outbox en Dead-Letter.
 /// Protegida con permiso de plataforma Permissions.Platform.DeadLetterView.
 /// </summary>
+[AllowsNoTenant]
 [HasPermission(Permissions.Platform.DeadLetterView)]
 public sealed record GetDeadLetterMessagesQuery(int Take = 50) : IQuery<Result<IReadOnlyList<DeadLetterMessageDto>>>;
 
@@ -24,7 +25,7 @@ public sealed class GetDeadLetterMessagesQueryHandler : IQueryHandler<GetDeadLet
 
     public async Task<Result<IReadOnlyList<DeadLetterMessageDto>>> HandleAsync(GetDeadLetterMessagesQuery request, CancellationToken cancellationToken = default)
     {
-        var take = Math.Clamp(request.Take, 1, 200);
+        var take = Math.Clamp(request.Take, 1, 100);
         var messages = await _reader.GetDeadLetterMessagesAsync(take, cancellationToken);
         return Result.Ok(messages);
     }

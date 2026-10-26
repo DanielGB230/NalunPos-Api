@@ -45,6 +45,11 @@ public class JwtTokenGenerator : ITokenGenerator
             new("roleId", user.RoleId.ToString())
         };
 
+        if (user.RoleId == Role.SuperAdminRoleId)
+        {
+            claims.Add(new Claim(ClaimTypes.Role, "SuperAdmin"));
+        }
+
         if (user.TenantId.HasValue)
         {
             claims.Add(new Claim("tenantId", user.TenantId.Value.ToString()));

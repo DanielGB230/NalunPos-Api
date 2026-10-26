@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Pos.Api.Options;
+using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Domain.Common;
 using Pos.Domain.Entities;
@@ -41,6 +42,27 @@ public sealed partial class SuperAdminSeeder
         string? email = _settings.Email;
         string? rawPassword = _settings.Password;
 
+        // Crear o verificar el Rol SuperAdmin global con permisos de plataforma
+        var superAdminRole = await _context.Set<Role>().IgnoreQueryFilters()
+            .FirstOrDefaultAsync(r => r.Id == Role.SuperAdminRoleId, cancellationToken);
+            
+        if (superAdminRole == null)
+        {
+            superAdminRole = Role.CreatePlatformRole(
+                Role.SuperAdminRoleId,
+                PlatformScope.TenantId,
+                "SuperAdmin",
+                "Administrador Global del Sistema",
+                new[] { Permissions.Platform.DeadLetterView, Permissions.Platform.DeadLetterReprocess },
+                _timeProvider);
+            await _context.Set<Role>().AddAsync(superAdminRole, cancellationToken);
+        }
+        else
+        {
+            superAdminRole.AddPermission(Permissions.Platform.DeadLetterView);
+            superAdminRole.AddPermission(Permissions.Platform.DeadLetterReprocess);
+        }
+
         var existingSuperAdmin = await _context.Users
             .FirstOrDefaultAsync(u => u.RoleId == Role.SuperAdminRoleId, cancellationToken);
 
@@ -57,16 +79,11 @@ public sealed partial class SuperAdminSeeder
                     existingSuperAdmin.UpdatePassword(new PasswordHash(newHash), _timeProvider);
                     await _context.SaveChangesAsync(cancellationToken);
                     LogSuperAdminPasswordUpdated(_logger, existingSuperAdmin.Email.Value);
-                }
-                else
-                {
-                    LogSuperAdminAlreadyExists(_logger);
+                    return;
                 }
             }
-            else
-            {
-                LogSuperAdminAlreadyExists(_logger);
-            }
+            await _context.SaveChangesAsync(cancellationToken);
+            LogSuperAdminAlreadyExists(_logger);
             return;
         }
 
@@ -82,21 +99,6 @@ public sealed partial class SuperAdminSeeder
         string lastName  = string.IsNullOrWhiteSpace(_settings.LastName) ? "Admin" : _settings.LastName;
 
         string passwordHash = _passwordHasher.HashPassword(rawPassword);
-
-        // Crear o verificar el Rol SuperAdmin global
-        var superAdminRole = await _context.Set<Role>().IgnoreQueryFilters()
-            .FirstOrDefaultAsync(r => r.Id == Role.SuperAdminRoleId, cancellationToken);
-            
-        if (superAdminRole == null)
-        {
-            superAdminRole = Role.CreatePlatformRole(
-                Role.SuperAdminRoleId,
-                PlatformScope.TenantId,
-                "SuperAdmin",
-                "Administrador Global del Sistema",
-                _timeProvider);
-            await _context.Set<Role>().AddAsync(superAdminRole, cancellationToken);
-        }
 
         var superAdmin = User.Create(
             email:        email,
