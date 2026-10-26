@@ -30,6 +30,8 @@ builder.Services
 builder.Services.AddOptions<OutboxSettings>()
     .Bind(builder.Configuration.GetSection(OutboxSettings.SectionName))
     .ValidateDataAnnotations()
+    .Validate(settings => settings.BatchSize * settings.MessageTimeoutSeconds < settings.LeaseDurationSeconds,
+        "Invariante violada: BatchSize * MessageTimeoutSeconds debe ser estrictamente menor que LeaseDurationSeconds para prevenir expiración prematura de leases.")
     .ValidateOnStart();
 
 builder.Services.AddOptions<InvoiceReconciliationSettings>()

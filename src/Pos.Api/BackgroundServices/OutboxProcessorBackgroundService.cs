@@ -94,6 +94,10 @@ public class OutboxProcessorBackgroundService : BackgroundService
         {
             try
             {
+                using var messageCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                messageCts.CancelAfter(TimeSpan.FromSeconds(Math.Max(1, _options.MessageTimeoutSeconds)));
+                var messageToken = messageCts.Token;
+
                 using var messageScope = _scopeFactory.CreateScope();
                 var msgTenantSetter = messageScope.ServiceProvider.GetRequiredService<ITenantSetter>();
                 msgTenantSetter.SetTenantId(message.TenantId);
@@ -141,9 +145,9 @@ public class OutboxProcessorBackgroundService : BackgroundService
                     }
                     else if (integrationEvent != null)
                     {
-                        await eventBus.PublishAsync(integrationEvent, cancellationToken);
-                        await dispatcher.PublishIntegrationEventAsync(integrationEvent, cancellationToken);
-                        await claimer.MarkAsProcessedAsync(message.Id, cancellationToken);
+                        await eventBus.PublishAsync(integrationEvent, messageToken);
+                        await dispatcher.PublishIntegrationEventAsync(integrationEvent, messageToken);
+                        await claimer.MarkAsProcessedAsync(message.Id, messageToken);
                         processedCount++;
                     }
                 }

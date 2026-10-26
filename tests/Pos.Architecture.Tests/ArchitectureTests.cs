@@ -1327,6 +1327,38 @@ public class ArchitectureTests
             violations.Count == 0,
             $"Se detectaron condicionales o referencias a proveedores de base de datos en código de producción (src/):\n{string.Join("\n", violations)}");
     }
+
+    [Fact]
+    public void OutboxSettings_Default_Must_Satisfy_Lease_Duration_Invariant()
+    {
+        var settings = new Pos.Api.Options.OutboxSettings();
+
+        Assert.True(
+            settings.BatchSize * settings.MessageTimeoutSeconds < settings.LeaseDurationSeconds,
+            $"La invariante matemática BatchSize ({settings.BatchSize}) * MessageTimeoutSeconds ({settings.MessageTimeoutSeconds}) < LeaseDurationSeconds ({settings.LeaseDurationSeconds}) debe cumplirse estrictamente por defecto.");
+
+        var validationResults = settings.Validate(new System.ComponentModel.DataAnnotations.ValidationContext(settings)).ToList();
+        Assert.Empty(validationResults);
+    }
+
+    [Fact]
+    public void OutboxSettings_When_Lease_Duration_Invariant_Violated_Validation_Fails()
+    {
+        var settings = new Pos.Api.Options.OutboxSettings
+        {
+            BatchSize = 50,
+            MessageTimeoutSeconds = 2,
+            LeaseDurationSeconds = 60
+        };
+
+        Assert.False(
+            settings.BatchSize * settings.MessageTimeoutSeconds < settings.LeaseDurationSeconds,
+            "La invariante BatchSize * MessageTimeoutSeconds < LeaseDurationSeconds debe evaluarse como falsa cuando se violan los umbrales.");
+
+        var validationResults = settings.Validate(new System.ComponentModel.DataAnnotations.ValidationContext(settings)).ToList();
+        Assert.NotEmpty(validationResults);
+        Assert.Contains(validationResults, r => r.ErrorMessage != null && r.ErrorMessage.Contains("Invariante violada"));
+    }
 }
 
 

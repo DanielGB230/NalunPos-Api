@@ -50,6 +50,15 @@
   - `GetDeadLetterMessagesQuery`: consulta paginada protegida por `[HasPermission(Permissions.Platform.DeadLetterView)]`.
   - `ReprocessDeadLetterMessagesCommand`: restablece `IsDeadLetter = false`, `RetryCount = 0`, `Error = null` y limpia locks para permitir la reevaluación del mensaje, protegido por `[HasPermission(Permissions.Platform.DeadLetterReprocess)]`.
 
+### D. Invariante Matemática de Duración del Lease y Timeouts de Procesamiento
+Para garantizar que un lease atómico no expire mientras una réplica legítima aún se encuentra procesando secuencialmente los mensajes restantes de su lote reclamado (`claimedMessages`), se establece y custodia la siguiente invariante matemática estricta:
+
+$$\text{BatchSize} \times \text{MessageTimeoutSeconds} < \text{LeaseDurationSeconds}$$
+
+1. **Acotamiento por Mensaje:** Cada mensaje individual se procesa bajo un `CancellationTokenSource` vinculado con timeout de `MessageTimeoutSeconds` (por defecto 2 segundos). Ningún mensaje puede exceder este umbral sin ser cancelado y registrado como fallo.
+2. **Cálculo de Peor Escenario:** En el peor escenario de ejecución síncrona/secuencial del lote completo, el tiempo máximo total es $\text{BatchSize} \times \text{MessageTimeoutSeconds}$ (ej. $20 \times 2\text{s} = 40\text{s}$). Al ser estrictamente menor que `LeaseDurationSeconds` (ej. 60 segundos), se garantiza una holgura mínima de 20 segundos antes de que cualquier otra réplica concurrente pueda considerar el lock expirado.
+3. **Validación en Tiempo de Inicio (Fail-Fast):** `OutboxSettings` implementa `IValidatableObject`. Si la configuración viola la condición $\text{BatchSize} \times \text{MessageTimeoutSeconds} \ge \text{LeaseDurationSeconds}$, la API aborta inmediatamente el inicio (`ValidateDataAnnotations()`, `ValidateOnStart()`), evitando despliegues mal configurados.
+
 ---
 
 ## 3. Consecuencias
