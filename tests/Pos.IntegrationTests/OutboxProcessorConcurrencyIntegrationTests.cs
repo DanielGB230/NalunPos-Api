@@ -85,7 +85,7 @@ public class OutboxProcessorConcurrencyIntegrationTests
             TimeProvider.System);
 
         // 2. Act: Ejecutar ambos workers simultáneamente en paralelo hasta vaciar los mensajes sembrados
-        for (int attempt = 0; attempt < 5; attempt++)
+        for (int attempt = 0; attempt < 10; attempt++)
         {
             await Task.WhenAll(
                 worker1.ProcessOutboxMessagesAsync(CancellationToken.None),

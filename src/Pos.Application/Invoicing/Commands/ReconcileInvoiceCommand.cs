@@ -100,25 +100,23 @@ public class ReconcileInvoiceCommandHandler : ICommandHandler<ReconcileInvoiceCo
         }
         else if (statusResult.Status == ElectronicInvoiceProviderStatus.NotFound)
         {
+            var sendResult = await _invoicingService.SendInvoiceAsync(invoice, cancellationToken);
             invoice.IncrementReconciliationAttempts();
-            if (invoice.ReconciliationAttempts >= request.MaxAttempts)
+
+            if (sendResult.Status == ElectronicInvoiceProviderStatus.Accepted)
+            {
+                invoice.MarkAsSent(_timeProvider);
+                invoice.MarkAsAccepted(_timeProvider);
+            }
+            else if (sendResult.Status == ElectronicInvoiceProviderStatus.Rejected)
+            {
+                invoice.MarkAsRejected(_timeProvider);
+            }
+            else if (invoice.ReconciliationAttempts >= request.MaxAttempts)
             {
                 invoice.MarkAsRequiresManualIntervention(
-                    $"Superó el límite de {request.MaxAttempts} reintentos de reconciliación fiscal sin confirmación del proveedor",
+                    $"Superó el límite de {request.MaxAttempts} reintentos de reconciliación fiscal sin confirmación del proveedor.",
                     _timeProvider);
-            }
-            else
-            {
-                var sendResult = await _invoicingService.SendInvoiceAsync(invoice, cancellationToken);
-                if (sendResult.Status == ElectronicInvoiceProviderStatus.Accepted)
-                {
-                    invoice.MarkAsSent(_timeProvider);
-                    invoice.MarkAsAccepted(_timeProvider);
-                }
-                else if (sendResult.Status == ElectronicInvoiceProviderStatus.Rejected)
-                {
-                    invoice.MarkAsRejected(_timeProvider);
-                }
             }
         }
 

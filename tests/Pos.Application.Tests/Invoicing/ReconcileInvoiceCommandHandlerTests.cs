@@ -168,4 +168,40 @@ public class ReconcileInvoiceCommandHandlerTests
         Assert.Equal(1, invoice.ReconciliationAttempts);
         Assert.Equal(1, _unitOfWork.SaveChangesCount);
     }
+
+    [Fact]
+    public async Task HandleAsync_WhenMaxAttemptsIsN_PerformsExactlyNAttemptsBeforeMarkingAsRequiresManualIntervention()
+    {
+        const int maxAttempts = 3;
+        var invoice = Invoice.Create(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            InvoiceDocumentType.Invoice,
+            "F001-00000099",
+            TaxId.Create("20123456789", "PE"),
+            Money.Create(100m, "USD"),
+            TimeProvider.System);
+        _invoiceRepository.Invoices.Add(invoice);
+
+        _invoicingService.ReturnStatus(ElectronicInvoiceProviderStatus.NotFound);
+        _invoicingService.ReturnSendStatus(ElectronicInvoiceProviderStatus.NotFound);
+
+        var command = new ReconcileInvoiceCommand(invoice.Id, maxAttempts);
+
+        // Intentos 1 a N-1: Se envían y la factura permanece Pending
+        for (int i = 1; i < maxAttempts; i++)
+        {
+            var res = await _handler.HandleAsync(command, CancellationToken.None);
+            Assert.True(res.IsSuccess);
+            Assert.Equal(InvoiceStatus.Pending, invoice.Status);
+            Assert.Equal(i, invoice.ReconciliationAttempts);
+            Assert.Equal(i, _invoicingService.SendInvoiceCallCount);
+        }
+
+        // Intento N: Se ejecuta el N-ésimo envío y pasa a RequiresManualIntervention
+        await _handler.HandleAsync(command, CancellationToken.None);
+        Assert.Equal(maxAttempts, invoice.ReconciliationAttempts);
+        Assert.Equal(maxAttempts, _invoicingService.SendInvoiceCallCount);
+        Assert.Equal(InvoiceStatus.RequiresManualIntervention, invoice.Status);
+    }
 }

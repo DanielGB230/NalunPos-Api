@@ -359,5 +359,165 @@ public class InvoiceReconciliationIntegrationTests
         var prop = typeof(T).GetProperty(propertyName, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
         prop?.SetValue(obj, value);
     }
+
+    [Fact]
+    public async Task ExhaustedPendingInvoices_WhenMigratedAcrossTwoTenants_TransitionsToRequiresManualInterventionAndGeneratesOutboxAlertsPerTenantWithoutCrossContamination()
+    {
+        // 1. Arrange: 2 Tenants con facturas Pending agotadas y no agotadas
+        var tenant1Id = Guid.NewGuid();
+        var tenant2Id = Guid.NewGuid();
+        var saleId1 = Guid.NewGuid();
+        var saleId2 = Guid.NewGuid();
+
+        Guid exhausted1Id;
+        Guid pending1Id;
+        Guid exhausted2Id;
+        Guid pending2Id;
+
+        // Sembrar en Tenant 1
+        using (var db1 = _fixture.CreateDbContext(tenant1Id))
+        {
+            var inv1Exhausted = Invoice.Create(
+                tenant1Id,
+                saleId1,
+                InvoiceDocumentType.Invoice,
+                $"F001-{Guid.NewGuid():N}"[..12],
+                TaxId.Create("20123456789"),
+                Money.Create(100m),
+                TimeProvider.System);
+            SetPrivateProperty(inv1Exhausted, nameof(Invoice.ReconciliationAttempts), 5); // Agotada
+
+            var inv1Pending = Invoice.Create(
+                tenant1Id,
+                saleId1,
+                InvoiceDocumentType.Invoice,
+                $"F001-{Guid.NewGuid():N}"[..12],
+                TaxId.Create("20123456789"),
+                Money.Create(150m),
+                TimeProvider.System);
+            SetPrivateProperty(inv1Pending, nameof(Invoice.ReconciliationAttempts), 1); // No agotada
+
+            db1.Invoices.AddRange(inv1Exhausted, inv1Pending);
+            await db1.SaveChangesAsync();
+
+            exhausted1Id = inv1Exhausted.Id;
+            pending1Id = inv1Pending.Id;
+        }
+
+        // Sembrar en Tenant 2
+        using (var db2 = _fixture.CreateDbContext(tenant2Id))
+        {
+            var inv2Exhausted = Invoice.Create(
+                tenant2Id,
+                saleId2,
+                InvoiceDocumentType.Receipt,
+                $"B001-{Guid.NewGuid():N}"[..12],
+                TaxId.Create("10123456789"),
+                Money.Create(200m),
+                TimeProvider.System);
+            SetPrivateProperty(inv2Exhausted, nameof(Invoice.ReconciliationAttempts), 7); // Agotada (>5)
+
+            var inv2Pending = Invoice.Create(
+                tenant2Id,
+                saleId2,
+                InvoiceDocumentType.Receipt,
+                $"B001-{Guid.NewGuid():N}"[..12],
+                TaxId.Create("10123456789"),
+                Money.Create(250m),
+                TimeProvider.System);
+            SetPrivateProperty(inv2Pending, nameof(Invoice.ReconciliationAttempts), 2); // No agotada
+
+            db2.Invoices.AddRange(inv2Exhausted, inv2Pending);
+            await db2.SaveChangesAsync();
+
+            exhausted2Id = inv2Exhausted.Id;
+            pending2Id = inv2Pending.Id;
+        }
+
+        // 2. Act: Ejecutar la lógica de migración con contexto SuperAdmin en SQL Server
+        using (var adminDb = _fixture.CreateDbContext(null, isSuperAdmin: true))
+        {
+            await adminDb.Database.ExecuteSqlRawAsync(@"
+EXEC sys.sp_set_session_context @key = N'IsSuperAdmin', @value = 1;
+
+INSERT INTO [dbo].[OutboxMessages] (
+    [Id],
+    [TenantId],
+    [Type],
+    [Content],
+    [OccurredOnUtc],
+    [ProcessedOnUtc],
+    [RetryCount],
+    [IsDeadLetter]
+)
+SELECT
+    NEWID() AS [Id],
+    i.[TenantId],
+    'Pos.Domain.DomainEvents.InvoiceReconciliationExhaustedDomainEvent' AS [Type],
+    CONCAT(
+        '{{\""InvoiceId\"":\""', CAST(i.[Id] AS NVARCHAR(36)),
+        '\"",\""SaleId\"":\""', CAST(i.[SaleId] AS NVARCHAR(36)),
+        '\"",\""TenantId\"":\""', CAST(i.[TenantId] AS NVARCHAR(36)),
+        '\"",\""DocumentNumber\"":\""', i.[DocumentNumber],
+        '\"",\""Attempts\"":', CAST(i.[ReconciliationAttempts] AS NVARCHAR(10)),
+        ',\""Reason\"":\""Superó el límite de reintentos de reconciliación fiscal sin confirmación del proveedor.\"",',
+        '\""OccurredOnUtc\"":\""', CONVERT(NVARCHAR(30), SYSUTCDATETIME(), 127),
+        'Z\""}}'
+    ) AS [Content],
+    SYSUTCDATETIME() AS [OccurredOnUtc],
+    NULL AS [ProcessedOnUtc],
+    0 AS [RetryCount],
+    0 AS [IsDeadLetter]
+FROM [dbo].[Invoices] i
+WHERE i.[Status] = 1 AND i.[ReconciliationAttempts] >= 5;
+
+UPDATE [dbo].[Invoices]
+SET [Status] = 5
+WHERE [Status] = 1 AND [ReconciliationAttempts] >= 5;
+");
+        }
+
+        // 3. Assert Tenant 1:
+        using (var verifyDb1 = _fixture.CreateDbContext(tenant1Id))
+        {
+            var inv1A = await verifyDb1.Invoices.FindAsync(exhausted1Id);
+            var inv1B = await verifyDb1.Invoices.FindAsync(pending1Id);
+
+            Assert.NotNull(inv1A);
+            Assert.Equal(InvoiceStatus.RequiresManualIntervention, inv1A.Status);
+
+            Assert.NotNull(inv1B);
+            Assert.Equal(InvoiceStatus.Pending, inv1B.Status);
+
+            // Outbox en Tenant 1 bajo RLS: solo ve sus propias alertas
+            var alerts1 = await verifyDb1.OutboxMessages
+                .Where(o => o.Type == "Pos.Domain.DomainEvents.InvoiceReconciliationExhaustedDomainEvent")
+                .ToListAsync();
+
+            Assert.Contains(alerts1, a => a.TenantId == tenant1Id && a.Content.Contains(exhausted1Id.ToString(), StringComparison.OrdinalIgnoreCase));
+            Assert.DoesNotContain(alerts1, a => a.TenantId == tenant2Id);
+        }
+
+        // 4. Assert Tenant 2:
+        using (var verifyDb2 = _fixture.CreateDbContext(tenant2Id))
+        {
+            var inv2A = await verifyDb2.Invoices.FindAsync(exhausted2Id);
+            var inv2B = await verifyDb2.Invoices.FindAsync(pending2Id);
+
+            Assert.NotNull(inv2A);
+            Assert.Equal(InvoiceStatus.RequiresManualIntervention, inv2A.Status);
+
+            Assert.NotNull(inv2B);
+            Assert.Equal(InvoiceStatus.Pending, inv2B.Status);
+
+            // Outbox en Tenant 2 bajo RLS: solo ve sus propias alertas
+            var alerts2 = await verifyDb2.OutboxMessages
+                .Where(o => o.Type == "Pos.Domain.DomainEvents.InvoiceReconciliationExhaustedDomainEvent")
+                .ToListAsync();
+
+            Assert.Contains(alerts2, a => a.TenantId == tenant2Id && a.Content.Contains(exhausted2Id.ToString(), StringComparison.OrdinalIgnoreCase));
+            Assert.DoesNotContain(alerts2, a => a.TenantId == tenant1Id);
+        }
+    }
 }
 
