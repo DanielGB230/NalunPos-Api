@@ -48,9 +48,7 @@ public class ReconcileInvoiceCommandHandler : ICommandHandler<ReconcileInvoiceCo
 
         if (invoice.Status == InvoiceStatus.RequiresManualIntervention)
         {
-            return Result.Fail<InvoiceDto>(DomainError.Conflict(
-                InvoiceErrors.ReconciliationExhausted,
-                $"La factura con ID '{request.InvoiceId}' se encuentra en estado 'RequiresManualIntervention'."));
+            return Result.Ok(InvoiceDto.FromEntity(invoice));
         }
 
         if (invoice.ReconciliationAttempts >= request.MaxAttempts)
@@ -78,9 +76,7 @@ public class ReconcileInvoiceCommandHandler : ICommandHandler<ReconcileInvoiceCo
                 await _dispatcher.PublishAsync(domainEvent, cancellationToken);
             }
 
-            return Result.Fail<InvoiceDto>(DomainError.Conflict(
-                InvoiceErrors.ReconciliationExhausted,
-                $"La factura con ID '{request.InvoiceId}' alcanzó el límite de intentos ({request.MaxAttempts}) y fue marcada para intervención manual."));
+            return Result.Ok(InvoiceDto.FromEntity(invoice));
         }
 
         if (invoice.Status != InvoiceStatus.Pending)
@@ -139,13 +135,6 @@ public class ReconcileInvoiceCommandHandler : ICommandHandler<ReconcileInvoiceCo
         foreach (var domainEvent in domainEvents)
         {
             await _dispatcher.PublishAsync(domainEvent, cancellationToken);
-        }
-
-        if (invoice.Status == InvoiceStatus.RequiresManualIntervention)
-        {
-            return Result.Fail<InvoiceDto>(DomainError.Conflict(
-                InvoiceErrors.ReconciliationExhausted,
-                $"La factura con ID '{request.InvoiceId}' alcanzó el límite de intentos ({request.MaxAttempts}) y fue marcada para intervención manual."));
         }
 
         return Result.Ok(InvoiceDto.FromEntity(invoice));

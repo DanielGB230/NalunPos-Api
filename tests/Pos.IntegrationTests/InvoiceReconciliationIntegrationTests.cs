@@ -308,8 +308,8 @@ public class InvoiceReconciliationIntegrationTests
         }
 
         // (c) Si intentamos ejecutar directamente ReconcileInvoiceCommand sobre una factura agotada,
-        // el caso de uso rechaza con DomainError.Conflict ("Invoice.ReconciliationExhausted")
-        // y transiciona a RequiresManualIntervention sin tocar el proveedor
+        // el caso de uso transiciona a RequiresManualIntervention de forma controlada (Result.Ok con Status RequiresManualIntervention)
+        // y sin tocar el proveedor
         using (var scope = scopeFactory.CreateScope())
         {
             var dispatcher = scope.ServiceProvider.GetRequiredService<Pos.Application.Common.Interfaces.IDispatcher>();
@@ -317,8 +317,8 @@ public class InvoiceReconciliationIntegrationTests
 
             var directResult = await dispatcher.SendAsync(new Pos.Application.Invoicing.Commands.ReconcileInvoiceCommand(targetExhaustedId, MaxAttempts: 5));
 
-            Assert.True(directResult.IsFailure);
-            Assert.Equal("Invoice.ReconciliationExhausted", directResult.Error.Code);
+            Assert.True(directResult.IsSuccess);
+            Assert.Equal(InvoiceStatus.RequiresManualIntervention.ToString(), directResult.Value.StatusName);
             // El proveedor no recibió ninguna llamada adicional
             Assert.DoesNotContain(targetExhaustedId, spy.InvoicesSent);
 

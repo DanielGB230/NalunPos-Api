@@ -3,6 +3,7 @@ using Pos.Api.Options;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Invoicing.Commands;
 using Pos.Application.Invoicing.Common;
+using Pos.Domain.Enums;
 using Pos.Infrastructure.Multitenancy;
 
 namespace Pos.Api.BackgroundServices;
@@ -97,7 +98,21 @@ public class InvoiceReconciliationBackgroundService : BackgroundService
                     new ReconcileInvoiceCommand(pendingInvoice.Id, _settings.MaxReconciliationAttempts),
                     cancellationToken);
 
-                if (!result.IsSuccess)
+                if (result.IsSuccess)
+                {
+                    if (result.Value.StatusName == nameof(InvoiceStatus.RequiresManualIntervention))
+                    {
+                        if (_logger.IsEnabled(LogLevel.Information))
+                        {
+                            _logger.LogInformation(
+                                "Factura ID {InvoiceId} del Tenant {TenantId} derivada a intervención manual tras alcanzar {MaxAttempts} intentos.",
+                                pendingInvoice.Id,
+                                pendingInvoice.TenantId,
+                                _settings.MaxReconciliationAttempts);
+                        }
+                    }
+                }
+                else
                 {
                     if (result.Error.Code == InvoiceErrors.ConcurrencyConflict)
                     {
