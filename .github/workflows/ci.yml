@@ -10,6 +10,7 @@ env:
   MSSQL_SA_PASSWORD: "Your_password123!"
   SQL_CONNECTION_STRING_INTEGRATION: "Server=localhost,1433;Database=PosIntegrationTests;User Id=sa;Password=Your_password123!;TrustServerCertificate=True;"
   SQL_CONNECTION_STRING_INFRASTRUCTURE: "Server=localhost,1433;Database=PosInfrastructureTests;User Id=sa;Password=Your_password123!;TrustServerCertificate=True;"
+  EFCORE_CONNECTIONSTRING: "Server=localhost,1433;Database=PosIntegrationTests;User Id=sa;Password=Your_password123!;TrustServerCertificate=True;"
 
 jobs:
   build-and-test:
@@ -52,13 +53,9 @@ jobs:
         run: dotnet tool restore
 
       - name: Verify No Pending Model Changes (dotnet ef migrations has-pending-model-changes)
-        env:
-          EFCORE_CONNECTIONSTRING: ${{ env.SQL_CONNECTION_STRING_INTEGRATION }}
         run: dotnet ef migrations has-pending-model-changes --project src/Pos.Infrastructure --startup-project src/Pos.Api --configuration Release --no-build
 
       - name: Generate Migrations Bundle (dotnet ef migrations bundle)
-        env:
-          EFCORE_CONNECTIONSTRING: ${{ env.SQL_CONNECTION_STRING_INTEGRATION }}
         run: dotnet ef migrations bundle --project src/Pos.Infrastructure --startup-project src/Pos.Api --output ./efbundle --configuration Release --verbose
 
       - name: Apply Migrations Bundle to SQL Server 2022
