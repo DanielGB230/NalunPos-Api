@@ -20,8 +20,8 @@ public static class DependencyInjection
         // Dispatcher CQRS propio — reemplaza MediatR (ADR 0014: solo software libre/gratuito)
         services.AddScoped<IDispatcher, Dispatcher>();
 
-        // Ámbito de sistema por defecto (inactivo / Fail-Closed)
-        services.TryAddScoped<ISystemExecutionScope, Pos.Application.Common.Authorization.DefaultSystemExecutionScope>();
+        // Ámbito de sistema para workers y tareas en segundo plano
+        services.AddScoped<ISystemExecutionScope, Pos.Application.Common.Authorization.SystemExecutionScope>();
 
         // Registrar todos los ICommandHandler<,>, IQueryHandler<,> e IDomainEventHandler<> del assembly via reflexión
         RegisterOpenGenericHandlers(services, assembly, typeof(ICommandHandler<,>));

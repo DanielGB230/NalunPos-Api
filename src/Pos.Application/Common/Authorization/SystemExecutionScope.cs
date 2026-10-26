@@ -1,4 +1,4 @@
-namespace Pos.Infrastructure.Multitenancy;
+namespace Pos.Application.Common.Authorization;
 
 using Pos.Application.Common.Interfaces;
 

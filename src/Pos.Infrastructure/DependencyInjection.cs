@@ -33,7 +33,6 @@ public static class DependencyInjection
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentTenantContext, CurrentTenantContext>();
         services.AddScoped<ITenantSetter>(sp => (CurrentTenantContext)sp.GetRequiredService<ICurrentTenantContext>());
-        services.AddScoped<ISystemExecutionScope, SystemExecutionScope>();
 
         // ── Interceptores EF Core (Scoped: un ciclo de vida por request) ─────
         services.AddScoped<AuditSaveChangesInterceptor>();
