@@ -81,4 +81,5 @@ jobs:
       - name: Run Integration Tests
         env:
           IntegrationTests__ConnectionString: ${{ env.SQL_CONNECTION_STRING_INTEGRATION }}
+          IntegrationTests__SkipEnsureDeleted: "true"
         run: dotnet test tests/Pos.IntegrationTests/Pos.IntegrationTests.csproj -c Release --no-build --verbosity normal
