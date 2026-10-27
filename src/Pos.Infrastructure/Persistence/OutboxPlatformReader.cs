@@ -2,6 +2,7 @@ namespace Pos.Infrastructure.Persistence;
 
 using Microsoft.EntityFrameworkCore;
 using Pos.Application.Common.Interfaces;
+using Pos.Application.Common.Models;
 using Pos.Application.Platform.Outbox.DTOs;
 using Pos.Infrastructure.Persistence.Context;
 
@@ -17,12 +18,19 @@ public sealed class OutboxPlatformReader : IOutboxPlatformReader
         _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
     }
 
-    public async Task<IReadOnlyList<DeadLetterMessageDto>> GetDeadLetterMessagesAsync(int take, CancellationToken cancellationToken = default)
+    public async Task<PagedResult<DeadLetterMessageDto>> GetDeadLetterMessagesAsync(int pageNumber, int pageSize, CancellationToken cancellationToken = default)
     {
-        return await _dbContext.OutboxMessages
-            .Where(m => m.IsDeadLetter)
+        var query = _dbContext.OutboxMessages.Where(m => m.IsDeadLetter);
+
+        var totalCount = await query.CountAsync(cancellationToken);
+
+        var skip = (pageNumber - 1) * pageSize;
+
+        var items = await query
             .OrderByDescending(m => m.OccurredOnUtc)
-            .Take(take)
+            .ThenByDescending(m => m.Id)
+            .Skip(skip)
+            .Take(pageSize)
             .Select(m => new DeadLetterMessageDto(
                 m.Id,
                 m.TenantId,
@@ -32,6 +40,8 @@ public sealed class OutboxPlatformReader : IOutboxPlatformReader
                 m.RetryCount,
                 m.Error))
             .ToListAsync(cancellationToken);
+
+        return new PagedResult<DeadLetterMessageDto>(items, pageNumber, pageSize, totalCount);
     }
 
     public async Task<int> ReprocessDeadLetterMessagesAsync(IEnumerable<Guid> messageIds, CancellationToken cancellationToken = default)

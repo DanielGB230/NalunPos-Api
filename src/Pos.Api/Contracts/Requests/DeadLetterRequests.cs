@@ -1,11 +1,11 @@
 namespace Pos.Api.Contracts.Requests;
 
 /// <summary>
-/// Contrato de solicitud para consultar mensajes dead-letter.
+/// Contrato de solicitud para consultar mensajes dead-letter con paginación estándar.
 /// </summary>
 public sealed record GetDeadLetterMessagesRequest
 {
-    public int? Take { get; init; }
+    public int? PageNumber { get; init; }
     public int? PageSize { get; init; }
 }
 

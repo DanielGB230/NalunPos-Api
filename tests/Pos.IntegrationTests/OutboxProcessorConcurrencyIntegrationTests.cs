@@ -148,10 +148,10 @@ public class OutboxProcessorConcurrencyIntegrationTests
         var dispatcher = sp.GetRequiredService<IDispatcher>();
 
         // 2. Act & Assert: Consultar vía GetDeadLetterMessagesQuery
-        var queryResult = await dispatcher.SendAsync(new GetDeadLetterMessagesQuery(Take: 100));
+        var queryResult = await dispatcher.SendAsync(new GetDeadLetterMessagesQuery(PageNumber: 1, PageSize: 100));
         Assert.True(queryResult.IsSuccess);
-        Assert.Contains(queryResult.Value, m => m.Id == messageId1);
-        Assert.Contains(queryResult.Value, m => m.Id == messageId2);
+        Assert.Contains(queryResult.Value.Items, m => m.Id == messageId1);
+        Assert.Contains(queryResult.Value.Items, m => m.Id == messageId2);
 
         // 3. Act: Reprocesar vía ReprocessDeadLetterMessagesCommand
         var reprocessResult = await dispatcher.SendAsync(new ReprocessDeadLetterMessagesCommand([messageId1, messageId2]));

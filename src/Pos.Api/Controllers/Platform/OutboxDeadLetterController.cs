@@ -6,6 +6,7 @@ using Pos.Api.Contracts.Requests;
 using Pos.Api.Contracts.Responses;
 using Pos.Api.Extensions;
 using Pos.Application.Common.Interfaces;
+using Pos.Application.Common.Models;
 using Pos.Application.Platform.Outbox.Commands;
 using Pos.Application.Platform.Outbox.Queries;
 
@@ -31,29 +32,34 @@ public class OutboxDeadLetterController : ControllerBase
     }
 
     /// <summary>
-    /// Consulta los mensajes del Outbox transaccional que se encuentran en estado Dead-Letter.
+    /// Consulta los mensajes del Outbox transaccional que se encuentran en estado Dead-Letter con paginación estándar.
     /// </summary>
     [HttpGet]
-    [ProducesResponseType(typeof(IReadOnlyList<DeadLetterMessageResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(PagedResult<DeadLetterMessageResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
-    public async Task<ActionResult<IReadOnlyList<DeadLetterMessageResponse>>> GetDeadLetterMessages(
+    public async Task<ActionResult<PagedResult<DeadLetterMessageResponse>>> GetDeadLetterMessages(
         [FromQuery] GetDeadLetterMessagesRequest request,
         CancellationToken cancellationToken = default)
     {
-        var take = request.PageSize ?? request.Take ?? 50;
-        var query = new GetDeadLetterMessagesQuery(take);
+        var query = new GetDeadLetterMessagesQuery(
+            request?.PageNumber ?? 1,
+            request?.PageSize ?? 50);
 
         var result = await _dispatcher.SendAsync(query, cancellationToken);
-        return this.ToActionResult(result, messages => messages.Select(m => new DeadLetterMessageResponse(
-            m.Id,
-            m.TenantId,
-            m.Type,
-            m.Content,
-            m.OccurredOnUtc,
-            m.RetryCount,
-            m.Error)).ToList() as IReadOnlyList<DeadLetterMessageResponse>);
+        return this.ToActionResult(result, paged => new PagedResult<DeadLetterMessageResponse>(
+            paged.Items.Select(m => new DeadLetterMessageResponse(
+                m.Id,
+                m.TenantId,
+                m.Type,
+                m.Content,
+                m.OccurredOnUtc,
+                m.RetryCount,
+                m.Error)).ToList(),
+            paged.PageNumber,
+            paged.PageSize,
+            paged.TotalCount));
     }
 
     /// <summary>

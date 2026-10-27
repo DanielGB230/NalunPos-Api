@@ -12,6 +12,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Pos.Api.Contracts.Requests;
 using Pos.Api.Contracts.Responses;
 using Pos.Application.Common.Authorization;
+using Pos.Application.Common.Models;
 using Pos.Domain.Common;
 using Pos.Domain.Entities;
 using Pos.Domain.ValueObjects;
@@ -215,10 +216,10 @@ public class OutboxDeadLetterIntegrationTests : IAsyncLifetime
 
         // Assert GET: 200 OK y contiene los mensajes creados
         Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
-        var messages = await getResponse.Content.ReadFromJsonAsync<IReadOnlyList<DeadLetterMessageResponse>>();
-        Assert.NotNull(messages);
-        Assert.Contains(messages, m => m.Id == msg1.Id);
-        Assert.Contains(messages, m => m.Id == msg2.Id);
+        var pagedResponse = await getResponse.Content.ReadFromJsonAsync<PagedResult<DeadLetterMessageResponse>>();
+        Assert.NotNull(pagedResponse);
+        Assert.Contains(pagedResponse.Items, m => m.Id == msg1.Id);
+        Assert.Contains(pagedResponse.Items, m => m.Id == msg2.Id);
 
         // 3. Act: Reprocesar los mensajes
         var request = new ReprocessDeadLetterMessagesRequest(new[] { msg1.Id, msg2.Id });
@@ -245,32 +246,76 @@ public class OutboxDeadLetterIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task DeadLetterPagination_RespectsMaxPageSizeLimit()
+    public async Task DeadLetterPagination_With130Messages_ReturnsPages1And2CorrectlyWithoutGapsOrDuplicates_AndPageSize101Returns400()
     {
-        // 1. Arrange: Sembrar 3 mensajes dead-letter
+        // 1. Arrange: Sembrar 130 mensajes dead-letter con marcas de tiempo escalonadas
         using var db = _fixture.CreateDbContext(null, isSuperAdmin: true);
-        var now = TimeProvider.System.GetUtcNow();
-        var msgA = OutboxMessage.Create(Guid.NewGuid(), null, "PaginationDeadLetterA", "{}", now);
-        msgA.MarkAsDeadLetter("ErrA");
-        var msgB = OutboxMessage.Create(Guid.NewGuid(), null, "PaginationDeadLetterB", "{}", now);
-        msgB.MarkAsDeadLetter("ErrB");
-        var msgC = OutboxMessage.Create(Guid.NewGuid(), null, "PaginationDeadLetterC", "{}", now);
-        msgC.MarkAsDeadLetter("ErrC");
+        var baseTime = DateTimeOffset.UtcNow.AddHours(-2);
+        var seededMessages = new List<OutboxMessage>(130);
 
-        db.OutboxMessages.AddRange(msgA, msgB, msgC);
+        for (int i = 0; i < 130; i++)
+        {
+            var msg = OutboxMessage.Create(
+                Guid.NewGuid(),
+                null,
+                $"DeadLetterPaginationEvent_{i:D3}",
+                $"{{\"itemIndex\":{i}}}",
+                baseTime.AddSeconds(i));
+            msg.MarkAsDeadLetter($"Deterministic dead-letter reason {i}");
+            seededMessages.Add(msg);
+        }
+
+        db.OutboxMessages.AddRange(seededMessages);
         await db.SaveChangesAsync();
 
         var (superAdminClient, _) = await CreateClientWithTokenAsync(isSuperAdmin: true);
 
-        // 2. Act: Consultar con pageSize=2
-        var limitedResponse = await superAdminClient.GetAsync("/api/v1/platform/outbox/dead-letter?pageSize=2");
-        Assert.Equal(HttpStatusCode.OK, limitedResponse.StatusCode);
-        var pageItems = await limitedResponse.Content.ReadFromJsonAsync<IReadOnlyList<DeadLetterMessageResponse>>();
-        Assert.NotNull(pageItems);
-        Assert.True(pageItems.Count <= 2, $"El tamaño de la página debe ser menor o igual a 2, pero fue {pageItems.Count}");
+        // 2. Act: Consultar Página 1 (size=100)
+        var page1Response = await superAdminClient.GetAsync("/api/v1/platform/outbox/dead-letter?pageNumber=1&pageSize=100");
+        Assert.Equal(HttpStatusCode.OK, page1Response.StatusCode);
+        var page1 = await page1Response.Content.ReadFromJsonAsync<PagedResult<DeadLetterMessageResponse>>();
+        Assert.NotNull(page1);
+        Assert.Equal(1, page1.PageNumber);
+        Assert.Equal(100, page1.PageSize);
+        Assert.Equal(100, page1.Items.Count);
+        Assert.True(page1.TotalCount >= 130);
 
-        // 3. Act: Consultar con pageSize=101 (supera el límite de PaginationRules.MaxPageSize = 100)
-        var overLimitResponse = await superAdminClient.GetAsync("/api/v1/platform/outbox/dead-letter?pageSize=101");
+        // 3. Act: Consultar Página 2 (size=100)
+        var page2Response = await superAdminClient.GetAsync("/api/v1/platform/outbox/dead-letter?pageNumber=2&pageSize=100");
+        Assert.Equal(HttpStatusCode.OK, page2Response.StatusCode);
+        var page2 = await page2Response.Content.ReadFromJsonAsync<PagedResult<DeadLetterMessageResponse>>();
+        Assert.NotNull(page2);
+        Assert.Equal(2, page2.PageNumber);
+        Assert.Equal(100, page2.PageSize);
+        Assert.True(page2.Items.Count >= 30);
+
+        // 4. Assert: Demostrar que entre página 1 y 2 no hay repeticiones ni huecos
+        var page1Ids = page1.Items.Select(m => m.Id).ToHashSet();
+        var page2Ids = page2.Items.Select(m => m.Id).ToHashSet();
+        Assert.Empty(page1Ids.Intersect(page2Ids));
+
+        // Demostrar orden determinista: OccurredOnUtc descendente y Id descendente como desempate
+        var combined = page1.Items.Concat(page2.Items).ToList();
+        for (int i = 0; i < combined.Count - 1; i++)
+        {
+            var current = combined[i];
+            var next = combined[i + 1];
+
+            var timeComparison = current.OccurredOnUtc.CompareTo(next.OccurredOnUtc);
+            if (timeComparison == 0)
+            {
+                Assert.True(current.Id.CompareTo(next.Id) >= 0,
+                    $"Orden determinista violado en empate de fecha: Id {current.Id} debe ser >= {next.Id}");
+            }
+            else
+            {
+                Assert.True(timeComparison > 0,
+                    $"Orden determinista violado: OccurredOnUtc {current.OccurredOnUtc} debe ser posterior a {next.OccurredOnUtc}");
+            }
+        }
+
+        // 5. Act & Assert: pageSize=101 devuelve 400 Bad Request (RFC 9457)
+        var overLimitResponse = await superAdminClient.GetAsync("/api/v1/platform/outbox/dead-letter?pageNumber=1&pageSize=101");
         Assert.Equal(HttpStatusCode.BadRequest, overLimitResponse.StatusCode);
 
         var json = await overLimitResponse.Content.ReadAsStringAsync();

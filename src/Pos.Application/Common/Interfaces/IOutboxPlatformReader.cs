@@ -1,5 +1,6 @@
 namespace Pos.Application.Common.Interfaces;
 
+using Pos.Application.Common.Models;
 using Pos.Application.Platform.Outbox.DTOs;
 
 /// <summary>
@@ -7,8 +8,8 @@ using Pos.Application.Platform.Outbox.DTOs;
 /// </summary>
 public interface IOutboxPlatformReader
 {
-    /// <summary>Obtiene los mensajes en estado Dead-Letter para inspección operativa.</summary>
-    Task<IReadOnlyList<DeadLetterMessageDto>> GetDeadLetterMessagesAsync(int take, CancellationToken cancellationToken = default);
+    /// <summary>Obtiene los mensajes en estado Dead-Letter paginados con total.</summary>
+    Task<PagedResult<DeadLetterMessageDto>> GetDeadLetterMessagesAsync(int pageNumber, int pageSize, CancellationToken cancellationToken = default);
 
     /// <summary>Restablece los mensajes indicados para que vuelvan a ser procesados por el OutboxProcessor.</summary>
     Task<int> ReprocessDeadLetterMessagesAsync(IEnumerable<Guid> messageIds, CancellationToken cancellationToken = default);
