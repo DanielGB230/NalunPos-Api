@@ -32,6 +32,11 @@
    - A continuación, los tests de integración (`Pos.IntegrationTests`) se ejecutan mediante `MsSqlTestFixture`. Para asegurar determinismo hermético e independencia entre ejecuciones locales, el fixture por defecto ejecuta `EnsureDeletedAsync()` seguido de `MigrateAsync()` sobre la base de datos de pruebas (nombre restringido a `*Tests`).
    - Para evitar la destrucción innecesaria de una base pre-migrada en pipelines que así lo requieran, `MsSqlTestFixture` evalúa la variable `IntegrationTests__SkipEnsureDeleted=true`: si está activa, omite `EnsureDeletedAsync()` y ejecuta únicamente `MigrateAsync()` de forma idempotente, preservando el estado inicializado por `efbundle`.
 
+4. **Consolidación Limpia de Migraciones en Fase de Desarrollo (`InitialCreate` Única):**
+   - Dado que el sistema se encuentra en fase de desarrollo activo sin datos reales en producción ni datos heredados, se eliminan las cadenas históricas de migraciones incrementales y migraciones de datos con SQL crudo o GUIDs fijos.
+   - Todo el modelo relacional, incluyendo las 29 tablas, check constraints (`CK_Users_PlatformRole`, `CK_CashRegisters_BranchId_NotEmpty`), índices y las políticas completas de Row-Level Security (`fn_tenantAccessPredicate`, `fn_userTenantAccessPredicate` y `TenantSecurityPolicy` sobre 24 tablas) quedan formalizados de forma atómica y determinista en una única migración inicial limpia (`InitialCreate`).
+   - La recreación de entornos de desarrollo local se efectúa mediante `dotnet ef database drop --force` seguido de `dotnet ef database update`.
+
 ---
 
 ## 2. Patrón de Workers en Segundo Plano Cross-Tenant bajo RLS

@@ -12,7 +12,9 @@ public record InvoiceDto(
     decimal TotalAmount,
     string Currency,
     string StatusName,
-    DateTime IssueDateUtc
+    DateTime IssueDateUtc,
+    string? ManualInterventionReason = null,
+    DateTime? ManualInterventionAtUtc = null
 )
 {
     public static InvoiceDto FromEntity(Invoice invoice)
@@ -27,7 +29,9 @@ public record InvoiceDto(
             invoice.TotalAmount.Amount,
             invoice.TotalAmount.Currency,
             invoice.Status.ToString(),
-            invoice.IssueDateUtc
+            invoice.IssueDateUtc,
+            invoice.ManualInterventionReason,
+            invoice.ManualInterventionAtUtc
         );
     }
 }

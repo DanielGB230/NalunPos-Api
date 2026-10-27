@@ -63,6 +63,13 @@ public class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
             .IsRequired()
             .HasDefaultValue(0);
 
+        builder.Property(i => i.ManualInterventionReason)
+            .HasMaxLength(Pos.Domain.Common.InvoiceConstants.MaxManualInterventionReasonLength)
+            .IsRequired(false);
+
+        builder.Property(i => i.ManualInterventionAtUtc)
+            .IsRequired(false);
+
         builder.Property(i => i.RowVersion)
             .IsRowVersion()
             .HasDefaultValue(new byte[] { 0 });

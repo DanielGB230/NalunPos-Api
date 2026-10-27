@@ -93,4 +93,82 @@ public class InvoiceTests
         var statusEvent = invoice.DomainEvents.OfType<Pos.Domain.DomainEvents.InvoiceStatusUpdatedDomainEvent>().Single();
         Assert.Equal(sentTime.UtcDateTime, statusEvent.OccurredOnUtc);
     }
+
+    [Fact]
+    public void Invoice_WhenCreated_HasNullManualInterventionFields()
+    {
+        var tenantId = Guid.NewGuid();
+        var saleId = Guid.NewGuid();
+        var taxId = TaxId.Create("20123456789");
+        var amount = Money.Create(100m);
+
+        var invoice = Invoice.Create(tenantId, saleId, InvoiceDocumentType.Invoice, "F001-00003", taxId, amount, _timeProvider);
+
+        Assert.Null(invoice.ManualInterventionReason);
+        Assert.Null(invoice.ManualInterventionAtUtc);
+    }
+
+    [Fact]
+    public void MarkAsRequiresManualIntervention_SetsReasonAndDate_AndValidatesNonNullAndNonEmpty()
+    {
+        var tenantId = Guid.NewGuid();
+        var saleId = Guid.NewGuid();
+        var taxId = TaxId.Create("20123456789");
+        var amount = Money.Create(100m);
+        var interventionTime = new DateTimeOffset(2026, 10, 27, 15, 30, 0, TimeSpan.Zero);
+        var timeProvider = new Common.FakeTimeProvider(interventionTime);
+
+        var invoice = Invoice.Create(tenantId, saleId, InvoiceDocumentType.Invoice, "F001-00004", taxId, amount, timeProvider);
+
+        const string reason = "Proveedor SUNAT no disponible tras reintentos agotados.";
+        invoice.MarkAsRequiresManualIntervention(reason, timeProvider);
+
+        Assert.Equal(InvoiceStatus.RequiresManualIntervention, invoice.Status);
+        Assert.Equal(reason, invoice.ManualInterventionReason);
+        Assert.Equal(interventionTime.UtcDateTime, invoice.ManualInterventionAtUtc);
+
+        var exhaustedEvent = Assert.Single(invoice.DomainEvents.OfType<Pos.Domain.DomainEvents.InvoiceReconciliationExhaustedDomainEvent>());
+        Assert.Equal(reason, exhaustedEvent.Reason);
+        Assert.Equal(interventionTime.UtcDateTime, exhaustedEvent.OccurredOnUtc);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData(null)]
+    public void MarkAsRequiresManualIntervention_WhenReasonEmptyOrNull_ThrowsDomainException(string? invalidReason)
+    {
+        var tenantId = Guid.NewGuid();
+        var saleId = Guid.NewGuid();
+        var taxId = TaxId.Create("20123456789");
+        var amount = Money.Create(100m);
+        var invoice = Invoice.Create(tenantId, saleId, InvoiceDocumentType.Invoice, "F001-00005", taxId, amount, _timeProvider);
+
+        Assert.Throws<Pos.Domain.Exceptions.DomainException>(() =>
+            invoice.MarkAsRequiresManualIntervention(invalidReason!, _timeProvider));
+    }
+
+    [Fact]
+    public void Invoice_Invariant_ManualInterventionFields_NullWhenNotInRequiresManualIntervention_AndPresentWhenInStatus()
+    {
+        var tenantId = Guid.NewGuid();
+        var saleId = Guid.NewGuid();
+        var taxId = TaxId.Create("20123456789");
+        var amount = Money.Create(100m);
+        var invoice = Invoice.Create(tenantId, saleId, InvoiceDocumentType.Invoice, "F001-00006", taxId, amount, _timeProvider);
+
+        // Estado inicial Pending: ambos nulos
+        Assert.Null(invoice.ManualInterventionReason);
+        Assert.Null(invoice.ManualInterventionAtUtc);
+
+        // Transición a RequiresManualIntervention: ambos presentes
+        invoice.MarkAsRequiresManualIntervention("Motivo de prueba", _timeProvider);
+        Assert.NotNull(invoice.ManualInterventionReason);
+        Assert.NotNull(invoice.ManualInterventionAtUtc);
+
+        // Transición posterior fuera de ese estado (ej. Accepted): ambos nulos
+        invoice.MarkAsAccepted(_timeProvider);
+        Assert.Null(invoice.ManualInterventionReason);
+        Assert.Null(invoice.ManualInterventionAtUtc);
+    }
 }

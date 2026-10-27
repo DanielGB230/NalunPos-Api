@@ -14,7 +14,7 @@ namespace Pos.Application.Invoicing.Commands;
 
 [RequiresTenant]
 [HasPermission(Permissions.Invoices.Issue)]
-public record ReconcileInvoiceCommand(Guid InvoiceId, int MaxAttempts = 5) : ICommand<Result<InvoiceDto>>;
+public record ReconcileInvoiceCommand(Guid InvoiceId, int MaxAttempts = InvoiceConstants.DefaultMaxReconciliationAttempts) : ICommand<Result<InvoiceDto>>;
 
 public class ReconcileInvoiceCommandHandler : ICommandHandler<ReconcileInvoiceCommand, Result<InvoiceDto>>
 {

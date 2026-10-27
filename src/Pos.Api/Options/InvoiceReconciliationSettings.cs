@@ -11,7 +11,7 @@ public class InvoiceReconciliationSettings
     public int ThresholdMinutes { get; set; } = 5;
 
     [Range(1, 100, ErrorMessage = "MaxReconciliationAttempts debe estar entre 1 y 100.")]
-    public int MaxReconciliationAttempts { get; set; } = 5;
+    public int MaxReconciliationAttempts { get; set; } = Pos.Domain.Common.InvoiceConstants.DefaultMaxReconciliationAttempts;
 
     [Range(1, 1000, ErrorMessage = "BatchSize debe estar entre 1 y 1000.")]
     public int BatchSize { get; set; } = 50;

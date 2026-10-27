@@ -30,6 +30,16 @@ dotnet ef migrations remove --project src/Pos.Infrastructure --startup-project s
 dotnet ef database drop --force --project src/Pos.Infrastructure --startup-project src/Pos.Api
 ```
 
+### Recrear la Base de Datos desde Cero (Entorno de Desarrollo)
+Dado que el proyecto se encuentra en etapa de desarrollo activo sin datos reales en producción ni datos heredados, la estrategia oficial para restablecer o regenerar el esquema relacional limpio consiste en eliminar la base y reaplicar las migraciones consolidadas:
+```bash
+# 1. Eliminar la base de datos completa de forma forzada
+dotnet ef database drop --force --project src/Pos.Infrastructure --startup-project src/Pos.Api
+
+# 2. Aplicar la migración inicial limpia (InitialCreate) incluyendo RLS y restricciones Check
+dotnet ef database update --project src/Pos.Infrastructure --startup-project src/Pos.Api
+```
+
 ### Listar las Migraciones Existentes
 ```bash
 dotnet ef migrations list --project src/Pos.Infrastructure --startup-project src/Pos.Api

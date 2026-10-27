@@ -8,7 +8,12 @@ public class CashRegisterConfiguration : IEntityTypeConfiguration<CashRegister>
 {
     public void Configure(EntityTypeBuilder<CashRegister> builder)
     {
-        builder.ToTable("CashRegisters");
+        builder.ToTable("CashRegisters", t =>
+        {
+            t.HasCheckConstraint(
+                "CK_CashRegisters_BranchId_NotEmpty",
+                "[BranchId] <> '00000000-0000-0000-0000-000000000000'");
+        });
 
         builder.HasKey(r => r.Id);
 

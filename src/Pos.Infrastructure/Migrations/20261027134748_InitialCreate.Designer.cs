@@ -13,8 +13,8 @@ using Pos.Infrastructure.Persistence.Context;
 namespace Pos.Infrastructure.Migrations
 {
     [DbContext(typeof(PosDbContext))]
-    [Migration("20261023001245_AddOutboxLockFields")]
-    partial class AddOutboxLockFields
+    [Migration("20261027134748_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -227,7 +227,10 @@ namespace Pos.Infrastructure.Migrations
 
                     b.HasIndex("TenantId", "BranchId");
 
-                    b.ToTable("CashRegisters", (string)null);
+                    b.ToTable("CashRegisters", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_CashRegisters_BranchId_NotEmpty", "[BranchId] <> '00000000-0000-0000-0000-000000000000'");
+                        });
                 });
 
             modelBuilder.Entity("Pos.Domain.Entities.CashRegisterSession", b =>
@@ -476,6 +479,13 @@ namespace Pos.Infrastructure.Migrations
 
                     b.Property<DateTime>("IssueDateUtc")
                         .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ManualInterventionAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ManualInterventionReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<int>("ReconciliationAttempts")
                         .ValueGeneratedOnAdd()

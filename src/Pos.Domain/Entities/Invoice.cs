@@ -21,6 +21,8 @@ public class Invoice : AggregateRoot<Guid>, ITenantOwnedEntity
     public InvoiceStatus Status { get; private set; }
     public byte[] RowVersion { get; private set; } = Array.Empty<byte>();
     public int ReconciliationAttempts { get; private set; }
+    public string? ManualInterventionReason { get; private set; }
+    public DateTime? ManualInterventionAtUtc { get; private set; }
 
     private Invoice()
     {
@@ -86,6 +88,8 @@ public class Invoice : AggregateRoot<Guid>, ITenantOwnedEntity
         ArgumentNullException.ThrowIfNull(timeProvider);
         var utcNow = timeProvider.GetUtcNow().UtcDateTime;
         Status = InvoiceStatus.Sent;
+        ManualInterventionReason = null;
+        ManualInterventionAtUtc = null;
         RaiseDomainEvent(new InvoiceStatusUpdatedDomainEvent(Id, DocumentNumber, Status.ToString(), utcNow));
     }
 
@@ -94,6 +98,8 @@ public class Invoice : AggregateRoot<Guid>, ITenantOwnedEntity
         ArgumentNullException.ThrowIfNull(timeProvider);
         var utcNow = timeProvider.GetUtcNow().UtcDateTime;
         Status = InvoiceStatus.Accepted;
+        ManualInterventionReason = null;
+        ManualInterventionAtUtc = null;
         RaiseDomainEvent(new InvoiceStatusUpdatedDomainEvent(Id, DocumentNumber, Status.ToString(), utcNow));
     }
 
@@ -102,6 +108,8 @@ public class Invoice : AggregateRoot<Guid>, ITenantOwnedEntity
         ArgumentNullException.ThrowIfNull(timeProvider);
         var utcNow = timeProvider.GetUtcNow().UtcDateTime;
         Status = InvoiceStatus.Rejected;
+        ManualInterventionReason = null;
+        ManualInterventionAtUtc = null;
         RaiseDomainEvent(new InvoiceStatusUpdatedDomainEvent(Id, DocumentNumber, Status.ToString(), utcNow));
     }
 
@@ -113,15 +121,29 @@ public class Invoice : AggregateRoot<Guid>, ITenantOwnedEntity
     public void MarkAsRequiresManualIntervention(string reason, TimeProvider timeProvider)
     {
         ArgumentNullException.ThrowIfNull(timeProvider);
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            throw new DomainException("El motivo de la intervención manual es requerido.");
+        }
+
+        var trimmed = reason.Trim();
+        if (trimmed.Length > InvoiceConstants.MaxManualInterventionReasonLength)
+        {
+            throw new DomainException($"El motivo de la intervención manual no puede superar los {InvoiceConstants.MaxManualInterventionReasonLength} caracteres.");
+        }
+
         var utcNow = timeProvider.GetUtcNow().UtcDateTime;
         Status = InvoiceStatus.RequiresManualIntervention;
+        ManualInterventionReason = trimmed;
+        ManualInterventionAtUtc = utcNow;
+
         RaiseDomainEvent(new InvoiceReconciliationExhaustedDomainEvent(
             Id,
             SaleId,
             TenantId,
             DocumentNumber,
             ReconciliationAttempts,
-            reason,
+            ManualInterventionReason,
             utcNow));
     }
 }
