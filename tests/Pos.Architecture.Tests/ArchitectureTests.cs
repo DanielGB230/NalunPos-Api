@@ -1359,6 +1359,39 @@ public class ArchitectureTests
         Assert.NotEmpty(validationResults);
         Assert.Contains(validationResults, r => r.ErrorMessage != null && r.ErrorMessage.Contains("Invariante violada"));
     }
+
+    [Fact]
+    public void Migrations_Must_Not_Insert_Into_OutboxMessages_Using_Raw_Sql()
+    {
+        var rootDir = SolutionDirectory.Root;
+        var migrationsDir = Path.Combine(rootDir, "src", "Pos.Infrastructure", "Migrations");
+
+        if (!Directory.Exists(migrationsDir))
+        {
+            return;
+        }
+
+        var migrationFiles = Directory.GetFiles(migrationsDir, "*.cs")
+            .Where(f => !f.EndsWith(".Designer.cs", StringComparison.OrdinalIgnoreCase) &&
+                        !f.EndsWith("ModelSnapshot.cs", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        var violations = new List<string>();
+
+        foreach (var file in migrationFiles)
+        {
+            var content = File.ReadAllText(file);
+            if (System.Text.RegularExpressions.Regex.IsMatch(content, @"INSERT\s+INTO\s+(\[dbo\]\.)?\[?OutboxMessages\]?", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+            {
+                violations.Add($"{Path.GetFileName(file)}: Prohibido insertar en OutboxMessages mediante SQL crudo en migraciones de EF Core.");
+            }
+        }
+
+        Assert.True(
+            violations.Count == 0,
+            $"Se detectaron inserciones no autorizadas en OutboxMessages dentro de migraciones:\n{string.Join("\n", violations)}");
+    }
 }
+
 
 

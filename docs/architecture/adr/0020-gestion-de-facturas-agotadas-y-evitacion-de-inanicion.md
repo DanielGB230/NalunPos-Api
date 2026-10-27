@@ -45,12 +45,19 @@
 
 ---
 
-## 3. Consecuencias
+### E. Ausencia de Datos Heredados y Regla de Negocio en Dominio/Aplicación
+- Al encontrarse el sistema en fase de desarrollo activo pre-producción, no existen bases de datos con datos históricos en producción.
+- La transición a `RequiresManualIntervention` es una regla de negocio viva que se ejecuta exclusivamente dentro del caso de uso (`ReconcileInvoiceCommandHandler`) y del agregado `Invoice`. No se requieren ni admiten migraciones de datos SQL crudas (`INSERT INTO OutboxMessages` o `UPDATE Invoices`) en la infraestructura de EF Core.
+
+---
+
+## 3. Consecuencias y Deuda Técnica Registrada
 
 - **Positivas:**
   - Inmunidad total a la inanición de lotes: las facturas válidas continúan procesándose en el mismo ciclo independientemente de cuántas facturas agotadas existan en la base de datos.
   - Reglas de negocio e invariantes fiscales 100% protegidas en `Pos.Domain` y `Pos.Application`.
   - `Pos.Api` mantiene su rol estricto de adaptador de infraestructura y hosting.
   - Verificación determinista y pruebas automatizadas confiables mediante inyección explícita de `TimeProvider` y tests de concurrencia e inanición.
-- **Negativas / Operativas:**
-  - Las facturas en estado `RequiresManualIntervention` quedan a la espera de un flujo administrativo o comando de remediación manual por parte del operador contable.
+  - Eliminación de scripts de migración de datos frágiles o acoplados a identificadores estáticos.
+- **Deuda Técnica Registrada:**
+  - Actualmente, el manejo del evento de dominio `InvoiceReconciliationExhaustedDomainEvent` en `InvoiceReconciliationExhaustedDomainHandler` emite una alerta estructurada mediante `LogCritical`. La notificación formal y persistente hacia el inquilino afectado (por ejemplo, a través de `SystemNotification` en base de datos, correo electrónico o eventos de integración al frontend) queda registrada como deuda de diseño para ser implementada en el módulo de alertas de negocio.
