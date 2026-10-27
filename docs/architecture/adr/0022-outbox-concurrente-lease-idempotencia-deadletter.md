@@ -59,6 +59,18 @@ $$\text{BatchSize} \times \text{MessageTimeoutSeconds} < \text{LeaseDurationSeco
 2. **Cálculo de Peor Escenario:** En el peor escenario de ejecución síncrona/secuencial del lote completo, el tiempo máximo total es $\text{BatchSize} \times \text{MessageTimeoutSeconds}$ (ej. $20 \times 2\text{s} = 40\text{s}$). Al ser estrictamente menor que `LeaseDurationSeconds` (ej. 60 segundos), se garantiza una holgura mínima de 20 segundos antes de que cualquier otra réplica concurrente pueda considerar el lock expirado.
 3. **Validación en Tiempo de Inicio (Fail-Fast):** `OutboxSettings` implementa `IValidatableObject`. Si la configuración viola la condición $\text{BatchSize} \times \text{MessageTimeoutSeconds} \ge \text{LeaseDurationSeconds}$, la API aborta inmediatamente el inicio (`ValidateDataAnnotations()`, `ValidateOnStart()`), evitando despliegues mal configurados.
 
+### E. Evaluación del Timeout por Mensaje (`MessageTimeoutSeconds`) y Criterios de Reapertura
+En la fase actual de desarrollo del monólito modular, `MessageTimeoutSeconds = 2s` (con `BatchSize = 20` y `LeaseDurationSeconds = 60s`, donde $20 \times 2 = 40 < 60$) es técnicamente adecuado y suficiente porque:
+- El bus de eventos en desarrollo opera en memoria dentro del mismo proceso sin latencias de red de red remota (round-trips TLS o colas externas).
+- Los handlers actuales ejecutan operaciones atómicas en memoria o persistencia local que completan en decenas de milisegundos.
+- Se preserva la estabilidad del sistema sin modificar comportamientos fuera de alcance.
+
+**Criterios Formales para la Reapertura y Ajuste de Timeouts:**
+La configuración se reabrirá para su ajuste dimensional bajo cualquiera de los siguientes tres eventos de arquitectura:
+1. **Adopción de un Message Broker Distribuido Externo:** Al conectar `IEventBus` a RabbitMQ, Azure Service Bus o Kafka, los tiempos de conexión, publicación con confirmaciones (publisher confirms) y reintentos de red pueden experimentar picos transitorios superiores a 2s. En dicho hito, se deberá incrementar `MessageTimeoutSeconds` (ej. a 5s o 10s), ajustando concomitantemente `BatchSize` (ej. reduciendo a 10) o incrementando `LeaseDurationSeconds` (ej. a 120s) para custodiar la invariante matemática $\text{BatchSize} \times \text{MessageTimeoutSeconds} < \text{LeaseDurationSeconds}$.
+2. **Handlers con I/O Síncrono Prolongado:** Si un consumidor de eventos de integración requiere ejecutar llamadas HTTP síncronas hacia APIs externas (facturación electrónica SUNAT, pasarelas de pago o webhooks) en vez de diferirlas a una cola dedicada, el timeout de 2s resultará restrictivo y deberá elevarse mediante ADR específico.
+3. **Procesamiento Concurrente del Lote Reclamado:** Si en lugar de iterar secuencialmente el lote de mensajes reclamados se implementa despacho concurrente con grado de paralelismo acotado $P$ (mediante `Parallel.ForEachAsync` o canales acotados), la cota máxima temporal del lote se transformará en $\lceil \frac{\text{BatchSize}}{P} \rceil \times \text{MessageTimeoutSeconds}$, permitiendo timeouts mayores por mensaje individual sin riesgo de vencimiento prematuro del lease atómico.
+
 ---
 
 ## 3. Consecuencias
