@@ -4,6 +4,7 @@ using System.Text;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using Pos.Application.Common.Interfaces;
+using Pos.Domain.Common;
 using Pos.Domain.Entities;
 
 namespace Pos.Infrastructure.Authentication;
@@ -47,7 +48,7 @@ public class JwtTokenGenerator : ITokenGenerator
 
         if (user.RoleId == Role.SuperAdminRoleId)
         {
-            claims.Add(new Claim(ClaimTypes.Role, "SuperAdmin"));
+            claims.Add(new Claim(ClaimTypes.Role, PlatformRoles.SuperAdmin));
         }
 
         if (user.TenantId.HasValue)

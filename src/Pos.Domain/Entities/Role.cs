@@ -11,6 +11,7 @@ namespace Pos.Domain.Entities;
 public class Role : AggregateRoot<Guid>, IPlatformScopedEntity
 {
     public static readonly Guid SuperAdminRoleId = Guid.Parse("00000000-0000-0000-0000-000000000001");
+    public const string SuperAdminRoleName = PlatformRoles.SuperAdmin;
 
     private readonly List<string> _permissions = [];
 

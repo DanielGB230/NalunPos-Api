@@ -10,6 +10,8 @@ using Pos.Application.Common.Models;
 using Pos.Application.Platform.Outbox.Commands;
 using Pos.Application.Platform.Outbox.Queries;
 
+using Pos.Domain.Common;
+
 namespace Pos.Api.Controllers.Platform;
 
 /// <summary>
@@ -20,7 +22,7 @@ namespace Pos.Api.Controllers.Platform;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/platform/outbox/dead-letter")]
-[Authorize(Roles = "SuperAdmin")]
+[Authorize(Roles = PlatformRoles.SuperAdmin)]
 [EnableRateLimiting("SensitiveOperationsPolicy")]
 public class OutboxDeadLetterController : ControllerBase
 {

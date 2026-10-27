@@ -51,7 +51,7 @@ public sealed partial class SuperAdminSeeder
             superAdminRole = Role.CreatePlatformRole(
                 Role.SuperAdminRoleId,
                 PlatformScope.TenantId,
-                "SuperAdmin",
+                PlatformRoles.SuperAdmin,
                 "Administrador Global del Sistema",
                 new[] { Permissions.Platform.DeadLetterView, Permissions.Platform.DeadLetterReprocess },
                 _timeProvider);

@@ -9,6 +9,7 @@ using Pos.Application.Common.Models;
 using Pos.Application.Platform.Tenants.Commands.CreateTenant;
 using Pos.Application.Platform.Tenants.DTOs;
 using Pos.Application.Platform.Tenants.Queries.GetTenants;
+using Pos.Domain.Common;
 
 namespace Pos.Api.Controllers.Platform;
 
@@ -20,7 +21,7 @@ namespace Pos.Api.Controllers.Platform;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/platform/tenants")]
-[Authorize(Roles = "SuperAdmin")]
+[Authorize(Roles = PlatformRoles.SuperAdmin)]
 [EnableRateLimiting("SensitiveOperationsPolicy")]
 public class TenantsController : ControllerBase
 {
