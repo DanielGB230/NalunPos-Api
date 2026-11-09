@@ -11,7 +11,7 @@ namespace Pos.Infrastructure.Authentication;
 
 /// <summary>
 /// Generador de tokens JWT utilizando System.IdentityModel.Tokens.Jwt.
-/// Emite los claims acordados: UserId (NameIdentifier), Email, Role, y TenantId (si aplica).
+/// Emite los claims acordados: UserId (NameIdentifier), Email, Role (canónico para todos), y TenantId (si aplica).
 /// </summary>
 public class JwtTokenGenerator : ITokenGenerator
 {
@@ -24,9 +24,10 @@ public class JwtTokenGenerator : ITokenGenerator
         _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
-    public string GenerateToken(User user)
+    public string GenerateToken(User user, string roleName)
     {
         ArgumentNullException.ThrowIfNull(user);
+        ArgumentException.ThrowIfNullOrWhiteSpace(roleName);
 
         string secretKey = _configuration["JwtSettings:Secret"]
                            ?? throw new InvalidOperationException("JwtSettings:Secret is required.");
@@ -43,13 +44,9 @@ public class JwtTokenGenerator : ITokenGenerator
             new(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new(ClaimTypes.Email, user.Email.Value),
             new(ClaimTypes.Name, user.FullName),
-            new("roleId", user.RoleId.ToString())
+            new("roleId", user.RoleId.ToString()),
+            new(ClaimTypes.Role, roleName)
         };
-
-        if (user.RoleId == Role.SuperAdminRoleId)
-        {
-            claims.Add(new Claim(ClaimTypes.Role, PlatformRoles.SuperAdmin));
-        }
 
         if (user.TenantId.HasValue)
         {
@@ -71,12 +68,17 @@ public class JwtTokenGenerator : ITokenGenerator
         return tokenHandler.WriteToken(token);
     }
 
+    public string GenerateToken(User user)
+    {
+        string roleName = user.RoleId == Role.SuperAdminRoleId || !user.TenantId.HasValue
+            ? PlatformRoles.SuperAdmin
+            : "User";
+        return GenerateToken(user, roleName);
+    }
+
     public string GenerateToken(User user, Role role)
     {
-        // Actually implement this since role name might be needed
-        string token = GenerateToken(user);
-        // Wait, GenerateToken(user) doesn't have Role Name. We can just return it or modify it.
-        // For simplicity, just return the same token as user doesn't have role Name.
-        return token;
+        ArgumentNullException.ThrowIfNull(role);
+        return GenerateToken(user, role.Name);
     }
 }

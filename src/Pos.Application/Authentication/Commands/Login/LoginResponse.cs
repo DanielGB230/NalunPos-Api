@@ -1,14 +1,15 @@
-using Pos.Domain.Enums;
-
 namespace Pos.Application.Authentication.Commands.Login;
 
 /// <summary>
 /// DTO de respuesta tras un inicio de sesión exitoso.
 /// </summary>
-public record LoginResponse(
+public sealed record LoginResponse(
     string Token,
-    DateTime ExpiresAtUtc,
     Guid UserId,
     Guid RoleId,
-    Guid? TenantId
+    string Role,
+    string Email,
+    string FullName,
+    Guid? TenantId,
+    DateTime ExpiresAtUtc
 );

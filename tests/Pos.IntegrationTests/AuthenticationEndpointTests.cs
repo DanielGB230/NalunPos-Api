@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Controllers;
@@ -165,5 +166,95 @@ public class AuthenticationEndpointTests : IClassFixture<CustomWebApplicationFac
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var content = await response.Content.ReadAsStringAsync();
         Assert.Contains("Healthy", content);
+    }
+
+    [Fact]
+    public async Task Login_WithSuperAdminCredentials_ShouldReturnRoleNameAndJwtWithRoleClaim()
+    {
+        // Arrange
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<Pos.Infrastructure.Persistence.Context.PosDbContext>();
+        var hasher = scope.ServiceProvider.GetRequiredService<Pos.Application.Common.Interfaces.IPasswordHasher>();
+
+        var email = $"super_{Guid.NewGuid():N}@pos.com";
+        var password = "SuperPassword123!";
+        var user = Pos.Domain.Entities.User.Create(
+            new Pos.Domain.ValueObjects.Email(email),
+            new Pos.Domain.ValueObjects.PasswordHash(hasher.HashPassword(password)),
+            Pos.Domain.Entities.Role.SuperAdminRoleId,
+            tenantId: null,
+            firstName: "Super",
+            lastName: "Admin",
+            TimeProvider.System);
+
+        db.Users.Add(user);
+        await db.SaveChangesAsync();
+
+        var client = _factory.CreateClient();
+
+        // Act
+        var response = await client.PostAsJsonAsync("/api/v1/auth/login", new Pos.Api.Contracts.Requests.LoginRequest(email, password));
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var loginResponse = await response.Content.ReadFromJsonAsync<Pos.Application.Authentication.Commands.Login.LoginResponse>();
+        Assert.NotNull(loginResponse);
+        Assert.Equal("SuperAdmin", loginResponse.Role);
+        Assert.Equal(Pos.Domain.Entities.Role.SuperAdminRoleId, loginResponse.RoleId);
+        Assert.Null(loginResponse.TenantId);
+        Assert.Equal(email, loginResponse.Email);
+
+        var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+        var jwt = handler.ReadJwtToken(loginResponse.Token);
+        var roleClaim = jwt.Claims.FirstOrDefault(c => c.Type == "role" || c.Type == System.Security.Claims.ClaimTypes.Role);
+        Assert.NotNull(roleClaim);
+        Assert.Equal("SuperAdmin", roleClaim.Value);
+    }
+
+    [Fact]
+    public async Task Login_WithTenantUserCredentials_ShouldReturnRoleNameAndJwtWithRoleClaim()
+    {
+        // Arrange
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<Pos.Infrastructure.Persistence.Context.PosDbContext>();
+        var hasher = scope.ServiceProvider.GetRequiredService<Pos.Application.Common.Interfaces.IPasswordHasher>();
+
+        Guid tenantId = Guid.NewGuid();
+        var role = Pos.Domain.Entities.Role.Create(tenantId, "Cajero", TimeProvider.System);
+        db.Roles.Add(role);
+
+        var email = $"cajero_{Guid.NewGuid():N}@tenant.com";
+        var password = "CajeroPassword123!";
+        var user = Pos.Domain.Entities.User.Create(
+            new Pos.Domain.ValueObjects.Email(email),
+            new Pos.Domain.ValueObjects.PasswordHash(hasher.HashPassword(password)),
+            role.Id,
+            tenantId: tenantId,
+            firstName: "Carlos",
+            lastName: "Cajero",
+            TimeProvider.System);
+
+        db.Users.Add(user);
+        await db.SaveChangesAsync();
+
+        var client = _factory.CreateClient();
+
+        // Act
+        var response = await client.PostAsJsonAsync("/api/v1/auth/login", new Pos.Api.Contracts.Requests.LoginRequest(email, password));
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var loginResponse = await response.Content.ReadFromJsonAsync<Pos.Application.Authentication.Commands.Login.LoginResponse>();
+        Assert.NotNull(loginResponse);
+        Assert.Equal("Cajero", loginResponse.Role);
+        Assert.Equal(role.Id, loginResponse.RoleId);
+        Assert.Equal(tenantId, loginResponse.TenantId);
+        Assert.Equal(email, loginResponse.Email);
+
+        var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+        var jwt = handler.ReadJwtToken(loginResponse.Token);
+        var roleClaim = jwt.Claims.FirstOrDefault(c => c.Type == "role" || c.Type == System.Security.Claims.ClaimTypes.Role);
+        Assert.NotNull(roleClaim);
+        Assert.Equal("Cajero", roleClaim.Value);
     }
 }

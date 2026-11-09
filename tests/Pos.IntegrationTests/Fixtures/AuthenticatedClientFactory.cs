@@ -64,7 +64,7 @@ public static class AuthenticatedClientFactory
         db.Users.Add(user);
         await db.SaveChangesAsync();
 
-        string token = generator.GenerateToken(user);
+        string token = generator.GenerateToken(user, role.Name);
         return (token, user);
     }
 

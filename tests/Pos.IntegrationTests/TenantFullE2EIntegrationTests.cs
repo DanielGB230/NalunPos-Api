@@ -63,14 +63,15 @@ public class TenantFullE2EIntegrationTests
         Assert.Equal(taxId, tenantInDb.TaxId.Value);
 
         var authLookup = sp.GetRequiredService<IAuthUserLookup>();
-        var userInDb = await authLookup.FindByEmailAsync(adminEmail);
-        Assert.NotNull(userInDb);
+        var authUser = await authLookup.FindByEmailAsync(adminEmail);
+        Assert.NotNull(authUser);
+        var userInDb = authUser.User;
         Assert.NotEqual(Guid.Empty, userInDb.RoleId);
         Assert.Equal(createdTenantId, userInDb.TenantId);
         Assert.NotNull(userInDb.PasswordHash.Value);
 
         // 4. JWT Generation & Payload Verification
-        string token = tokenGenerator.GenerateToken(userInDb);
+        string token = tokenGenerator.GenerateToken(userInDb, authUser.Role);
         Assert.False(string.IsNullOrWhiteSpace(token));
 
         var handler = new JwtSecurityTokenHandler();

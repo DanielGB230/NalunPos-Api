@@ -38,12 +38,15 @@ public class LoginCommandHandler : ICommandHandler<LoginCommand, Result<LoginRes
             return invalidCredentialsError;
         }
 
-        var user = await _authUserLookup.FindByEmailAsync(command.Email, cancellationToken);
-        if (user is null || !user.IsActive)
+        var authUser = await _authUserLookup.FindByEmailAsync(command.Email, cancellationToken);
+        if (authUser is null || !authUser.User.IsActive)
         {
             // Mismo mensaje genérico por seguridad (evita la enumeración de usuarios)
             return invalidCredentialsError;
         }
+
+        var user = authUser.User;
+        var roleName = authUser.Role;
 
         bool isPasswordValid = _passwordHasher.Verify(command.Password, user.PasswordHash);
         if (!isPasswordValid)
@@ -51,15 +54,18 @@ public class LoginCommandHandler : ICommandHandler<LoginCommand, Result<LoginRes
             return invalidCredentialsError;
         }
 
-        string token = _tokenGenerator.GenerateToken(user);
+        string token = _tokenGenerator.GenerateToken(user, roleName);
         DateTime expiresAtUtc = _timeProvider.GetUtcNow().UtcDateTime.AddHours(1);
 
         var response = new LoginResponse(
             Token: token,
-            ExpiresAtUtc: expiresAtUtc,
             UserId: user.Id,
             RoleId: user.RoleId,
-            TenantId: user.TenantId
+            Role: roleName,
+            Email: user.Email.Value,
+            FullName: user.FullName,
+            TenantId: user.TenantId,
+            ExpiresAtUtc: expiresAtUtc
         );
 
         return response;

@@ -4,9 +4,10 @@ namespace Pos.Application.Common.Interfaces;
 
 /// <summary>
 /// Contrato para la generación de tokens de autenticación JWT.
-/// Implementación concreta en Pos.Infrastructure (Parte 4).
+/// Emite claims de identidad, roleId y el nombre canónico del rol.
 /// </summary>
 public interface ITokenGenerator
 {
+    string GenerateToken(User user, string roleName);
     string GenerateToken(User user);
 }
