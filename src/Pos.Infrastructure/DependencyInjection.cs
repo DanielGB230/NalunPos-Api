@@ -109,6 +109,7 @@ public static class DependencyInjection
         services.AddScoped<IPasswordHasher, PasswordHasher>();
         services.AddScoped<ITokenGenerator, JwtTokenGenerator>();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
+        services.AddScoped<IAuthenticationSessionScope, SqlServerAuthenticationSessionScope>();
         services.AddScoped<IAuthUserLookup, AuthUserLookup>();
         services.AddScoped<IPendingInvoicePlatformReader, Pos.Infrastructure.Persistence.PendingInvoicePlatformReader>();
         services.AddScoped<IOutboxPlatformReader, Pos.Infrastructure.Persistence.OutboxPlatformReader>();

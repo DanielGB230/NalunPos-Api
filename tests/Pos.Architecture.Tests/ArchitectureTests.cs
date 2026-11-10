@@ -410,6 +410,37 @@ public class ArchitectureTests
                 Assert.DoesNotContain("AllowGlobalUserLookup", method.Name);
             }
         }
+
+        // Validación sintáctica estricta en src/: el literal AllowGlobalUserLookup solo puede existir
+        // en SqlServerAuthenticationSessionScope.cs (y en los predicados DDL de Migraciones).
+        var srcViolations = new List<string>();
+        foreach (var file in SourceTreeIndex.Src.Files)
+        {
+            var normalized = file.FilePath.Replace('\\', '/');
+            if (normalized.Contains("/Migrations/", StringComparison.OrdinalIgnoreCase) ||
+                normalized.EndsWith("src/Pos.Infrastructure/Authentication/SqlServerAuthenticationSessionScope.cs", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            bool containsLiteralOrText = file.Root.DescendantNodes()
+                .OfType<Microsoft.CodeAnalysis.CSharp.Syntax.LiteralExpressionSyntax>()
+                .Any(l => (l.RawKind == (int)Microsoft.CodeAnalysis.CSharp.SyntaxKind.StringLiteralExpression ||
+                           l.RawKind == (int)Microsoft.CodeAnalysis.CSharp.SyntaxKind.Utf8StringLiteralExpression) &&
+                          l.Token.ValueText.Contains("AllowGlobalUserLookup", StringComparison.OrdinalIgnoreCase))
+                || file.Root.DescendantNodes()
+                    .OfType<Microsoft.CodeAnalysis.CSharp.Syntax.InterpolatedStringTextSyntax>()
+                    .Any(t => t.TextToken.ValueText.Contains("AllowGlobalUserLookup", StringComparison.OrdinalIgnoreCase));
+
+            if (containsLiteralOrText)
+            {
+                srcViolations.Add(Path.GetRelativePath(SolutionDirectory.Root, file.FilePath));
+            }
+        }
+
+        Assert.True(
+            srcViolations.Count == 0,
+            $"El literal 'AllowGlobalUserLookup' solo está permitido en SqlServerAuthenticationSessionScope.cs (y migraciones RLS). Violaciones: {string.Join(", ", srcViolations)}");
     }
 
     [Fact]

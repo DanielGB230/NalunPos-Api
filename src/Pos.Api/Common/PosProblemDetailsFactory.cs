@@ -32,7 +32,8 @@ public static class PosProblemDetailsFactory
         int statusCode,
         string? title = null,
         string? detail = null,
-        FieldErrors? fieldErrors = null)
+        FieldErrors? fieldErrors = null,
+        string? errorCode = null)
     {
         ArgumentNullException.ThrowIfNull(context);
 
@@ -48,6 +49,11 @@ public static class PosProblemDetailsFactory
         };
 
         problemDetails.Extensions["correlationId"] = GetCorrelationId(context);
+
+        if (!string.IsNullOrWhiteSpace(errorCode))
+        {
+            problemDetails.Extensions["code"] = errorCode;
+        }
 
         if (fieldErrors != null && fieldErrors.Values.Count > 0)
         {
@@ -94,7 +100,8 @@ public static class PosProblemDetailsFactory
             context,
             statusCode,
             detail: detail,
-            fieldErrors: error.Errors);
+            fieldErrors: error.Errors,
+            errorCode: error.Code);
     }
 
     public static string ToCamelCasePropertyPath(string propertyName)

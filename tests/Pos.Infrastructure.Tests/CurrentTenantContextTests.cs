@@ -47,5 +47,71 @@ public class CurrentTenantContextTests
         Assert.Null(context.TenantId);
         Assert.False(context.IsSuperAdmin);
     }
+
+    [Fact]
+    public async Task AuthenticatedHttpContext_RetainsResolvedTenantAndSuperAdmin_WhenHttpContextAccessorBecomesNullAcrossSuppressedExecutionFlow()
+    {
+        Guid tenantId = Guid.NewGuid();
+        var tenantAccessor = CreateAccessor(
+            new Claim(ClaimTypes.Role, TenantRoles.TenantAdmin),
+            new Claim("tenantId", tenantId.ToString()));
+        var tenantContext = new CurrentTenantContext(tenantAccessor);
+
+        Assert.Equal(tenantId, tenantContext.TenantId);
+        Assert.False(tenantContext.IsSuperAdmin);
+
+        // Simular ExecutionContext.SuppressFlow() (como HybridCache.GetOrCreateAsync), donde AsyncLocal pierde HttpContext en el hilo delegado
+        Guid? capturedTenantInSuppressedFlow = null;
+        bool? capturedSuperAdminInSuppressedFlow = null;
+        bool? httpContextWasNullInsideSuppressedFlow = null;
+
+        Task task;
+        using (ExecutionContext.SuppressFlow())
+        {
+            task = Task.Run(() =>
+            {
+                httpContextWasNullInsideSuppressedFlow = tenantAccessor.HttpContext is null;
+                capturedTenantInSuppressedFlow = tenantContext.TenantId;
+                capturedSuperAdminInSuppressedFlow = tenantContext.IsSuperAdmin;
+            });
+        }
+
+        await task;
+        Assert.True(httpContextWasNullInsideSuppressedFlow);
+        Assert.Equal(tenantId, capturedTenantInSuppressedFlow);
+        Assert.False(capturedSuperAdminInSuppressedFlow);
+
+        var superAccessor = CreateAccessor(new Claim(ClaimTypes.Role, PlatformRoles.SuperAdmin));
+        var superContext = new CurrentTenantContext(superAccessor);
+        Assert.Null(superContext.TenantId);
+        Assert.True(superContext.IsSuperAdmin);
+
+        superAccessor.HttpContext = null;
+        Assert.Null(superContext.TenantId);
+        Assert.True(superContext.IsSuperAdmin);
+    }
+
+    [Fact]
+    public void UnauthenticatedHttpContext_DoesNotRetainSnapshot_WhenHttpContextBecomesNull()
+    {
+        var anonymousPrincipal = new System.Security.Claims.ClaimsPrincipal(new ClaimsIdentity());
+        var accessor = new HttpContextAccessor
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = anonymousPrincipal,
+                Items = { ["TenantId"] = Guid.NewGuid() }
+            }
+        };
+
+        var context = new CurrentTenantContext(accessor);
+        _ = context.TenantId;
+        _ = context.IsSuperAdmin;
+
+        accessor.HttpContext = null;
+
+        Assert.Null(context.TenantId);
+        Assert.False(context.IsSuperAdmin);
+    }
 }
 

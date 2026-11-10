@@ -85,6 +85,9 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
                 options.UseInMemoryDatabase("NalunPosDb_Test");
                 options.AddPosSaveChangesInterceptors(provider);
             });
+
+            services.RemoveAll<Pos.Infrastructure.Authentication.IAuthenticationSessionScope>();
+            services.AddScoped<Pos.Infrastructure.Authentication.IAuthenticationSessionScope, NoOpAuthenticationSessionScope>();
         });
     }
 }
