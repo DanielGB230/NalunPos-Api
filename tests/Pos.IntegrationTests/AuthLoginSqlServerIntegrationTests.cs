@@ -17,6 +17,7 @@ using Pos.Application.Authentication.Commands.Login;
 using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Roles;
+using Pos.Application.Roles.DTOs;
 using Pos.Domain.Common;
 using Pos.Domain.Entities;
 using Pos.Domain.ValueObjects;
@@ -471,6 +472,91 @@ public class AuthLoginSqlServerIntegrationTests : IAsyncLifetime
             new UpdateUserRoleRequest(roleB.Id));
 
         Assert.Equal(HttpStatusCode.NotFound, patchResp.StatusCode);
+    }
+
+    [Fact]
+    public async Task ConsecutiveHttpRequests_AgainstSqlServer_FromDistinctTenants_MustNotLeakOrShareTenantContext()
+    {
+        // 1. Aprovisionar Tenant A y Tenant B vía plataforma real en SQL Server
+        var saPayload = await CreateAndLoginSuperAdminAsync();
+        string unique = Guid.NewGuid().ToString("N")[..10];
+        const string password = "ConsecutiveTenant123!";
+        string emailA = $"admin_seq_a_{unique}@tenanta.test";
+        string emailB = $"admin_seq_b_{unique}@tenantb.test";
+
+        using var superAdminClient = CreateClient(saPayload.Token);
+        var createAResp = await superAdminClient.PostAsJsonAsync(
+            "/api/v1/platform/tenants",
+            new CreateTenantRequest($"Seq Tenant A {unique}", $"TAX-SA-{unique}", emailA, password));
+        Assert.Equal(HttpStatusCode.Created, createAResp.StatusCode);
+        Guid tenantAId = await createAResp.Content.ReadFromJsonAsync<Guid>();
+
+        var createBResp = await superAdminClient.PostAsJsonAsync(
+            "/api/v1/platform/tenants",
+            new CreateTenantRequest($"Seq Tenant B {unique}", $"TAX-SB-{unique}", emailB, password));
+        Assert.Equal(HttpStatusCode.Created, createBResp.StatusCode);
+        Guid tenantBId = await createBResp.Content.ReadFromJsonAsync<Guid>();
+        Assert.NotEqual(tenantAId, tenantBId);
+
+        // 2. Obtener JWT reales de ambos tenants y crear un rol distintivo en cada uno
+        using var loginClient = CreateClient();
+        var loginA = await (await loginClient.PostAsJsonAsync("/api/v1/auth/login", new LoginRequest(emailA, password)))
+            .Content.ReadFromJsonAsync<LoginResponse>();
+        var loginB = await (await loginClient.PostAsJsonAsync("/api/v1/auth/login", new LoginRequest(emailB, password)))
+            .Content.ReadFromJsonAsync<LoginResponse>();
+
+        Assert.NotNull(loginA);
+        Assert.NotNull(loginB);
+        Assert.Equal(tenantAId, loginA.TenantId);
+        Assert.Equal(tenantBId, loginB.TenantId);
+
+        string roleNameA = $"RolExclusivoA_{unique}";
+        string roleNameB = $"RolExclusivoB_{unique}";
+
+        using var sharedHttpClient = CreateClient();
+
+        sharedHttpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", loginA.Token);
+        var createRoleAResp = await sharedHttpClient.PostAsJsonAsync(
+            "/api/v1/roles",
+            new CreateRoleRequest(roleNameA, "Rol exclusivo de Tenant A", [Permissions.Roles.View]));
+        Assert.Equal(HttpStatusCode.Created, createRoleAResp.StatusCode);
+
+        sharedHttpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", loginB.Token);
+        var createRoleBResp = await sharedHttpClient.PostAsJsonAsync(
+            "/api/v1/roles",
+            new CreateRoleRequest(roleNameB, "Rol exclusivo de Tenant B", [Permissions.Roles.View]));
+        Assert.Equal(HttpStatusCode.Created, createRoleBResp.StatusCode);
+
+        // 3. Peticiones HTTP consecutivas alternando Tenant A -> Tenant B -> Tenant A
+        //    Cada request debe resolver y aislar su propio TenantId bajo HybridCache + RLS.
+        sharedHttpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", loginA.Token);
+        var rolesAResp1 = await sharedHttpClient.GetAsync("/api/v1/roles");
+        Assert.Equal(HttpStatusCode.OK, rolesAResp1.StatusCode);
+        var rolesA1 = await rolesAResp1.Content.ReadFromJsonAsync<List<RoleDto>>();
+        Assert.NotNull(rolesA1);
+        Assert.Contains(rolesA1, r => r.Name == roleNameA);
+        Assert.DoesNotContain(rolesA1, r => r.Name == roleNameB);
+
+        sharedHttpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", loginB.Token);
+        var rolesBResp = await sharedHttpClient.GetAsync("/api/v1/roles");
+        Assert.Equal(HttpStatusCode.OK, rolesBResp.StatusCode);
+        var rolesB = await rolesBResp.Content.ReadFromJsonAsync<List<RoleDto>>();
+        Assert.NotNull(rolesB);
+        Assert.Contains(rolesB, r => r.Name == roleNameB);
+        Assert.DoesNotContain(rolesB, r => r.Name == roleNameA);
+
+        sharedHttpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", loginA.Token);
+        var rolesAResp2 = await sharedHttpClient.GetAsync("/api/v1/roles");
+        Assert.Equal(HttpStatusCode.OK, rolesAResp2.StatusCode);
+        var rolesA2 = await rolesAResp2.Content.ReadFromJsonAsync<List<RoleDto>>();
+        Assert.NotNull(rolesA2);
+        Assert.Contains(rolesA2, r => r.Name == roleNameA);
+        Assert.DoesNotContain(rolesA2, r => r.Name == roleNameB);
+
+        // Petición anónima consecutiva en el mismo cliente no hereda el scope de Tenant A
+        sharedHttpClient.DefaultRequestHeaders.Authorization = null;
+        var anonRolesResp = await sharedHttpClient.GetAsync("/api/v1/roles");
+        Assert.Equal(HttpStatusCode.Unauthorized, anonRolesResp.StatusCode);
     }
 
     private static void AssertJwtRoleClaim(string token, string expectedRole)

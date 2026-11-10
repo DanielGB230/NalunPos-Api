@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Http;
 using Pos.Application.Common.Interfaces;
-using Pos.Domain.Common;
 
 namespace Pos.Infrastructure.Multitenancy;
 
@@ -11,28 +10,37 @@ public interface ITenantSetter
 }
 
 /// <summary>
-/// Implementación concreta de ICurrentTenantContext que obtiene el contexto del tenant desde HttpContext.
-/// Soporta configuración manual vía ITenantSetter para Workers en background.
+/// Implementación concreta de <see cref="ICurrentTenantContext"/> que resuelve el contexto
+/// del tenant en este orden de prioridad (sin efectos laterales en ningún getter):
+/// <list type="number">
+///   <item>Valores fijados explícitamente vía <see cref="ITenantSetter"/> (workers en background
+///         y peticiones autenticadas cuyo <see cref="TenantResolutionMiddleware"/> ya llamó
+///         <see cref="SetTenantId"/> / <see cref="SetSuperAdmin"/>).</item>
+///   <item>Claims del <see cref="HttpContext"/> activo (petición HTTP en curso sin fijación previa;
+///         lectura pura sin snapshot mutable).</item>
+/// </list>
 /// </summary>
 public class CurrentTenantContext : ICurrentTenantContext, ITenantSetter
 {
     private readonly IHttpContextAccessor _httpContextAccessor;
+    private bool _hasManualTenantId;
     private Guid? _manualTenantId;
     private bool? _manualIsSuperAdmin;
-    private volatile HttpTenantSnapshot? _httpSnapshot;
-
-    private sealed record HttpTenantSnapshot(Guid? TenantId, bool IsSuperAdmin);
 
     public CurrentTenantContext(IHttpContextAccessor httpContextAccessor)
     {
         _httpContextAccessor = httpContextAccessor;
     }
 
+    // ── ITenantSetter ────────────────────────────────────────────────────────
+
     public void SetTenantId(Guid? tenantId)
     {
         _manualTenantId = tenantId;
+        _hasManualTenantId = true;
         if (tenantId.HasValue)
         {
+            // Si se fija un tenant real, el contexto no es SuperAdmin de plataforma.
             _manualIsSuperAdmin = false;
         }
     }
@@ -42,22 +50,29 @@ public class CurrentTenantContext : ICurrentTenantContext, ITenantSetter
         _manualIsSuperAdmin = isSuperAdmin;
     }
 
+    // ── ICurrentTenantContext ────────────────────────────────────────────────
+
+    /// <summary>
+    /// Getter puro (sin efecto lateral). Devuelve el TenantId fijado manualmente,
+    /// o lo resuelve desde el HttpContext activo si no hay valor manual.
+    /// </summary>
     public Guid? TenantId
     {
         get
         {
-            if (_manualTenantId.HasValue) return _manualTenantId;
+            if (_hasManualTenantId) return _manualTenantId;
 
             var httpContext = _httpContextAccessor.HttpContext;
-            if (httpContext != null)
-            {
-                return ResolveHttpSnapshot(httpContext).TenantId;
-            }
+            if (httpContext?.User.Identity?.IsAuthenticated == true)
+                return TenantClaimsResolver.Resolve(httpContext.User, httpContext.Items).TenantId;
 
-            return _httpSnapshot?.TenantId;
+            return null;
         }
     }
 
+    /// <summary>
+    /// Getter puro (sin efecto lateral). Devuelve si el contexto es SuperAdmin de plataforma.
+    /// </summary>
     public bool IsSuperAdmin
     {
         get
@@ -65,46 +80,11 @@ public class CurrentTenantContext : ICurrentTenantContext, ITenantSetter
             if (_manualIsSuperAdmin.HasValue) return _manualIsSuperAdmin.Value;
 
             var httpContext = _httpContextAccessor.HttpContext;
-            if (httpContext != null)
-            {
-                return ResolveHttpSnapshot(httpContext).IsSuperAdmin;
-            }
+            if (httpContext?.User.Identity?.IsAuthenticated == true)
+                return TenantClaimsResolver.Resolve(httpContext.User, httpContext.Items).IsSuperAdmin;
 
-            return _httpSnapshot?.IsSuperAdmin ?? false;
+            return false;
         }
-    }
-
-    private HttpTenantSnapshot ResolveHttpSnapshot(HttpContext httpContext)
-    {
-        var tenantId = ExtractTenantIdFromHttpContext(httpContext);
-        bool isSuperAdmin = httpContext.User.IsInRole(PlatformRoles.SuperAdmin) && tenantId == null;
-        var snapshot = new HttpTenantSnapshot(tenantId, isSuperAdmin);
-
-        // Conservar en el scope la resolución autenticada para sobrevivir a ExecutionContext.SuppressFlow()
-        // (p. ej. callbacks de HybridCache.GetOrCreateAsync donde IHttpContextAccessor.HttpContext es null).
-        _httpSnapshot = httpContext.User.Identity?.IsAuthenticated == true ? snapshot : null;
-        return snapshot;
-    }
-
-    private static Guid? ExtractTenantIdFromHttpContext(HttpContext httpContext)
-    {
-        if (httpContext.Items.TryGetValue("TenantId", out var tenantIdObj) == true &&
-            tenantIdObj is Guid tenantId)
-        {
-            return tenantId;
-        }
-
-        var tenantClaim = httpContext.User.FindFirst(c =>
-            c.Type.Equals("tenantId", StringComparison.OrdinalIgnoreCase) ||
-            c.Type.Equals("tenant_id", StringComparison.OrdinalIgnoreCase) ||
-            c.Type.Equals("tid", StringComparison.OrdinalIgnoreCase))?.Value;
-
-        if (!string.IsNullOrWhiteSpace(tenantClaim) && Guid.TryParse(tenantClaim, out var claimTenantId))
-        {
-            return claimTenantId;
-        }
-
-        return null;
     }
 
     public bool HasTenant => TenantId.HasValue;

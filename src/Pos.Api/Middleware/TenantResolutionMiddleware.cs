@@ -1,13 +1,14 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
-using Pos.Application.Common.Interfaces;
+using Pos.Infrastructure.Multitenancy;
 
 namespace Pos.Api.Middleware;
 
 /// <summary>
 /// Middleware encargado de extraer y resolver el TenantId a partir de los claims del token JWT,
-/// asignándolo al HttpContext.Items de la solicitud actual y propagándolo al scope de logging.
+/// asignándolo al HttpContext.Items de la solicitud actual, propagándolo al scope de logging
+/// y fijando el contexto de tenant/SuperAdmin en el scope DI vía <see cref="ITenantSetter"/>.
 /// </summary>
 public class TenantResolutionMiddleware
 {
@@ -20,30 +21,30 @@ public class TenantResolutionMiddleware
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async Task InvokeAsync(HttpContext context, ICurrentTenantContext tenantContext)
+    public async Task InvokeAsync(HttpContext context, ITenantSetter tenantSetter)
     {
         ArgumentNullException.ThrowIfNull(context);
-        ArgumentNullException.ThrowIfNull(tenantContext);
+        ArgumentNullException.ThrowIfNull(tenantSetter);
 
         string? tenantIdStr = null;
 
         if (context.User.Identity?.IsAuthenticated == true)
         {
-            var tenantIdClaim = context.User.FindFirst(c =>
-                c.Type.Equals("tenantId", StringComparison.OrdinalIgnoreCase) ||
-                c.Type.Equals("tenant_id", StringComparison.OrdinalIgnoreCase) ||
-                c.Type.Equals("tid", StringComparison.OrdinalIgnoreCase))?.Value;
+            var (tenantId, isSuperAdmin) = TenantClaimsResolver.Resolve(context.User, context.Items);
 
-            if (Guid.TryParse(tenantIdClaim, out var tenantId))
+            if (tenantId.HasValue)
             {
-                context.Items["TenantId"] = tenantId;
-                tenantIdStr = tenantId.ToString();
+                // Mantener Items["TenantId"] para compatibilidad con código que lo lee directamente.
+                context.Items["TenantId"] = tenantId.Value;
+                tenantIdStr = tenantId.Value.ToString();
             }
 
-            // Materializa la resolución en el scope actual para que sobreviva a
-            // ExecutionContext.SuppressFlow() (p. ej. callbacks de HybridCache).
-            _ = tenantContext.TenantId;
-            _ = tenantContext.IsSuperAdmin;
+            // Fijar estado explícitamente en el scope DI del request.
+            // Esto garantiza que CurrentTenantContext devuelva valores correctos incluso
+            // dentro de callbacks ejecutados bajo ExecutionContext.SuppressFlow()
+            // (p. ej. HybridCache.GetOrCreateAsync), donde IHttpContextAccessor.HttpContext == null.
+            tenantSetter.SetTenantId(tenantId);
+            tenantSetter.SetSuperAdmin(isSuperAdmin);
         }
 
         using (_logger.BeginScope(new Dictionary<string, object>

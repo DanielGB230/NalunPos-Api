@@ -613,10 +613,13 @@ public class ArchitectureTests
         foreach (var file in csFiles)
         {
             var fileName = Path.GetFileName(file);
+            var normalizedPath = file.Replace('\\', '/');
 
-            // Permitido únicamente en ITenantSetter.cs, CurrentTenantContext.cs, OutboxProcessorBackgroundService.cs y PendingInvoicePlatformReader.cs
+            // Permitido en: ITenantSetter.cs, CurrentTenantContext.cs, src/Pos.Api/Middleware/TenantResolutionMiddleware.cs (fija SuperAdmin para peticiones HTTP),
+            // OutboxProcessorBackgroundService.cs y PendingInvoicePlatformReader.cs (workers/lectores de plataforma).
             if (fileName == "ITenantSetter.cs" ||
                 fileName == "CurrentTenantContext.cs" ||
+                normalizedPath.EndsWith("src/Pos.Api/Middleware/TenantResolutionMiddleware.cs", StringComparison.OrdinalIgnoreCase) ||
                 fileName == "OutboxProcessorBackgroundService.cs" ||
                 fileName == "PendingInvoicePlatformReader.cs")
             {
@@ -643,7 +646,7 @@ public class ArchitectureTests
 
         Assert.True(
             violations.Count == 0,
-            $"Se detectaron llamadas no autorizadas a 'SetSuperAdmin()'. Solo el OutboxProcessorBackgroundService tiene permiso para establecer el contexto de SuperAdmin en código de producción:\n{string.Join("\n", violations)}"
+            $"Se detectaron llamadas no autorizadas a 'SetSuperAdmin()'. Solo TenantResolutionMiddleware (peticiones HTTP autenticadas), OutboxProcessorBackgroundService y PendingInvoicePlatformReader tienen permiso para establecer el contexto de SuperAdmin:\n{string.Join("\n", violations)}"
         );
     }
 
