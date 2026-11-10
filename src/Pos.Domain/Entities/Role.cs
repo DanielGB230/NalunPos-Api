@@ -52,7 +52,24 @@ public class Role : AggregateRoot<Guid>, IPlatformScopedEntity
 
     public static Role Create(Guid tenantId, string name, string? description, IEnumerable<string>? permissions, TimeProvider timeProvider)
     {
+        if (RoleNames.IsReserved(name))
+        {
+            throw new DomainException($"El nombre de rol '{name.Trim()}' está reservado para roles del sistema y no puede utilizarse en un rol personalizado.");
+        }
+
         return new Role(Guid.NewGuid(), tenantId, name, description, permissions, timeProvider);
+    }
+
+    public static Role CreateSystemRole(Guid tenantId, string name, string? description, IEnumerable<string>? permissions, TimeProvider timeProvider)
+    {
+        Guid validTenantId = TenantGuard.RequireTenantId(tenantId, "un rol de sistema del tenant");
+
+        if (string.IsNullOrWhiteSpace(name) || !RoleNames.TenantSystem.TryGetValue(name.Trim(), out string? canonicalName))
+        {
+            throw new DomainException($"El nombre '{name}' no corresponde a un rol de sistema válido del tenant.");
+        }
+
+        return new Role(Guid.NewGuid(), validTenantId, canonicalName, description, permissions, timeProvider);
     }
 
     public static Role CreatePlatformRole(Guid id, Guid tenantId, string name, TimeProvider timeProvider)

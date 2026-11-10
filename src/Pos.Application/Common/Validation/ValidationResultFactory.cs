@@ -21,8 +21,9 @@ public static class ValidationResultFactory
     {
         ArgumentNullException.ThrowIfNull(failures);
 
-        var errorDict = failures
-            .Where(f => f != null)
+        var failureList = failures.Where(f => f != null).ToList();
+
+        var errorDict = failureList
             .GroupBy(f => f.PropertyName ?? string.Empty, StringComparer.Ordinal)
             .ToDictionary(
                 g => g.Key,
@@ -30,8 +31,18 @@ public static class ValidationResultFactory
                 StringComparer.Ordinal
             );
 
+        var customCodes = failureList
+            .Select(f => f.ErrorCode)
+            .Where(c => !string.IsNullOrWhiteSpace(c) && c.Contains('.', StringComparison.Ordinal))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        string errorCode = failureList.Count == 1 && customCodes.Count == 1
+            ? customCodes[0]
+            : ValidationErrorCode;
+
         var fieldErrors = new FieldErrors(errorDict);
-        return DomainError.Validation(ValidationErrorCode, SummaryMessage, fieldErrors);
+        return DomainError.Validation(errorCode, SummaryMessage, fieldErrors);
     }
 
     /// <summary>

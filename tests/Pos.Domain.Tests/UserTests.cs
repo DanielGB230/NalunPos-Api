@@ -1,5 +1,4 @@
 using Pos.Domain.Entities;
-using Pos.Domain.Enums;
 using Pos.Domain.Exceptions;
 using Pos.Domain.ValueObjects;
 using Xunit;
@@ -60,34 +59,32 @@ public class UserTests
     }
 
     [Fact]
-    public void ChangeRole_WhenRoleIdOrTenantIdChanges_ShouldEmitUserRoleChangedDomainEvent()
+    public void ChangeRole_WhenRoleIdChanges_ShouldEmitUserRoleChangedDomainEvent()
     {
         // Arrange
         Guid oldRoleId = Guid.NewGuid();
         Guid newRoleId = Guid.NewGuid();
-        Guid oldTenantId = Guid.NewGuid();
-        Guid newTenantId = Guid.NewGuid();
-        var user = User.Create("user@tenant.com", "HASH", oldRoleId, oldTenantId, "Juan", "Pérez", _timeProvider);
+        Guid tenantId = Guid.NewGuid();
+        var user = User.Create("user@tenant.com", "HASH", oldRoleId, tenantId, "Juan", "Pérez", _timeProvider);
 
         // Act
-        user.ChangeRole(newRoleId, newTenantId, _timeProvider);
+        user.ChangeRole(newRoleId, _timeProvider);
 
         // Assert
         Assert.Equal(newRoleId, user.RoleId);
-        Assert.Equal(newTenantId, user.TenantId);
+        Assert.Equal(tenantId, user.TenantId);
         
         var roleChangedEvent = user.DomainEvents.OfType<DomainEvents.UserRoleChangedDomainEvent>().SingleOrDefault();
         Assert.NotNull(roleChangedEvent);
         Assert.Equal(user.Id, roleChangedEvent.UserId);
         Assert.Equal(oldRoleId, roleChangedEvent.OldRoleId);
         Assert.Equal(newRoleId, roleChangedEvent.NewRoleId);
-        Assert.Equal(oldTenantId, roleChangedEvent.OldTenantId);
-        Assert.Equal(newTenantId, roleChangedEvent.NewTenantId);
+        Assert.Equal(tenantId, roleChangedEvent.TenantId);
         Assert.True(roleChangedEvent.OccurredOnUtc <= DateTime.UtcNow);
     }
 
     [Fact]
-    public void ChangeRole_WhenRoleIdAndTenantIdAreUnchanged_ShouldNotEmitUserRoleChangedDomainEvent()
+    public void ChangeRole_WhenRoleIdIsUnchanged_ShouldNotEmitUserRoleChangedDomainEvent()
     {
         // Arrange
         Guid roleId = Guid.NewGuid();
@@ -96,7 +93,7 @@ public class UserTests
         int eventCountBefore = user.DomainEvents.Count;
 
         // Act
-        user.ChangeRole(roleId, tenantId, _timeProvider);
+        user.ChangeRole(roleId, _timeProvider);
 
         // Assert
         Assert.Equal(roleId, user.RoleId);
@@ -112,8 +109,19 @@ public class UserTests
         var user = User.Create("user@tenant.com", "HASH", Guid.NewGuid(), Guid.NewGuid(), "Juan", "Pérez", _timeProvider);
 
         // Act & Assert
-        var ex = Assert.Throws<DomainException>(() => user.ChangeRole(Guid.Empty, Guid.NewGuid(), _timeProvider));
+        var ex = Assert.Throws<DomainException>(() => user.ChangeRole(Guid.Empty, _timeProvider));
         Assert.Contains("RoleId", ex.Message);
+    }
+
+    [Fact]
+    public void ChangeRole_WhenTenantUserAssignedSuperAdminRoleId_ShouldThrowDomainException()
+    {
+        // Arrange
+        var user = User.Create("user@tenant.com", "HASH", Guid.NewGuid(), Guid.NewGuid(), "Juan", "Pérez", _timeProvider);
+
+        // Act & Assert
+        var ex = Assert.Throws<DomainException>(() => user.ChangeRole(Role.SuperAdminRoleId, _timeProvider));
+        Assert.Contains("SuperAdmin", ex.Message);
     }
 
     [Fact]
@@ -210,7 +218,7 @@ public class UserTests
 
         // Act - ChangeRole
         timeProvider.SetUtcNow(roleChangedTime);
-        user.ChangeRole(newRoleId, tenantId, timeProvider);
+        user.ChangeRole(newRoleId, timeProvider);
 
         // Assert - ChangeRole
         Assert.Equal(roleChangedTime.UtcDateTime, user.UpdatedAtUtc);

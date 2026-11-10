@@ -1,6 +1,5 @@
 using Pos.Domain.Common;
 using Pos.Domain.DomainEvents;
-using Pos.Domain.Enums;
 using Pos.Domain.Exceptions;
 using Pos.Domain.ValueObjects;
 
@@ -120,21 +119,23 @@ public class User : AggregateRoot<Guid>, IOptionalTenantOwnedEntity
         UpdatedAtUtc = timeProvider.GetUtcNow().UtcDateTime;
     }
 
-    public void ChangeRole(Guid newRoleId, Guid? newTenantId, TimeProvider timeProvider)
+    public void ChangeRole(Guid newRoleId, TimeProvider timeProvider)
     {
         ArgumentNullException.ThrowIfNull(timeProvider);
         if (newRoleId == Guid.Empty) throw new DomainException("El RoleId no puede estar vacío.");
+        if (TenantId.HasValue && newRoleId == Role.SuperAdminRoleId)
+        {
+            throw new DomainException("Un usuario de tenant no puede recibir el rol de plataforma SuperAdmin.");
+        }
 
-        if (RoleId == newRoleId && TenantId == newTenantId)
+        if (RoleId == newRoleId)
         {
             return;
         }
 
         var oldRoleId = RoleId;
-        var oldTenantId = TenantId;
 
         RoleId = newRoleId;
-        TenantId = newTenantId;
         var utcNow = timeProvider.GetUtcNow().UtcDateTime;
         UpdatedAtUtc = utcNow;
 
@@ -142,8 +143,7 @@ public class User : AggregateRoot<Guid>, IOptionalTenantOwnedEntity
             Id,
             oldRoleId,
             newRoleId,
-            oldTenantId,
-            newTenantId,
+            TenantId,
             UpdatedAtUtc.Value));
     }
 

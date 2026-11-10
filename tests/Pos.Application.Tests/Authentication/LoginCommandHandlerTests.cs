@@ -2,7 +2,6 @@ using Pos.Application.Tests.Support.Fakes;
 using Pos.Application.Authentication.Commands.Login;
 using Pos.Domain.Common;
 using Pos.Domain.Entities;
-using Pos.Domain.Enums;
 using Pos.Domain.ValueObjects;
 using Xunit;
 
@@ -45,7 +44,7 @@ public class LoginCommandHandlerTests
         Assert.Equal("fake-jwt-token-for-user", result.Value.Token);
         Assert.Equal(user.Id, result.Value.UserId);
         Assert.Equal(Role.SuperAdminRoleId, result.Value.RoleId);
-        Assert.Equal("SuperAdmin", result.Value.Role);
+        Assert.Equal(PlatformRoles.SuperAdmin, result.Value.Role);
         Assert.Equal("superadmin@pos.com", result.Value.Email);
         Assert.Equal("Super Admin", result.Value.FullName);
         Assert.Null(result.Value.TenantId);
@@ -66,7 +65,7 @@ public class LoginCommandHandlerTests
             lastName: "Pérez",
             timeProvider: TimeProvider.System);
         _authUserLookup.Users.Add(user);
-        _authUserLookup.SetRoleName(tenantAdminRoleId, "TenantAdmin");
+        _authUserLookup.SetRoleName(tenantAdminRoleId, TenantRoles.TenantAdmin);
 
         var command = new LoginCommand("admin@tenant.com", "SecretPassword!");
 
@@ -77,16 +76,16 @@ public class LoginCommandHandlerTests
         Assert.True(result.IsSuccess);
         Assert.Equal(tenantId, result.Value.TenantId);
         Assert.Equal(tenantAdminRoleId, result.Value.RoleId);
-        Assert.Equal("TenantAdmin", result.Value.Role);
+        Assert.Equal(TenantRoles.TenantAdmin, result.Value.Role);
         Assert.Equal("admin@tenant.com", result.Value.Email);
         Assert.Equal("Juan Pérez", result.Value.FullName);
     }
 
     [Theory]
-    [InlineData("TenantAdmin")]
-    [InlineData("Supervisor")]
-    [InlineData("InventoryManager")]
-    [InlineData("Cajero")]
+    [InlineData(TenantRoles.TenantAdmin)]
+    [InlineData(TenantRoles.Supervisor)]
+    [InlineData(TenantRoles.InventoryManager)]
+    [InlineData(TenantRoles.Cajero)]
     public async Task HandleAsync_WithEachCanonicalTenantRole_ShouldReturnCorrespondingCanonicalRoleName(string canonicalRoleName)
     {
         // Arrange
@@ -136,6 +135,54 @@ public class LoginCommandHandlerTests
         _authUserLookup.SetRoleName(missingRoleId, "__CORRUPTED__");
 
         var command = new LoginCommand("corrupt@tenant.com", "Password123!");
+
+        // Act
+        var result = await _handler.HandleAsync(command, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsFailure);
+        Assert.Equal(ErrorType.Unauthorized, result.Error.Type);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenTenantUserHasSuperAdminRoleId_ShouldFailClosedWithUnauthorized()
+    {
+        // Arrange: Estado inconsistente (TenantId no nulo con SuperAdminRoleId)
+        var user = User.Create(
+            new Email("escalated@tenant.com"),
+            new PasswordHash(_passwordHasher.HashPassword("Password123!")),
+            Role.SuperAdminRoleId,
+            tenantId: Guid.NewGuid(),
+            firstName: "Fake",
+            lastName: "SuperAdmin",
+            timeProvider: TimeProvider.System);
+        _authUserLookup.Users.Add(user);
+
+        var command = new LoginCommand("escalated@tenant.com", "Password123!");
+
+        // Act
+        var result = await _handler.HandleAsync(command, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsFailure);
+        Assert.Equal(ErrorType.Unauthorized, result.Error.Type);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenUserHasNullTenantIdWithoutSuperAdminRoleId_ShouldFailClosedWithUnauthorized()
+    {
+        // Arrange: Estado inconsistente (TenantId nulo sin SuperAdminRoleId)
+        var user = User.Create(
+            new Email("orphan@platform.com"),
+            new PasswordHash(_passwordHasher.HashPassword("Password123!")),
+            Guid.NewGuid(),
+            tenantId: null,
+            firstName: "Orphan",
+            lastName: "User",
+            timeProvider: TimeProvider.System);
+        _authUserLookup.Users.Add(user);
+
+        var command = new LoginCommand("orphan@platform.com", "Password123!");
 
         // Act
         var result = await _handler.HandleAsync(command, CancellationToken.None);

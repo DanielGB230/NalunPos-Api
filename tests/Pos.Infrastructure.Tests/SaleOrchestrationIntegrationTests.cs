@@ -8,6 +8,7 @@ using Pos.Application.Common.Authorization;
 using Pos.Application.Inventory.Commands;
 using Pos.Application.Payments.Commands;
 using Pos.Application.Sales.Commands;
+using Pos.Domain.Common;
 using Pos.Domain.Entities;
 using Pos.Domain.Enums;
 using Pos.Domain.Interfaces;
@@ -106,7 +107,7 @@ public class SaleOrchestrationIntegrationTests : IDisposable
         var logger = sp.GetRequiredService<ILogger<Pos.Infrastructure.Persistence.Seed.DefaultRoleSeeder>>();
         var seeder = new Pos.Infrastructure.Persistence.Seed.DefaultRoleSeeder(dbContext, logger, TimeProvider.System);
         await seeder.SeedRolesForTenantAsync(tenantId);
-        var adminRole = dbContext.Roles.First(r => r.TenantId == tenantId && r.Name == "TenantAdmin");
+        var adminRole = dbContext.Roles.First(r => r.TenantId == tenantId && r.Name == TenantRoles.TenantAdmin);
 
         var activeUser = User.Create(new Email("activeadmin@test.com"), new PasswordHash("passhash"), adminRole.Id, tenantId, "Active", "Admin", TimeProvider.System);
         dbContext.Users.Add(activeUser);

@@ -55,7 +55,10 @@ public class CreateRoleCommandHandler : ICommandHandler<CreateRoleCommand, Resul
         }
         catch (DomainException ex)
         {
-            return Result.Fail<RoleDto>(DomainError.Validation("Role.Invalid", ex.Message));
+            string errorCode = RoleNames.IsReserved(request.Name)
+                ? CreateRoleCommandValidator.ReservedNameErrorCode
+                : "Role.Invalid";
+            return Result.Fail<RoleDto>(DomainError.Validation(errorCode, ex.Message));
         }
 
         await _roleRepository.AddAsync(role, cancellationToken);

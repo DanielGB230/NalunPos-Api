@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Pos.Application.Common.Authorization;
+using Pos.Domain.Common;
 using Pos.Domain.Entities;
 using Pos.Infrastructure.Persistence.Context;
 
@@ -22,7 +23,7 @@ public class DefaultRoleSeeder
     public async Task SeedRolesForTenantAsync(Guid tenantId, CancellationToken cancellationToken = default)
     {
         // 1. TenantAdmin
-        await SeedRoleAsync(tenantId, "TenantAdmin", "Administrador del Tenant", new[]
+        await SeedRoleAsync(tenantId, TenantRoles.TenantAdmin, "Administrador del Tenant", new[]
         {
             Permissions.Users.View, Permissions.Users.Create, Permissions.Users.Update, Permissions.Users.Delete,
             Permissions.Roles.View, Permissions.Roles.Create, Permissions.Roles.Update, Permissions.Roles.Delete,
@@ -47,7 +48,7 @@ public class DefaultRoleSeeder
         }, cancellationToken);
 
         // 2. Supervisor
-        await SeedRoleAsync(tenantId, "Supervisor", "Supervisor de Operaciones y Ventas", new[]
+        await SeedRoleAsync(tenantId, TenantRoles.Supervisor, "Supervisor de Operaciones y Ventas", new[]
         {
             Permissions.CashRegisters.View, Permissions.CashRegisters.OpenSession, Permissions.CashRegisters.CloseSession,
             Permissions.Categories.View, Permissions.Categories.Create, Permissions.Categories.Update,
@@ -67,7 +68,7 @@ public class DefaultRoleSeeder
         }, cancellationToken);
 
         // 3. InventoryManager
-        await SeedRoleAsync(tenantId, "InventoryManager", "Encargado de Inventario y Almacenes", new[]
+        await SeedRoleAsync(tenantId, TenantRoles.InventoryManager, "Encargado de Inventario y Almacenes", new[]
         {
             Permissions.Products.View, Permissions.Products.Create, Permissions.Products.Update, Permissions.Products.Delete,
             Permissions.Categories.View, Permissions.Categories.Create, Permissions.Categories.Update, Permissions.Categories.Delete,
@@ -82,7 +83,7 @@ public class DefaultRoleSeeder
         }, cancellationToken);
 
         // 4. Cajero
-        await SeedRoleAsync(tenantId, "Cajero", "Cajero Operador de Turno", new[]
+        await SeedRoleAsync(tenantId, TenantRoles.Cajero, "Cajero Operador de Turno", new[]
         {
             Permissions.CashRegisters.View, Permissions.CashRegisters.OpenSession, Permissions.CashRegisters.CloseSession,
             Permissions.Categories.View,
@@ -107,11 +108,7 @@ public class DefaultRoleSeeder
         var role = await _context.Roles.FirstOrDefaultAsync(r => r.TenantId == tenantId && r.Name == name, cancellationToken);
         if (role == null)
         {
-            role = Role.Create(tenantId, name, description, _timeProvider);
-            foreach (var perm in permissions)
-            {
-                role.AddPermission(perm);
-            }
+            role = Role.CreateSystemRole(tenantId, name, description, permissions, _timeProvider);
             _context.Roles.Add(role);
             if (_logger.IsEnabled(LogLevel.Information))
             {

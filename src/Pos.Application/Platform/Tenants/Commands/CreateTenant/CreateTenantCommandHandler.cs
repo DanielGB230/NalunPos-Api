@@ -1,7 +1,6 @@
 using Pos.Application.Common.Interfaces;
 using Pos.Domain.Common;
 using Pos.Domain.Entities;
-using Pos.Domain.Enums;
 using Pos.Domain.Exceptions;
 using Pos.Domain.Interfaces;
 
@@ -75,10 +74,9 @@ public class CreateTenantCommandHandler : ICommandHandler<CreateTenantCommand, R
             tenant = Tenant.Create(command.Name, command.DocumentNumber, _timeProvider);
             string passwordHash = _passwordHasher.HashPassword(command.AdminPassword);
 
-            // Crear roles básicos (Seeder should ideally handle this, but for CreateTenant, we do it inline or we expect seeder to run)
-            // But we need RoleId NOW to create the user.
-            adminRole = Role.Create(tenant.Id, "TenantAdmin", "Administrador de la Empresa", _timeProvider);
-            cajeroRole = Role.Create(tenant.Id, "Cajero", "Cajero del Punto de Venta", _timeProvider);
+            // Crear roles básicos de sistema del tenant
+            adminRole = Role.CreateSystemRole(tenant.Id, TenantRoles.TenantAdmin, "Administrador de la Empresa", null, _timeProvider);
+            cajeroRole = Role.CreateSystemRole(tenant.Id, TenantRoles.Cajero, "Cajero del Punto de Venta", null, _timeProvider);
 
             adminUser = User.Create(
                 command.AdminEmail,

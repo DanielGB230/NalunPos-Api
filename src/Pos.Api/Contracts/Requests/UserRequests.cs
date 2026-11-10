@@ -22,6 +22,5 @@ public record UpdateUserRequest(
 );
 
 public record UpdateUserRoleRequest(
-    Guid RoleId,
-    Guid? TenantId = null
+    Guid RoleId
 );

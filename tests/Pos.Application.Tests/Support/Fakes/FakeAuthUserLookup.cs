@@ -55,9 +55,14 @@ public sealed class FakeAuthUserLookup : IAuthUserLookup
 
     private string ResolveRoleName(User user)
     {
-        if (user.RoleId == Role.SuperAdminRoleId || !user.TenantId.HasValue)
+        if (user.RoleId == Role.SuperAdminRoleId && !user.TenantId.HasValue)
         {
             return PlatformRoles.SuperAdmin;
+        }
+
+        if (user.RoleId == Role.SuperAdminRoleId || !user.TenantId.HasValue)
+        {
+            return "__CORRUPTED__";
         }
 
         if (_roleNames.TryGetValue(user.RoleId, out var customRole))
@@ -65,6 +70,6 @@ public sealed class FakeAuthUserLookup : IAuthUserLookup
             return customRole;
         }
 
-        return "TenantAdmin";
+        return TenantRoles.TenantAdmin;
     }
 }

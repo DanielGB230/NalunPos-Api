@@ -101,8 +101,7 @@ public class UsersController : ControllerBase
     {
         var command = new UpdateUserRoleCommand(
             id,
-            request.RoleId,
-            request.TenantId);
+            request.RoleId);
 
         var result = await _dispatcher.SendAsync(command, cancellationToken);
         return this.ToActionResult(result);

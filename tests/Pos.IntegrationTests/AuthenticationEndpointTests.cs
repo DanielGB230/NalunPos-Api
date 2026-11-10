@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using Pos.Domain.Common;
 using Pos.IntegrationTests.Fixtures;
 using Xunit;
 using Xunit.Abstractions;
@@ -199,7 +200,7 @@ public class AuthenticationEndpointTests : IClassFixture<CustomWebApplicationFac
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var loginResponse = await response.Content.ReadFromJsonAsync<Pos.Application.Authentication.Commands.Login.LoginResponse>();
         Assert.NotNull(loginResponse);
-        Assert.Equal("SuperAdmin", loginResponse.Role);
+        Assert.Equal(PlatformRoles.SuperAdmin, loginResponse.Role);
         Assert.Equal(Pos.Domain.Entities.Role.SuperAdminRoleId, loginResponse.RoleId);
         Assert.Null(loginResponse.TenantId);
         Assert.Equal(email, loginResponse.Email);
@@ -208,7 +209,7 @@ public class AuthenticationEndpointTests : IClassFixture<CustomWebApplicationFac
         var jwt = handler.ReadJwtToken(loginResponse.Token);
         var roleClaim = jwt.Claims.FirstOrDefault(c => c.Type == "role" || c.Type == System.Security.Claims.ClaimTypes.Role);
         Assert.NotNull(roleClaim);
-        Assert.Equal("SuperAdmin", roleClaim.Value);
+        Assert.Equal(PlatformRoles.SuperAdmin, roleClaim.Value);
     }
 
     [Fact]
@@ -220,7 +221,7 @@ public class AuthenticationEndpointTests : IClassFixture<CustomWebApplicationFac
         var hasher = scope.ServiceProvider.GetRequiredService<Pos.Application.Common.Interfaces.IPasswordHasher>();
 
         Guid tenantId = Guid.NewGuid();
-        var role = Pos.Domain.Entities.Role.Create(tenantId, "Cajero", TimeProvider.System);
+        var role = Pos.Domain.Entities.Role.CreateSystemRole(tenantId, TenantRoles.Cajero, null, null, TimeProvider.System);
         db.Roles.Add(role);
 
         var email = $"cajero_{Guid.NewGuid():N}@tenant.com";
@@ -231,7 +232,7 @@ public class AuthenticationEndpointTests : IClassFixture<CustomWebApplicationFac
             role.Id,
             tenantId: tenantId,
             firstName: "Carlos",
-            lastName: "Cajero",
+            lastName: "Operador",
             TimeProvider.System);
 
         db.Users.Add(user);
@@ -246,7 +247,7 @@ public class AuthenticationEndpointTests : IClassFixture<CustomWebApplicationFac
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var loginResponse = await response.Content.ReadFromJsonAsync<Pos.Application.Authentication.Commands.Login.LoginResponse>();
         Assert.NotNull(loginResponse);
-        Assert.Equal("Cajero", loginResponse.Role);
+        Assert.Equal(TenantRoles.Cajero, loginResponse.Role);
         Assert.Equal(role.Id, loginResponse.RoleId);
         Assert.Equal(tenantId, loginResponse.TenantId);
         Assert.Equal(email, loginResponse.Email);
@@ -255,6 +256,6 @@ public class AuthenticationEndpointTests : IClassFixture<CustomWebApplicationFac
         var jwt = handler.ReadJwtToken(loginResponse.Token);
         var roleClaim = jwt.Claims.FirstOrDefault(c => c.Type == "role" || c.Type == System.Security.Claims.ClaimTypes.Role);
         Assert.NotNull(roleClaim);
-        Assert.Equal("Cajero", roleClaim.Value);
+        Assert.Equal(TenantRoles.Cajero, roleClaim.Value);
     }
 }

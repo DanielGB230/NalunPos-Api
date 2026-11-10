@@ -110,7 +110,7 @@ public class OutboxDeadLetterIntegrationTests : IAsyncLifetime
                 superAdminRole = Role.CreatePlatformRole(
                     Role.SuperAdminRoleId,
                     PlatformScope.TenantId,
-                    "SuperAdmin",
+                    PlatformRoles.SuperAdmin,
                     "Super Admin",
                     new[] { Permissions.Platform.DeadLetterView, Permissions.Platform.DeadLetterReprocess },
                     TimeProvider.System);

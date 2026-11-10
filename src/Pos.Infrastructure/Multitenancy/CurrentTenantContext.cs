@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http;
 using Pos.Application.Common.Interfaces;
+using Pos.Domain.Common;
 
 namespace Pos.Infrastructure.Multitenancy;
 
@@ -74,7 +75,7 @@ public class CurrentTenantContext : ICurrentTenantContext, ITenantSetter
             if (_manualIsSuperAdmin.HasValue) return _manualIsSuperAdmin.Value;
 
             var httpContext = _httpContextAccessor.HttpContext;
-            return httpContext?.User.IsInRole("SuperAdmin") ?? false;
+            return (httpContext?.User.IsInRole(PlatformRoles.SuperAdmin) ?? false) && TenantId == null;
         }
     }
 

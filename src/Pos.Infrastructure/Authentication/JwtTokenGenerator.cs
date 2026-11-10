@@ -70,10 +70,19 @@ public class JwtTokenGenerator : ITokenGenerator
 
     public string GenerateToken(User user)
     {
-        string roleName = user.RoleId == Role.SuperAdminRoleId || !user.TenantId.HasValue
-            ? PlatformRoles.SuperAdmin
-            : "User";
-        return GenerateToken(user, roleName);
+        ArgumentNullException.ThrowIfNull(user);
+
+        if (user.RoleId == Role.SuperAdminRoleId && !user.TenantId.HasValue)
+        {
+            return GenerateToken(user, PlatformRoles.SuperAdmin);
+        }
+
+        if (user.RoleId == Role.SuperAdminRoleId || !user.TenantId.HasValue)
+        {
+            throw new InvalidOperationException("El usuario posee una combinación inconsistente de RoleId y TenantId para identidad de plataforma.");
+        }
+
+        return GenerateToken(user, "User");
     }
 
     public string GenerateToken(User user, Role role)

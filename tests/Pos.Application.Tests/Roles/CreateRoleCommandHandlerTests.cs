@@ -1,9 +1,10 @@
-using Pos.Application.Tests.Support.Fakes;
+using Pos.Application.Common.Behaviors;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Roles.Commands;
+using Pos.Application.Roles.DTOs;
+using Pos.Application.Tests.Support.Fakes;
 using Pos.Domain.Common;
 using Pos.Domain.Entities;
-using Pos.Domain.Interfaces;
 using Xunit;
 
 namespace Pos.Application.Tests.Roles;
@@ -65,4 +66,46 @@ public class CreateRoleCommandHandlerTests
         Assert.Equal(0, _unitOfWork.SaveChangesCount);
     }
 
+    [Theory]
+    [InlineData("superadmin")]
+    [InlineData(" SuperAdmin ")]
+    [InlineData("TENANTADMIN")]
+    public async Task HandleAsync_WithReservedRoleName_ShouldFailWithReservedValidationCode(string reservedName)
+    {
+        // Arrange
+        var command = new CreateRoleCommand(reservedName, "Intento de escalada");
+
+        // Act
+        var result = await _handler.HandleAsync(command, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsFailure);
+        Assert.Equal(ErrorType.Validation, result.Error.Type);
+        Assert.Equal(CreateRoleCommandValidator.ReservedNameErrorCode, result.Error.Code);
+        Assert.Empty(_roleRepository.Roles);
+        Assert.Equal(0, _unitOfWork.SaveChangesCount);
+    }
+
+    [Theory]
+    [InlineData("superadmin")]
+    [InlineData(" SuperAdmin ")]
+    [InlineData("TENANTADMIN")]
+    public async Task ValidationPipeline_WithReservedRoleName_ShouldReturnDomainValidationErrorWithReservedCode(string reservedName)
+    {
+        // Arrange
+        var behavior = new ValidationBehavior<CreateRoleCommand, Result<RoleDto>>(
+            _handler,
+            [new CreateRoleCommandValidator()]);
+        var command = new CreateRoleCommand(reservedName, "Intento vía pipeline");
+
+        // Act
+        var result = await behavior.HandleAsync(command, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsFailure);
+        Assert.Equal(ErrorType.Validation, result.Error.Type);
+        Assert.Equal(CreateRoleCommandValidator.ReservedNameErrorCode, result.Error.Code);
+        Assert.Empty(_roleRepository.Roles);
+        Assert.Equal(0, _unitOfWork.SaveChangesCount);
+    }
 }

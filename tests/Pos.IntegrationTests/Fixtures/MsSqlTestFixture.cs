@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using Pos.Application;
 using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
+using Pos.Domain.Common;
 using Pos.Domain.Entities;
 using Pos.Domain.Interfaces;
 using Pos.Domain.ValueObjects;
@@ -249,13 +250,13 @@ public class MsSqlTestFixture : IAsyncLifetime, IDisposable
 
             if (tenantId.HasValue && tenantId.Value != Guid.Empty)
             {
-                var adminRole = db.Roles.FirstOrDefault(r => r.TenantId == tenantId.Value && r.Name == "TenantAdmin");
+                var adminRole = db.Roles.FirstOrDefault(r => r.TenantId == tenantId.Value && r.Name == TenantRoles.TenantAdmin);
                 if (adminRole == null)
                 {
                     var logger = scope.ServiceProvider.GetRequiredService<ILogger<Pos.Infrastructure.Persistence.Seed.DefaultRoleSeeder>>();
                     var seeder = new Pos.Infrastructure.Persistence.Seed.DefaultRoleSeeder(db, logger, TimeProvider.System);
                     seeder.SeedRolesForTenantAsync(tenantId.Value).GetAwaiter().GetResult();
-                    adminRole = db.Roles.First(r => r.TenantId == tenantId.Value && r.Name == "TenantAdmin");
+                    adminRole = db.Roles.First(r => r.TenantId == tenantId.Value && r.Name == TenantRoles.TenantAdmin);
                 }
 
                 var defaultEmail = new Email($"admin_{tenantId.Value.ToString()[..8]}@testtenant.com");

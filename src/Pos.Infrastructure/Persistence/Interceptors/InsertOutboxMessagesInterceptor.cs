@@ -170,8 +170,8 @@ public class InsertOutboxMessagesInterceptor : SaveChangesInterceptor
                 userRoleEvent.UserId,
                 userRoleEvent.OldRoleId,
                 userRoleEvent.NewRoleId,
-                userRoleEvent.OldTenantId,
-                userRoleEvent.NewTenantId,
+                userRoleEvent.TenantId,
+                userRoleEvent.TenantId,
                 userRoleEvent.OccurredOnUtc
             ),
             UserStatusChangedDomainEvent userStatusEvent => new UserStatusChangedIntegrationEventV1(

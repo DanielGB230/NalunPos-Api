@@ -58,10 +58,15 @@ public class AuthUserLookup : IAuthUserLookup
                 return null;
             }
 
-            // 1. Caso SuperAdmin: RoleId es SuperAdminRoleId o TenantId es null
-            if (user.RoleId == Role.SuperAdminRoleId || !user.TenantId.HasValue)
+            // 1. Caso SuperAdmin: RoleId debe ser SuperAdminRoleId Y TenantId debe ser null (fail-closed)
+            if (user.RoleId == Role.SuperAdminRoleId && !user.TenantId.HasValue)
             {
                 return new AuthUser(user, PlatformRoles.SuperAdmin);
+            }
+
+            if (user.RoleId == Role.SuperAdminRoleId || !user.TenantId.HasValue)
+            {
+                return null;
             }
 
             // 2. Caso Usuario de Tenant: Establece temporalmente el TenantId del usuario en SESSION_CONTEXT
