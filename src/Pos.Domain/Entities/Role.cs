@@ -84,6 +84,21 @@ public class Role : AggregateRoot<Guid>, IPlatformScopedEntity
 
     public static Role CreatePlatformRole(Guid id, Guid tenantId, string name, string? description, IEnumerable<string>? permissions, TimeProvider timeProvider)
     {
+        if (id != SuperAdminRoleId)
+        {
+            throw new DomainException("Un rol de plataforma solo puede crearse con el identificador canónico SuperAdminRoleId.");
+        }
+
+        if (tenantId != PlatformScope.TenantId)
+        {
+            throw new DomainException("Un rol de plataforma debe pertenecer al alcance de plataforma (PlatformScope.TenantId).");
+        }
+
+        if (string.IsNullOrEmpty(name) || !string.Equals(name, PlatformRoles.SuperAdmin, StringComparison.Ordinal))
+        {
+            throw new DomainException($"Un rol de plataforma solo puede crearse con el nombre canónico '{PlatformRoles.SuperAdmin}'.");
+        }
+
         return new Role(id, tenantId, name, description, permissions, timeProvider);
     }
 

@@ -1,10 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Platform.Tenants.Commands.CreateTenant;
 using Pos.Application.Platform.Tenants.Queries.GetTenants;
-using Pos.Domain.Enums;
-using Pos.Domain.Interfaces;
+using Pos.Domain.Common;
 using Pos.Infrastructure.Authentication;
 using Pos.Infrastructure.Persistence.Context;
 using Pos.IntegrationTests.Fixtures;
@@ -89,5 +89,64 @@ public class TenantFullE2EIntegrationTests
         var getTenantsResult = await dispatcher.SendAsync(new GetTenantsQuery(1, 10, taxId));
         Assert.Single(getTenantsResult.Items);
         Assert.Equal(companyName, getTenantsResult.Items[0].Name);
+    }
+
+    [Fact]
+    public async Task FullE2E_CreateTenant_ProvisionsAllFourSystemRolesAndPermissionsInSqlServer_WithoutSeeder()
+    {
+        // 1. Arrange: Contexto SuperAdmin ejecutando el caso de uso real CreateTenantCommand
+        var superAdminSp = _fixture.CreateServiceProvider();
+        using var superAdminScope = superAdminSp.CreateScope();
+        var dispatcher = superAdminScope.ServiceProvider.GetRequiredService<IDispatcher>();
+
+        string unique = Guid.NewGuid().ToString("N")[..12];
+        string taxId = $"RUC-{unique}";
+        string adminEmail = $"prov_admin_{unique}@demopos.com";
+
+        var createCommand = new CreateTenantCommand(
+            $"Aprovisionada {unique} S.A.C.",
+            taxId,
+            adminEmail,
+            "Password123!");
+
+        // 2. Act: Crear el tenant en SQL Server sin invocar DefaultRoleSeeder
+        var createResult = await dispatcher.SendAsync(createCommand);
+        Assert.True(createResult.IsSuccess);
+        Guid createdTenantId = createResult.Value;
+
+        // 3. Assert BD SQL Server bajo contexto RLS del nuevo tenant (sin seeder)
+        await using var tenantDb = _fixture.CreateDbContext(createdTenantId);
+        var rolesInDb = await tenantDb.Roles
+            .AsNoTracking()
+            .ToListAsync();
+
+        Assert.Equal(DefaultTenantRoleCatalog.All.Count, rolesInDb.Count);
+
+        foreach (var expectedDef in DefaultTenantRoleCatalog.All)
+        {
+            var role = Assert.Single(rolesInDb, r => r.Name == expectedDef.Name);
+            Assert.Equal(createdTenantId, role.TenantId);
+            Assert.Equal(expectedDef.Description, role.Description);
+            Assert.True(
+                expectedDef.Permissions.ToHashSet(StringComparer.OrdinalIgnoreCase).SetEquals(role.Permissions),
+                $"Los permisos persistidos para '{expectedDef.Name}' en SQL Server no coinciden con DefaultTenantRoleCatalog.");
+        }
+
+        // Verificar que el usuario administrador apunta al rol TenantAdmin recién aprovisionado
+        var tenantAdminRole = Assert.Single(rolesInDb, r => r.Name == TenantRoles.TenantAdmin);
+        var adminEmailVo = new Pos.Domain.ValueObjects.Email(adminEmail);
+        var adminUser = await tenantDb.Users.AsNoTracking().SingleAsync(u => u.Email == adminEmailVo);
+        Assert.Equal(tenantAdminRole.Id, adminUser.RoleId);
+
+        // Verificar resolución real de permisos vía ICurrentUserPermissions contra SQL Server (prohibido usar seeder)
+        var tenantSp = _fixture.CreateServiceProvider(createdTenantId, seedRolesIfMissing: false);
+        using var tenantScope = tenantSp.CreateScope();
+        var permissionsService = tenantScope.ServiceProvider.GetRequiredService<ICurrentUserPermissions>();
+
+        var resolvedPermissions = await permissionsService.GetPermissionsAsync(createdTenantId, adminUser.RoleId);
+        Assert.Equal(tenantAdminRole.Permissions.Count, resolvedPermissions.Count);
+        Assert.Contains(Permissions.Users.Create, resolvedPermissions);
+        Assert.Contains(Permissions.Products.Create, resolvedPermissions);
+        Assert.Contains(Permissions.Sales.Create, resolvedPermissions);
     }
 }

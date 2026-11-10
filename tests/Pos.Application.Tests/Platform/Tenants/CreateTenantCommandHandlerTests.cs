@@ -1,9 +1,9 @@
-using Pos.Application.Tests.Support.Fakes;
+using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Platform.Tenants.Commands.CreateTenant;
+using Pos.Application.Tests.Support.Fakes;
 using Pos.Domain.Common;
 using Pos.Domain.Entities;
-using Pos.Domain.Enums;
 using Pos.Domain.Interfaces;
 using Pos.Domain.ValueObjects;
 using Xunit;
@@ -133,6 +133,41 @@ public class CreateTenantCommandHandlerTests
         Assert.Equal(ErrorType.Validation, result.Error.Type);
         Assert.Equal("Tenant.Invalid", result.Error.Code);
         Assert.Equal(0, _unitOfWork.SaveChangesCount);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WithValidData_ShouldProvisionExactFourSystemRolesFromCatalogAndAssignTenantAdminToAdminUser()
+    {
+        // Arrange
+        var command = new CreateTenantCommand(
+            "Comercial Andina S.A.C.",
+            "20551234561",
+            "gerencia@comercialandina.com",
+            "Password123!");
+
+        // Act
+        var result = await _handler.HandleAsync(command, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        Guid createdTenantId = result.Value;
+
+        Assert.Equal(DefaultTenantRoleCatalog.All.Count, _roleRepository.Roles.Count);
+        Assert.Equal(4, _roleRepository.Roles.Count);
+        Assert.All(_roleRepository.Roles, r => Assert.Equal(createdTenantId, r.TenantId));
+
+        foreach (var definition in DefaultTenantRoleCatalog.All)
+        {
+            var provisionedRole = Assert.Single(_roleRepository.Roles, r => r.Name == definition.Name);
+            Assert.Equal(definition.Description, provisionedRole.Description);
+            Assert.Equal(definition.Permissions.Count, provisionedRole.Permissions.Count);
+            Assert.True(definition.Permissions.ToHashSet(StringComparer.OrdinalIgnoreCase).SetEquals(provisionedRole.Permissions));
+        }
+
+        var tenantAdminRole = _roleRepository.Roles.Single(r => r.Name == TenantRoles.TenantAdmin);
+        var adminUser = Assert.Single(_userRepository.Users);
+        Assert.Equal(tenantAdminRole.Id, adminUser.RoleId);
+        Assert.Equal(1, _unitOfWork.SaveChangesCount);
     }
 
     // Fakes de prueba

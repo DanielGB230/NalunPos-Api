@@ -1,11 +1,10 @@
 using Pos.Application.Common.Attributes;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Roles.DTOs;
+using Pos.Domain.Common;
 using Pos.Domain.Entities;
 using Pos.Domain.Exceptions;
 using Pos.Domain.Interfaces;
-
-using Pos.Domain.Common;
 
 namespace Pos.Application.Roles.Commands;
 
@@ -16,8 +15,6 @@ public record CreateRoleCommand(
     string? Description = null,
     List<string>? Permissions = null
 ) : ICommand<Result<RoleDto>>;
-
-
 
 public class CreateRoleCommandHandler : ICommandHandler<CreateRoleCommand, Result<RoleDto>>
 {
@@ -40,10 +37,17 @@ public class CreateRoleCommandHandler : ICommandHandler<CreateRoleCommand, Resul
 
     public async Task<Result<RoleDto>> HandleAsync(CreateRoleCommand request, CancellationToken cancellationToken)
     {
+        if (RoleNames.IsReserved(request.Name))
+        {
+            return Result.Fail<RoleDto>(DomainError.Validation(
+                RoleErrorCodes.NameReserved,
+                $"El nombre de rol '{request.Name.Trim()}' está reservado para roles del sistema y no puede ser utilizado."));
+        }
+
         bool nameExists = await _roleRepository.ExistsByNameAsync(request.Name, null, cancellationToken);
         if (nameExists)
         {
-            return Result.Fail<RoleDto>(DomainError.Conflict("Role.AlreadyExists", $"Ya existe un rol con el nombre '{request.Name}'."));
+            return Result.Fail<RoleDto>(DomainError.Conflict(RoleErrorCodes.AlreadyExists, $"Ya existe un rol con el nombre '{request.Name}'."));
         }
 
         Guid tenantId = _currentTenantContext.RequireTenantId();
@@ -55,10 +59,7 @@ public class CreateRoleCommandHandler : ICommandHandler<CreateRoleCommand, Resul
         }
         catch (DomainException ex)
         {
-            string errorCode = RoleNames.IsReserved(request.Name)
-                ? CreateRoleCommandValidator.ReservedNameErrorCode
-                : "Role.Invalid";
-            return Result.Fail<RoleDto>(DomainError.Validation(errorCode, ex.Message));
+            return Result.Fail<RoleDto>(DomainError.Validation(RoleErrorCodes.Invalid, ex.Message));
         }
 
         await _roleRepository.AddAsync(role, cancellationToken);

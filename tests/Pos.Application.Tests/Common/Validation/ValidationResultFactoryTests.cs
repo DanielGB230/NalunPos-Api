@@ -132,6 +132,70 @@ public class ValidationResultFactoryTests
         await Assert.ThrowsAsync<ValidationException>(() => decorator.HandleAsync(command));
     }
 
+    [Fact]
+    public void CreateError_SingleFailureWithDottedErrorCode_ShouldPromoteCustomErrorCode()
+    {
+        var failures = new[]
+        {
+            new ValidationFailure("Name", "El nombre está reservado.") { ErrorCode = "role.name_reserved" }
+        };
+
+        var error = ValidationResultFactory.CreateError(failures);
+
+        Assert.Equal(ErrorType.Validation, error.Type);
+        Assert.Equal("role.name_reserved", error.Code);
+        Assert.NotNull(error.Errors);
+        Assert.Equal("El nombre está reservado.", error.Errors.Values["Name"][0]);
+    }
+
+    [Fact]
+    public void CreateError_SingleFailureWithoutDotInErrorCode_ShouldUseDefaultValidationErrorCode()
+    {
+        var failures = new[]
+        {
+            new ValidationFailure("Name", "El nombre es requerido.") { ErrorCode = "NotEmptyValidator" }
+        };
+
+        var error = ValidationResultFactory.CreateError(failures);
+
+        Assert.Equal(ErrorType.Validation, error.Type);
+        Assert.Equal("Validation.Error", error.Code);
+    }
+
+    [Fact]
+    public void CreateError_MultipleFailuresWithDottedErrorCode_ShouldUseDefaultValidationErrorCode()
+    {
+        var failures = new[]
+        {
+            new ValidationFailure("Name", "El nombre está reservado.") { ErrorCode = "role.name_reserved" },
+            new ValidationFailure("Description", "Descripción demasiado larga.") { ErrorCode = "role.description_too_long" }
+        };
+
+        var error = ValidationResultFactory.CreateError(failures);
+
+        Assert.Equal(ErrorType.Validation, error.Type);
+        Assert.Equal("Validation.Error", error.Code);
+        Assert.NotNull(error.Errors);
+        Assert.Equal(2, error.Errors.Values.Count);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void CreateError_SingleFailureWithBlankErrorCode_ShouldUseDefaultValidationErrorCode(string? blankCode)
+    {
+        var failures = new[]
+        {
+            new ValidationFailure("Name", "Valor inválido.") { ErrorCode = blankCode! }
+        };
+
+        var error = ValidationResultFactory.CreateError(failures);
+
+        Assert.Equal(ErrorType.Validation, error.Type);
+        Assert.Equal("Validation.Error", error.Code);
+    }
+
     // ── Clases auxiliares para probar ValidationBehavior ────────────────────
 
     public record DummyCommand : ICommand<Result<string>>;

@@ -1,6 +1,6 @@
 using FluentValidation.TestHelper;
+using Pos.Application.Roles;
 using Pos.Application.Roles.Commands;
-using Pos.Domain.Common;
 using Xunit;
 
 namespace Pos.Application.Tests.Roles;
@@ -26,7 +26,7 @@ public class CreateRoleCommandValidatorTests
 
         // Assert
         result.ShouldHaveValidationErrorFor(x => x.Name)
-            .WithErrorCode(CreateRoleCommandValidator.ReservedNameErrorCode);
+            .WithErrorCode(RoleErrorCodes.NameReserved);
     }
 
     [Theory]
@@ -45,4 +45,3 @@ public class CreateRoleCommandValidatorTests
         result.ShouldNotHaveValidationErrorFor(x => x.Name);
     }
 }
-

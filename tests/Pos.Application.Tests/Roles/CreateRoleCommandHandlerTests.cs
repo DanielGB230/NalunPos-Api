@@ -1,10 +1,11 @@
 using Pos.Application.Common.Behaviors;
-using Pos.Application.Common.Interfaces;
+using Pos.Application.Roles;
 using Pos.Application.Roles.Commands;
 using Pos.Application.Roles.DTOs;
 using Pos.Application.Tests.Support.Fakes;
 using Pos.Domain.Common;
 using Pos.Domain.Entities;
+using Pos.Domain.Interfaces;
 using Xunit;
 
 namespace Pos.Application.Tests.Roles;
@@ -61,7 +62,7 @@ public class CreateRoleCommandHandlerTests
         // Assert
         Assert.True(result.IsFailure);
         Assert.Equal(ErrorType.Conflict, result.Error.Type);
-        Assert.Equal("Role.AlreadyExists", result.Error.Code);
+        Assert.Equal(RoleErrorCodes.AlreadyExists, result.Error.Code);
         Assert.Single(_roleRepository.Roles);
         Assert.Equal(0, _unitOfWork.SaveChangesCount);
     }
@@ -81,7 +82,7 @@ public class CreateRoleCommandHandlerTests
         // Assert
         Assert.True(result.IsFailure);
         Assert.Equal(ErrorType.Validation, result.Error.Type);
-        Assert.Equal(CreateRoleCommandValidator.ReservedNameErrorCode, result.Error.Code);
+        Assert.Equal(RoleErrorCodes.NameReserved, result.Error.Code);
         Assert.Empty(_roleRepository.Roles);
         Assert.Equal(0, _unitOfWork.SaveChangesCount);
     }
@@ -104,8 +105,50 @@ public class CreateRoleCommandHandlerTests
         // Assert
         Assert.True(result.IsFailure);
         Assert.Equal(ErrorType.Validation, result.Error.Type);
-        Assert.Equal(CreateRoleCommandValidator.ReservedNameErrorCode, result.Error.Code);
+        Assert.Equal(RoleErrorCodes.NameReserved, result.Error.Code);
         Assert.Empty(_roleRepository.Roles);
         Assert.Equal(0, _unitOfWork.SaveChangesCount);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WithReservedRoleName_ShouldReturnReservedCodeBeforeCheckingRepositoryOrInvokingRoleCreate()
+    {
+        // Arrange: Sin tenant ni repositorio operativo; si el handler continuara tras la guarda
+        // hacia ExistsByNameAsync, RequireTenantId() o Role.Create(), lanzaría excepción o devolvería Role.Invalid.
+        var spyRepo = new ThrowIfCalledRoleRepository();
+        var emptyTenantContext = new FakeCurrentTenantContext { TenantId = null };
+        var unitOfWork = new FakeUnitOfWork();
+        var handler = new CreateRoleCommandHandler(spyRepo, unitOfWork, emptyTenantContext, TimeProvider.System);
+        var command = new CreateRoleCommand(" SuperAdmin ", "Intento directo al handler");
+
+        // Act
+        var result = await handler.HandleAsync(command, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsFailure);
+        Assert.Equal(ErrorType.Validation, result.Error.Type);
+        Assert.Equal(RoleErrorCodes.NameReserved, result.Error.Code);
+        Assert.Equal(0, unitOfWork.SaveChangesCount);
+    }
+
+    private sealed class ThrowIfCalledRoleRepository : IRoleRepository
+    {
+        public Task<Role?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
+            throw new InvalidOperationException("No debía invocarse GetByIdAsync.");
+
+        public Task<Role?> GetByNameAsync(string name, CancellationToken cancellationToken = default) =>
+            throw new InvalidOperationException("No debía invocarse GetByNameAsync.");
+
+        public Task<IReadOnlyList<Role>> GetAllAsync(CancellationToken cancellationToken = default) =>
+            throw new InvalidOperationException("No debía invocarse GetAllAsync.");
+
+        public Task<bool> ExistsByNameAsync(string name, Guid? excludeId = null, CancellationToken cancellationToken = default) =>
+            throw new InvalidOperationException("No debía invocarse ExistsByNameAsync.");
+
+        public Task AddAsync(Role role, CancellationToken cancellationToken = default) =>
+            throw new InvalidOperationException("No debía invocarse AddAsync.");
+
+        public void Update(Role role) =>
+            throw new InvalidOperationException("No debía invocarse Update.");
     }
 }

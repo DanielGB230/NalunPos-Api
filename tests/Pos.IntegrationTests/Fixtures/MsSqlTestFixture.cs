@@ -166,7 +166,11 @@ public class MsSqlTestFixture : IAsyncLifetime, IDisposable
         return new PosDbContext(optionsBuilder.Options, sessionContextInterceptor: sessionContextInterceptor, currentTenantId: tenantId);
     }
 
-    public IServiceProvider CreateServiceProvider(Guid? tenantId = null, bool? isSuperAdmin = null, Action<IServiceCollection>? configureServices = null)
+    public IServiceProvider CreateServiceProvider(
+        Guid? tenantId = null,
+        bool? isSuperAdmin = null,
+        Action<IServiceCollection>? configureServices = null,
+        bool seedRolesIfMissing = true)
     {
         var services = new ServiceCollection();
 
@@ -253,6 +257,12 @@ public class MsSqlTestFixture : IAsyncLifetime, IDisposable
                 var adminRole = db.Roles.FirstOrDefault(r => r.TenantId == tenantId.Value && r.Name == TenantRoles.TenantAdmin);
                 if (adminRole == null)
                 {
+                    if (!seedRolesIfMissing)
+                    {
+                        throw new InvalidOperationException(
+                            $"El tenant '{tenantId.Value}' no tiene aprovisionado el rol '{TenantRoles.TenantAdmin}' en BD y seedRolesIfMissing=false.");
+                    }
+
                     var logger = scope.ServiceProvider.GetRequiredService<ILogger<Pos.Infrastructure.Persistence.Seed.DefaultRoleSeeder>>();
                     var seeder = new Pos.Infrastructure.Persistence.Seed.DefaultRoleSeeder(db, logger, TimeProvider.System);
                     seeder.SeedRolesForTenantAsync(tenantId.Value).GetAwaiter().GetResult();
@@ -285,7 +295,13 @@ public class MsSqlTestFixture : IAsyncLifetime, IDisposable
 
                 if (superAdminRole == null)
                 {
-                    superAdminRole = Role.CreatePlatformRole(Role.SuperAdminRoleId, Guid.Empty, "SuperAdminRole", "Super Admin Role", permissions, TimeProvider.System);
+                    superAdminRole = Role.CreatePlatformRole(
+                        Role.SuperAdminRoleId,
+                        PlatformScope.TenantId,
+                        PlatformRoles.SuperAdmin,
+                        "Super Admin Role",
+                        permissions,
+                        TimeProvider.System);
                     db.Roles.Add(superAdminRole);
                     db.SaveChangesAsync().GetAwaiter().GetResult();
                 }

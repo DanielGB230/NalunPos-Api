@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Pos.Domain.Common;
 using Pos.Domain.Entities;
 using Pos.Domain.Interfaces;
 using Pos.Domain.ValueObjects;
@@ -148,7 +149,12 @@ public class TenantIsolationIntegrationTests
             var superAdminRole = await dbSuper.Roles.IgnoreQueryFilters().FirstOrDefaultAsync(r => r.Id == Role.SuperAdminRoleId);
             if (superAdminRole == null)
             {
-                superAdminRole = Role.CreatePlatformRole(Role.SuperAdminRoleId, Guid.Empty, "SuperAdminRole", "Super Admin Role", TimeProvider.System);
+                superAdminRole = Role.CreatePlatformRole(
+                    Role.SuperAdminRoleId,
+                    PlatformScope.TenantId,
+                    PlatformRoles.SuperAdmin,
+                    "Super Admin Role",
+                    TimeProvider.System);
                 dbSuper.Roles.Add(superAdminRole);
             }
 

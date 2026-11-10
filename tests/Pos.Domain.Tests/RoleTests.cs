@@ -106,4 +106,80 @@ public class RoleTests
 
         Assert.Contains("tenant", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
+
+    [Fact]
+    public void CreatePlatformRole_WithCanonicalArguments_ShouldSucceed()
+    {
+        // Arrange
+        var permissions = new[] { "Permissions.Platform.DeadLetter.View" };
+
+        // Act
+        var role = Role.CreatePlatformRole(
+            Role.SuperAdminRoleId,
+            PlatformScope.TenantId,
+            PlatformRoles.SuperAdmin,
+            "Administrador Global",
+            permissions,
+            _timeProvider);
+
+        // Assert
+        Assert.Equal(Role.SuperAdminRoleId, role.Id);
+        Assert.Equal(PlatformScope.TenantId, role.TenantId);
+        Assert.Equal(PlatformRoles.SuperAdmin, role.Name);
+        Assert.Single(role.Permissions);
+    }
+
+    [Theory]
+    [InlineData("SuperAdminRole")]
+    [InlineData("superadmin")]
+    [InlineData(" SuperAdmin ")]
+    [InlineData(TenantRoles.TenantAdmin)]
+    [InlineData("CustomRole")]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void CreatePlatformRole_WithNonCanonicalName_ShouldThrowDomainException(string invalidName)
+    {
+        // Act & Assert
+        Assert.Throws<DomainException>(() =>
+            Role.CreatePlatformRole(
+                Role.SuperAdminRoleId,
+                PlatformScope.TenantId,
+                invalidName,
+                "Inválido",
+                null,
+                _timeProvider));
+    }
+
+    [Theory]
+    [InlineData("00000000-0000-0000-0000-000000000000")]
+    [InlineData("00000000-0000-0000-0000-000000000002")]
+    public void CreatePlatformRole_WithNonCanonicalId_ShouldThrowDomainException(string invalidIdText)
+    {
+        // Arrange
+        Guid invalidId = Guid.Parse(invalidIdText);
+
+        // Act & Assert
+        Assert.Throws<DomainException>(() =>
+            Role.CreatePlatformRole(
+                invalidId,
+                PlatformScope.TenantId,
+                PlatformRoles.SuperAdmin,
+                "ID inválido",
+                null,
+                _timeProvider));
+    }
+
+    [Fact]
+    public void CreatePlatformRole_WithNonPlatformTenantId_ShouldThrowDomainException()
+    {
+        // Act & Assert
+        Assert.Throws<DomainException>(() =>
+            Role.CreatePlatformRole(
+                Role.SuperAdminRoleId,
+                Guid.NewGuid(),
+                PlatformRoles.SuperAdmin,
+                "Tenant inválido",
+                null,
+                _timeProvider));
+    }
 }

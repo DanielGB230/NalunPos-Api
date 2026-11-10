@@ -1,3 +1,4 @@
+using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Domain.Common;
 using Pos.Domain.Entities;
@@ -67,16 +68,18 @@ public class CreateTenantCommandHandler : ICommandHandler<CreateTenantCommand, R
         User adminUser;
         Branch defaultBranch;
         Warehouse defaultWarehouse;
-        Role adminRole;
-        Role cajeroRole;
+        List<Role> systemRoles;
         try
         {
             tenant = Tenant.Create(command.Name, command.DocumentNumber, _timeProvider);
             string passwordHash = _passwordHasher.HashPassword(command.AdminPassword);
 
-            // Crear roles básicos de sistema del tenant
-            adminRole = Role.CreateSystemRole(tenant.Id, TenantRoles.TenantAdmin, "Administrador de la Empresa", null, _timeProvider);
-            cajeroRole = Role.CreateSystemRole(tenant.Id, TenantRoles.Cajero, "Cajero del Punto de Venta", null, _timeProvider);
+            systemRoles = DefaultTenantRoleCatalog.All
+                .Select(def => Role.CreateSystemRole(tenant.Id, def.Name, def.Description, def.Permissions, _timeProvider))
+                .ToList();
+
+            Role adminRole = systemRoles.Single(r =>
+                string.Equals(r.Name, TenantRoles.TenantAdmin, StringComparison.OrdinalIgnoreCase));
 
             adminUser = User.Create(
                 command.AdminEmail,
@@ -104,8 +107,10 @@ public class CreateTenantCommandHandler : ICommandHandler<CreateTenantCommand, R
         }
 
         await _tenantRepository.AddAsync(tenant, cancellationToken);
-        await _roleRepository.AddAsync(adminRole, cancellationToken);
-        await _roleRepository.AddAsync(cajeroRole, cancellationToken);
+        foreach (var role in systemRoles)
+        {
+            await _roleRepository.AddAsync(role, cancellationToken);
+        }
         await _userRepository.AddAsync(adminUser, cancellationToken);
         await _branchRepository.AddAsync(defaultBranch, cancellationToken);
         await _warehouseRepository.AddAsync(defaultWarehouse, cancellationToken);
