@@ -101,6 +101,7 @@ public class OutboxDeadLetterIntegrationTests : IAsyncLifetime
         var generator = new JwtTokenGenerator(config, TimeProvider.System);
 
         User user;
+        string roleName;
         if (isSuperAdmin)
         {
             using var db = _fixture.CreateDbContext(null, isSuperAdmin: true);
@@ -126,6 +127,7 @@ public class OutboxDeadLetterIntegrationTests : IAsyncLifetime
 
             var email = new Email($"superadmin_{Guid.NewGuid():N}"[..20] + "@platform.com");
             user = User.Create(email, new PasswordHash("hashedpass"), Role.SuperAdminRoleId, null, "Super", "Admin", TimeProvider.System);
+            roleName = PlatformRoles.SuperAdmin;
             db.Users.Add(user);
             await db.SaveChangesAsync();
         }
@@ -144,11 +146,12 @@ public class OutboxDeadLetterIntegrationTests : IAsyncLifetime
 
             var email = new Email($"tenantuser_{Guid.NewGuid():N}"[..20] + "@tenant.com");
             user = User.Create(email, new PasswordHash("hashedpass"), role.Id, tenantId, "Regular", "User", TimeProvider.System);
+            roleName = role.Name;
             db.Users.Add(user);
             await db.SaveChangesAsync();
         }
 
-        string token = generator.GenerateToken(user);
+        string token = generator.GenerateToken(user, roleName);
 
         var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
         {

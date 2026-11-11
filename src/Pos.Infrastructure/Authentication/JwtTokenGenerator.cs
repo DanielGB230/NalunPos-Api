@@ -11,7 +11,7 @@ namespace Pos.Infrastructure.Authentication;
 
 /// <summary>
 /// Generador de tokens JWT utilizando System.IdentityModel.Tokens.Jwt.
-/// Emite los claims acordados: UserId (NameIdentifier), Email, Role (canónico para todos), y TenantId (si aplica).
+/// Emite los claims acordados: NameIdentifier, Email, Name, roleId, Role (canónico), y tenantId (únicamente para usuarios de tenant).
 /// </summary>
 public class JwtTokenGenerator : ITokenGenerator
 {
@@ -29,11 +29,29 @@ public class JwtTokenGenerator : ITokenGenerator
         ArgumentNullException.ThrowIfNull(user);
         ArgumentException.ThrowIfNullOrWhiteSpace(roleName);
 
+        string normalizedRoleName = roleName.Trim();
+        bool isSuperAdminRoleId = user.RoleId == Role.SuperAdminRoleId;
+        bool isSuperAdminRoleName = string.Equals(normalizedRoleName, PlatformRoles.SuperAdmin, StringComparison.OrdinalIgnoreCase);
+
+        if (isSuperAdminRoleId || isSuperAdminRoleName)
+        {
+            if (!isSuperAdminRoleId || !isSuperAdminRoleName || user.TenantId.HasValue)
+            {
+                throw new InvalidOperationException(
+                    "El usuario posee una combinación inconsistente de RoleId, roleName y TenantId para identidad de plataforma.");
+            }
+        }
+        else if (!user.TenantId.HasValue)
+        {
+            throw new InvalidOperationException(
+                "Un usuario de tenant debe tener un TenantId válido para emitir un token JWT.");
+        }
+
         string secretKey = _configuration["JwtSettings:Secret"]
                            ?? throw new InvalidOperationException("JwtSettings:Secret is required.");
-        string issuer = _configuration["JwtSettings:Issuer"] 
+        string issuer = _configuration["JwtSettings:Issuer"]
                         ?? throw new InvalidOperationException("JwtSettings:Issuer is required.");
-        string audience = _configuration["JwtSettings:Audience"] 
+        string audience = _configuration["JwtSettings:Audience"]
                           ?? throw new InvalidOperationException("JwtSettings:Audience is required.");
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
@@ -45,7 +63,7 @@ public class JwtTokenGenerator : ITokenGenerator
             new(ClaimTypes.Email, user.Email.Value),
             new(ClaimTypes.Name, user.FullName),
             new("roleId", user.RoleId.ToString()),
-            new(ClaimTypes.Role, roleName)
+            new(ClaimTypes.Role, normalizedRoleName)
         };
 
         if (user.TenantId.HasValue)
@@ -53,10 +71,14 @@ public class JwtTokenGenerator : ITokenGenerator
             claims.Add(new Claim("tenantId", user.TenantId.Value.ToString()));
         }
 
+        DateTime utcNow = _timeProvider.GetUtcNow().UtcDateTime;
+
         var tokenDescriptor = new SecurityTokenDescriptor
         {
             Subject = new ClaimsIdentity(claims),
-            Expires = _timeProvider.GetUtcNow().UtcDateTime.AddMinutes(60), // Expiración corta (60 min)
+            NotBefore = utcNow,
+            IssuedAt = utcNow,
+            Expires = utcNow.AddMinutes(60), // Expiración corta (60 min)
             Issuer = issuer,
             Audience = audience,
             SigningCredentials = credentials
@@ -66,28 +88,5 @@ public class JwtTokenGenerator : ITokenGenerator
         var token = tokenHandler.CreateToken(tokenDescriptor);
 
         return tokenHandler.WriteToken(token);
-    }
-
-    public string GenerateToken(User user)
-    {
-        ArgumentNullException.ThrowIfNull(user);
-
-        if (user.RoleId == Role.SuperAdminRoleId && !user.TenantId.HasValue)
-        {
-            return GenerateToken(user, PlatformRoles.SuperAdmin);
-        }
-
-        if (user.RoleId == Role.SuperAdminRoleId || !user.TenantId.HasValue)
-        {
-            throw new InvalidOperationException("El usuario posee una combinación inconsistente de RoleId y TenantId para identidad de plataforma.");
-        }
-
-        return GenerateToken(user, "User");
-    }
-
-    public string GenerateToken(User user, Role role)
-    {
-        ArgumentNullException.ThrowIfNull(role);
-        return GenerateToken(user, role.Name);
     }
 }

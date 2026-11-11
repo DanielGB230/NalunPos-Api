@@ -8,12 +8,12 @@ El modelo de control de acceso basado en roles (RBAC) almacena los permisos asoc
 
 ## Decisión
 
-Hemos decidido implementar un **modelo de revocación asíncrona de roles** y utilizar un caché en memoria/distribuido mediante **`HybridCache` (novedad de .NET 9)** para los permisos asociados a los roles:
+Hemos decidido implementar un **modelo de revocación asíncrona de roles** y utilizar un caché en memoria/distribuido mediante **`HybridCache` (`.NET 10`, `Microsoft.Extensions.Caching.Hybrid`)** para los permisos asociados a los roles:
 
-1. **Caché Híbrido (`HybridCache`)**: Almacenaremos los permisos de cada rol (agrupados por `TenantId` y `RoleId`) usando la nueva API `HybridCache` de `Microsoft.Extensions.Caching.Hybrid`.
+1. **Caché Híbrido (`HybridCache`)**: Almacenaremos los permisos de cada rol (agrupados por `TenantId` y `RoleId` siguiendo el patrón tenant-aware de ADR 0011) usando la API `HybridCache` de `Microsoft.Extensions.Caching.Hybrid`.
 2. **Time-To-Live (TTL)**: Estableceremos un TTL máximo de **60 segundos** para el caché de permisos.
 3. **Propagación Asíncrona**: Cuando un administrador cambie los permisos de un rol o asigne un nuevo rol a un usuario, habrá un retardo de propagación máximo de 60 segundos antes de que la caché expire y el sistema consulte la base de datos para obtener los nuevos permisos.
-4. **Validación en Caché**: La interfaz `ICurrentUserPermissions` servirá como puerto, y su implementación `CurrentUserPermissions` en la capa de Infraestructura abstraerá el uso de `HybridCache`.
+4. **Validación en Caché y Compatibilidad con `ExecutionContext.SuppressFlow()` + RLS**: La interfaz `ICurrentUserPermissions` servirá como puerto, y su implementación `CurrentUserPermissions` en Infraestructura abstraerá el uso de `HybridCache`. Dado que `HybridCache.GetOrCreateAsync` ejecuta el factory callback bajo `ExecutionContext.SuppressFlow()` (donde `IHttpContextAccessor.HttpContext` es `null`), `TenantResolutionMiddleware` fija explícitamente el contexto resuelto (`SetTenantId` / `SetSuperAdmin`) vía `ITenantSetter` al inicio de cada petición autenticada; de este modo `CurrentTenantContext` conserva el aislamiento sin usar getters mutables y `TenantSessionContextInterceptor` inyecta correctamente el `SESSION_CONTEXT` en SQL Server cuando el callback consulta la tabla `Roles` protegida por RLS (ver ADR 0023).
 
 ## Consecuencias
 
