@@ -135,3 +135,29 @@ dotnet test tests/Pos.IntegrationTests
 ```bash
 dotnet run --project src/Pos.Api --launch-profile "https"
 ```
+
+---
+
+## 4. Gobernanza del Contrato OpenAPI y Detección de Deriva (ADR 0024)
+
+El contrato de la API se encuentra versionado de forma determinista en `docs/api/openapi.v1.json` como la fuente de verdad única para el frontend y clientes externos.
+
+### Verificar Contrato contra el Snapshot (Sin Modificarlo)
+```bash
+dotnet test tests/Pos.IntegrationTests/Pos.IntegrationTests.csproj -c Release --filter FullyQualifiedName~OpenApiContractSnapshotTests
+```
+
+### Actualizar el Snapshot OpenAPI (Solo ante Cambios Autorizados de Contrato)
+La prueba jamás sobrescribe el snapshot de forma automática durante ejecuciones estándar de `dotnet test`. Para regenerar y actualizar el snapshot determinista tras modificar intencionalmente endpoints, DTOs o metadatos:
+
+```powershell
+# En PowerShell (Windows)
+$env:UPDATE_OPENAPI_SNAPSHOT="true"
+dotnet test tests/Pos.IntegrationTests/Pos.IntegrationTests.csproj -c Release --filter FullyQualifiedName~OpenApiContractSnapshotTests
+$env:UPDATE_OPENAPI_SNAPSHOT=""
+```
+
+```bash
+# En Bash (Linux / CI)
+UPDATE_OPENAPI_SNAPSHOT=true dotnet test tests/Pos.IntegrationTests/Pos.IntegrationTests.csproj -c Release --filter FullyQualifiedName~OpenApiContractSnapshotTests
+```

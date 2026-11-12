@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Http.Json;
 using Microsoft.OpenApi;
 
 namespace Pos.Api.Extensions;
@@ -6,6 +8,11 @@ public static class OpenApiExtensions
 {
     public static IServiceCollection AddCustomOpenApi(this IServiceCollection services)
     {
+        services.ConfigureHttpJsonOptions(options =>
+        {
+            options.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
+        });
+
         services.AddOpenApi(options =>
         {
             options.AddDocumentTransformer((document, context, cancellationToken) =>
@@ -31,6 +38,21 @@ public static class OpenApiExtensions
 
                 document.Security ??= new List<OpenApiSecurityRequirement>();
                 document.Security.Add(requirement);
+
+                if (document.Components.Schemas != null &&
+                    document.Components.Schemas.TryGetValue("ProblemDetails", out var problemSchema) &&
+                    problemSchema is OpenApiSchema concreteProblemSchema)
+                {
+                    concreteProblemSchema.Properties ??= new Dictionary<string, IOpenApiSchema>();
+                    if (!concreteProblemSchema.Properties.ContainsKey("code"))
+                    {
+                        concreteProblemSchema.Properties["code"] = new OpenApiSchema
+                        {
+                            Type = JsonSchemaType.String | JsonSchemaType.Null,
+                            Description = "Código de error de dominio RFC 9457 (ADR 0023)."
+                        };
+                    }
+                }
 
                 return Task.CompletedTask;
             });

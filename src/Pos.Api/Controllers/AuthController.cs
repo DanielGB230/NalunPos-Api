@@ -15,6 +15,7 @@ namespace Pos.Api.Controllers;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/auth")]
+[Produces(System.Net.Mime.MediaTypeNames.Application.Json)]
 [EnableRateLimiting("GlobalApiPolicy")]
 public class AuthController : ControllerBase
 {
@@ -48,5 +49,6 @@ public class AuthController : ControllerBase
 
     [AllowAnonymous]
     [HttpGet("ping")]
+    [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
     public IActionResult Ping() => Ok("pong");
 }

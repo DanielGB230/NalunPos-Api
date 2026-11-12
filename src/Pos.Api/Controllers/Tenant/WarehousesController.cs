@@ -1,3 +1,4 @@
+using System.Net.Mime;
 using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -16,6 +17,7 @@ namespace Pos.Api.Controllers.Tenant;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/warehouses")]
+[Produces(MediaTypeNames.Application.Json)]
 [EnableRateLimiting("GlobalApiPolicy")]
 public class WarehousesController : ControllerBase
 {
@@ -29,6 +31,8 @@ public class WarehousesController : ControllerBase
     /// <summary>Lista todos los almacenes activos del tenant.</summary>
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<WarehouseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> GetWarehouses(CancellationToken cancellationToken)
     {
         var query = new GetWarehousesQuery();
@@ -41,6 +45,9 @@ public class WarehousesController : ControllerBase
     /// </summary>
     [HttpGet("{warehouseId:guid}/stock")]
     [ProducesResponseType(typeof(PagedResult<StockLevelDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetStockByWarehouse(
         Guid warehouseId,
@@ -61,6 +68,9 @@ public class WarehousesController : ControllerBase
     /// </summary>
     [HttpGet("{warehouseId:guid}/movements")]
     [ProducesResponseType(typeof(PagedResult<InventoryMovementDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetWarehouseMovements(
         Guid warehouseId,
@@ -79,7 +89,10 @@ public class WarehousesController : ControllerBase
     /// <summary>Crea un nuevo almacén para el tenant activo.</summary>
     [HttpPost]
     [ProducesResponseType(typeof(WarehouseDto), StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> CreateWarehouse(
         [FromBody] CreateWarehouseRequest request,
         CancellationToken cancellationToken)

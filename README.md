@@ -76,10 +76,12 @@ Pos.slnx
 │   ├── Pos.Architecture.Tests  # Reglas de Clean Architecture y guardas Roslyn verificadas en suite
 │   └── Pos.IntegrationTests    # Tests HTTP y E2E contra SQL Server real con RLS activo
 ├── docs/
-│   ├── developer-commands.md   # Comandos CLI oficiales (.NET 10, EF Core, User Secrets, SQL Tests)
+│   ├── api/
+│   │   └── openapi.v1.json     # Contrato OpenAPI v1 determinista y versionado (ADR 0024)
+│   ├── developer-commands.md   # Comandos CLI oficiales (.NET 10, EF Core, User Secrets, OpenAPI, SQL Tests)
 │   └── architecture/
 │       ├── architecture.md     # Visión general de arquitectura
-│       └── adr/                # 26 ADRs (0001–0023 e inventory-001–003)
+│       └── adr/                # 27 ADRs (0001–0024 e inventory-001–003)
 ├── Directory.Build.props       # Config global: TreatWarningsAsErrors, Nullable, LangVersion
 ├── Directory.Packages.props    # Central Package Management (todas las versiones aquí)
 ├── global.json                 # SDK .NET 10 fijado (evita drift entre máquinas/CI)
@@ -181,6 +183,7 @@ Ver referencia completa en [`docs/developer-commands.md`](docs/developer-command
 | [ADR 0021](docs/architecture/adr/0021-identidad-de-sistema-acotada-isystemexecutionscope.md) | Identidad de sistema acotada (`ISystemExecutionScope`) |
 | [ADR 0022](docs/architecture/adr/0022-outbox-concurrente-lease-idempotencia-deadletter.md) | Outbox concurrente con lease atómico, idempotencia y dead-letter |
 | [ADR 0023](docs/architecture/adr/0023-contrato-de-roles-y-sesion-de-autenticacion.md) | Contrato canónico de roles, resolución fail-closed y sesión de autenticación bajo RLS |
+| [ADR 0024](docs/architecture/adr/0024-openapi-contract-snapshot-and-governance.md) | Snapshot determinista del contrato OpenAPI v1, gobernanza y detección de deriva |
 | [ADR-Inventory-001](docs/architecture/adr/inventory-001-ledger-plus-materialized-quantity.md) | Ledger append-only + cantidad materializada en `StockLevel` |
 | [ADR-Inventory-002](docs/architecture/adr/inventory-002-container-model-without-ui-trigger.md) | Contenedores (ubicaciones internas) — modelo de datos |
 | [ADR-Inventory-003](docs/architecture/adr/inventory-003-optimistic-concurrency-stock.md) | Concurrencia optimista en `StockLevel` (`RowVersion`) |
