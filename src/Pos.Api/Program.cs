@@ -81,14 +81,9 @@ app.UseCustomForwardedHeaders();
 app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseExceptionHandler();
 
-var exposeOpenApi = app.Environment.IsDevelopment() || app.Configuration.GetValue<bool>("OpenApi:ExposeEndpoint");
-if (exposeOpenApi)
-{
-    app.MapOpenApi().AllowAnonymous();
-}
-
 if (app.Environment.IsDevelopment())
 {
+    app.MapOpenApi().AllowAnonymous();
     app.MapScalarApiReference("/scalar", options =>
     {
         options.WithTitle("Nalun POS API Documentation")

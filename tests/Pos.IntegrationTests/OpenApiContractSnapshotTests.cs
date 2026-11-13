@@ -100,6 +100,26 @@ public class OpenApiContractSnapshotTests : IClassFixture<OpenApiTestWebApplicat
     }
 
     [Fact]
+    public async Task OpenApiAndScalarEndpoints_WhenOutsideDevelopmentEnvironment_AreNotExposed()
+    {
+        using var standardFactory = new CustomWebApplicationFactory();
+        var client = standardFactory.CreateClient();
+
+        var openApiResponse = await client.GetAsync("/openapi/v1.json");
+        var scalarResponse = await client.GetAsync("/scalar");
+
+        openApiResponse.StatusCode.Should().Match(s => s == HttpStatusCode.NotFound || s == HttpStatusCode.Unauthorized,
+            "El endpoint /openapi/v1.json no debe exponerse fuera del entorno Development.");
+        scalarResponse.StatusCode.Should().Match(s => s == HttpStatusCode.NotFound || s == HttpStatusCode.Unauthorized,
+            "La consola /scalar no debe exponerse fuera del entorno Development.");
+
+        var testClient = _factory.CreateClient();
+        var testResponse = await testClient.GetAsync("/openapi/v1.json");
+        testResponse.StatusCode.Should().Be(HttpStatusCode.OK,
+            "El host OpenApiTestWebApplicationFactory debe exponer el documento para pruebas de contrato.");
+    }
+
+    [Fact]
     public async Task OpenApiDocument_ContainsExpectedCanonicalSchemas_AndSecurityDefinitions()
     {
         var client = _factory.CreateClient();
