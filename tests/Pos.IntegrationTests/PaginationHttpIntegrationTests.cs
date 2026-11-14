@@ -13,8 +13,6 @@ public class PaginationHttpIntegrationTests : IClassFixture<CustomWebApplication
 
     private static readonly string[] RequiredTestPermissions =
     [
-        Pos.Application.Common.Authorization.Permissions.Tenants.Create,
-        Pos.Application.Common.Authorization.Permissions.Tenants.View,
         Pos.Application.Common.Authorization.Permissions.Users.Create,
         Pos.Application.Common.Authorization.Permissions.Users.View,
         Pos.Application.Common.Authorization.Permissions.Notifications.View

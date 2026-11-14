@@ -284,15 +284,8 @@ public class MsSqlTestFixture : IAsyncLifetime, IDisposable
             }
             else
             {
-                // SuperAdmin Context
+                // SuperAdmin Context sincronizado con catálogo único canónico
                 var superAdminRole = db.Roles.IgnoreQueryFilters().FirstOrDefault(r => r.Id == Role.SuperAdminRoleId);
-                var permissions = new[]
-                {
-                    Permissions.Tenants.Create, Permissions.Tenants.View, Permissions.Tenants.Update, Permissions.Tenants.Delete,
-                    Permissions.Users.Create, Permissions.Users.View, Permissions.Users.Update, Permissions.Users.Delete,
-                    Permissions.Roles.Create, Permissions.Roles.View, Permissions.Roles.Update, Permissions.Roles.Delete,
-                    Permissions.Platform.DeadLetterView, Permissions.Platform.DeadLetterReprocess
-                };
 
                 if (superAdminRole == null)
                 {
@@ -301,17 +294,14 @@ public class MsSqlTestFixture : IAsyncLifetime, IDisposable
                         PlatformScope.TenantId,
                         PlatformRoles.SuperAdmin,
                         "Super Admin Role",
-                        permissions,
+                        SuperAdminRoleCatalog.Permissions,
                         TimeProvider.System);
                     db.Roles.Add(superAdminRole);
                     db.SaveChangesAsync().GetAwaiter().GetResult();
                 }
                 else
                 {
-                    foreach (var p in permissions)
-                    {
-                        superAdminRole.AddPermission(p);
-                    }
+                    superAdminRole.SyncPermissions(SuperAdminRoleCatalog.Permissions);
                     db.SaveChangesAsync().GetAwaiter().GetResult();
                 }
 

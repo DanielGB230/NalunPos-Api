@@ -1,3 +1,5 @@
+using Pos.Domain.Enums;
+
 namespace Pos.Application.Platform.Tenants.DTOs;
 
 /// <summary>
@@ -7,6 +9,6 @@ public record TenantDto(
     Guid Id,
     string Name,
     string DocumentNumber,
-    string Status,
+    TenantStatus Status,
     DateTime CreatedAtUtc
 );

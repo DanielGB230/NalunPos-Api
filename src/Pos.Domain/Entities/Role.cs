@@ -111,6 +111,31 @@ public class Role : AggregateRoot<Guid>, IPlatformScopedEntity
         }
     }
 
+    /// <summary>
+    /// Sincroniza el conjunto de permisos del rol respecto a una colección objetivo canónica.
+    /// Garantiza idempotencia: agrega los permisos faltantes, retira los permisos obsoletos que ya no
+    /// forman parte de la colección objetivo, deduplica y normaliza mayúsculas/minúsculas.
+    /// </summary>
+    /// <param name="targetPermissions">Colección de permisos deseada.</param>
+    public void SyncPermissions(IEnumerable<string> targetPermissions)
+    {
+        ArgumentNullException.ThrowIfNull(targetPermissions);
+
+        var deduplicated = new HashSet<string>(
+            targetPermissions.Where(p => !string.IsNullOrWhiteSpace(p)).Select(p => p.Trim()),
+            StringComparer.OrdinalIgnoreCase);
+
+        _permissions.RemoveAll(p => !deduplicated.Contains(p));
+
+        foreach (var permission in deduplicated)
+        {
+            if (!_permissions.Contains(permission, StringComparer.OrdinalIgnoreCase))
+            {
+                _permissions.Add(permission);
+            }
+        }
+    }
+
     public void AddPermission(string permission)
     {
         if (string.IsNullOrWhiteSpace(permission)) return;

@@ -121,7 +121,7 @@ public class TenantRequirementIntegrationTests
     {
         // 1. Arrange: SuperAdmin ejecuta una operación de plataforma (CreateTenantCommand con [AllowsNoTenant])
         var fakePermissions = new FakeCurrentUserPermissions()
-            .Grant(Permissions.Tenants.Create);
+            .Grant(Permissions.Platform.Tenants.Create);
 
         var sp = _fixture.CreateServiceProvider(
             tenantId: null,

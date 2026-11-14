@@ -31,7 +31,6 @@ public static class DefaultTenantRoleCatalog
                 Permissions.Inventory.View, Permissions.Inventory.AdjustStock, Permissions.Inventory.TransferStock,
                 Permissions.Invoices.View, Permissions.Invoices.Issue,
                 Permissions.PosDevices.View, Permissions.PosDevices.Register, Permissions.PosDevices.Ping,
-                Permissions.Tenants.View, Permissions.Tenants.Update,
                 Permissions.Notifications.View, Permissions.Notifications.Create, Permissions.Notifications.MarkRead,
                 Permissions.AiGovernance.View, Permissions.AiGovernance.ProposeAction, Permissions.AiGovernance.ReviewAction
             ]),

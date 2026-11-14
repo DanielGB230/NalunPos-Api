@@ -139,14 +139,13 @@ public class AuthLoginSqlServerIntegrationTests : IAsyncLifetime
                     PlatformScope.TenantId,
                     PlatformRoles.SuperAdmin,
                     "Administrador Global",
-                    [Permissions.Tenants.Create, Permissions.Tenants.View],
+                    SuperAdminRoleCatalog.Permissions,
                     TimeProvider.System);
                 dbSuper.Roles.Add(superRole);
             }
             else
             {
-                superRole.AddPermission(Permissions.Tenants.Create);
-                superRole.AddPermission(Permissions.Tenants.View);
+                superRole.SyncPermissions(SuperAdminRoleCatalog.Permissions);
             }
 
             var superUser = User.Create(

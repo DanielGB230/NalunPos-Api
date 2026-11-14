@@ -19,7 +19,7 @@ namespace Pos.IntegrationTests.Fixtures;
 /// </summary>
 public sealed class OpenApiTestWebApplicationFactory : CustomWebApplicationFactory
 {
-    private static readonly string s_dbName = $"NalunPosDb_OpenApi_{Guid.NewGuid():N}";
+    private readonly string _dbName = $"NalunPosDb_OpenApi_{Guid.NewGuid():N}";
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -40,7 +40,7 @@ public sealed class OpenApiTestWebApplicationFactory : CustomWebApplicationFacto
 
             services.AddDbContext<PosDbContext>((provider, options) =>
             {
-                options.UseInMemoryDatabase(s_dbName);
+                options.UseInMemoryDatabase(_dbName);
                 options.AddPosSaveChangesInterceptors(provider);
             });
         });

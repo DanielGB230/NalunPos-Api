@@ -3,6 +3,7 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using FluentAssertions;
+using Microsoft.AspNetCore.Hosting;
 using Pos.IntegrationTests.Fixtures;
 using Xunit;
 
@@ -103,15 +104,25 @@ public class OpenApiContractSnapshotTests : IClassFixture<OpenApiTestWebApplicat
     public async Task OpenApiAndScalarEndpoints_WhenOutsideDevelopmentEnvironment_AreNotExposed()
     {
         using var standardFactory = new CustomWebApplicationFactory();
-        var client = standardFactory.CreateClient();
+        var (client, _, _) = await AuthenticatedClientFactory.CreateAuthenticatedClientAsync(standardFactory);
 
         var openApiResponse = await client.GetAsync("/openapi/v1.json");
         var scalarResponse = await client.GetAsync("/scalar");
 
-        openApiResponse.StatusCode.Should().Match(s => s == HttpStatusCode.NotFound || s == HttpStatusCode.Unauthorized,
-            "El endpoint /openapi/v1.json no debe exponerse fuera del entorno Development.");
-        scalarResponse.StatusCode.Should().Match(s => s == HttpStatusCode.NotFound || s == HttpStatusCode.Unauthorized,
-            "La consola /scalar no debe exponerse fuera del entorno Development.");
+        openApiResponse.StatusCode.Should().Be(HttpStatusCode.NotFound,
+            "El endpoint /openapi/v1.json no debe exponerse en entorno Testing (debe responder 404).");
+        scalarResponse.StatusCode.Should().Be(HttpStatusCode.NotFound,
+            "La consola /scalar no debe exponerse en entorno Testing (debe responder 404).");
+
+        using var prodFactory = CustomWebApplicationFactory.ForEnvironment("Production");
+        var (prodClient, _, _) = await AuthenticatedClientFactory.CreateAuthenticatedClientAsync(prodFactory);
+        var prodOpenApiResponse = await prodClient.GetAsync("/openapi/v1.json");
+        var prodScalarResponse = await prodClient.GetAsync("/scalar");
+
+        prodOpenApiResponse.StatusCode.Should().Be(HttpStatusCode.NotFound,
+            "El endpoint /openapi/v1.json no debe exponerse en entorno Production (debe responder 404).");
+        prodScalarResponse.StatusCode.Should().Be(HttpStatusCode.NotFound,
+            "La consola /scalar no debe exponerse en entorno Production (debe responder 404).");
 
         var testClient = _factory.CreateClient();
         var testResponse = await testClient.GetAsync("/openapi/v1.json");

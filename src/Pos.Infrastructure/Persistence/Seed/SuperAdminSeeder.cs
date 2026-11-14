@@ -42,7 +42,7 @@ public sealed partial class SuperAdminSeeder
         string? email = _settings.Email;
         string? rawPassword = _settings.Password;
 
-        // Crear o verificar el Rol SuperAdmin global con permisos de plataforma
+        // Crear o sincronizar el Rol SuperAdmin global con el catálogo canónico de permisos de plataforma
         var superAdminRole = await _context.Set<Role>().IgnoreQueryFilters()
             .FirstOrDefaultAsync(r => r.Id == Role.SuperAdminRoleId, cancellationToken);
             
@@ -53,14 +53,13 @@ public sealed partial class SuperAdminSeeder
                 PlatformScope.TenantId,
                 PlatformRoles.SuperAdmin,
                 "Administrador Global del Sistema",
-                new[] { Permissions.Platform.DeadLetterView, Permissions.Platform.DeadLetterReprocess },
+                SuperAdminRoleCatalog.Permissions,
                 _timeProvider);
             await _context.Set<Role>().AddAsync(superAdminRole, cancellationToken);
         }
         else
         {
-            superAdminRole.AddPermission(Permissions.Platform.DeadLetterView);
-            superAdminRole.AddPermission(Permissions.Platform.DeadLetterReprocess);
+            superAdminRole.SyncPermissions(SuperAdminRoleCatalog.Permissions);
         }
 
         var existingSuperAdmin = await _context.Users

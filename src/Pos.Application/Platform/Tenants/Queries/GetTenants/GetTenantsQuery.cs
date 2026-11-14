@@ -10,7 +10,7 @@ namespace Pos.Application.Platform.Tenants.Queries.GetTenants;
 /// <summary>
 /// Query para obtener la lista paginada de Tenants registradas en la plataforma.
 /// </summary>
-[HasPermission(Permissions.Tenants.View)]
+[HasPermission(Permissions.Platform.Tenants.View)]
 public record GetTenantsQuery(
     int PageNumber = 1,
     int PageSize = 10,
@@ -41,7 +41,7 @@ public class GetTenantsQueryHandler : IQueryHandler<GetTenantsQuery, PagedResult
             t.Id,
             t.Name,
             t.TaxId.Value,
-            t.Status.ToString(),
+            t.Status,
             t.CreatedAtUtc
         )).ToList();
 

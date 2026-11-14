@@ -81,7 +81,7 @@ Pos.slnx
 │   ├── developer-commands.md   # Comandos CLI oficiales (.NET 10, EF Core, User Secrets, OpenAPI, SQL Tests)
 │   └── architecture/
 │       ├── architecture.md     # Visión general de arquitectura
-│       └── adr/                # 27 ADRs (0001–0024 e inventory-001–003)
+│       └── adr/                # 28 ADRs (0001–0025 e inventory-001–003)
 ├── Directory.Build.props       # Config global: TreatWarningsAsErrors, Nullable, LangVersion
 ├── Directory.Packages.props    # Central Package Management (todas las versiones aquí)
 ├── global.json                 # SDK .NET 10 fijado (evita drift entre máquinas/CI)
@@ -184,6 +184,7 @@ Ver referencia completa en [`docs/developer-commands.md`](docs/developer-command
 | [ADR 0022](docs/architecture/adr/0022-outbox-concurrente-lease-idempotencia-deadletter.md) | Outbox concurrente con lease atómico, idempotencia y dead-letter |
 | [ADR 0023](docs/architecture/adr/0023-contrato-de-roles-y-sesion-de-autenticacion.md) | Contrato canónico de roles, resolución fail-closed y sesión de autenticación bajo RLS |
 | [ADR 0024](docs/architecture/adr/0024-openapi-contract-snapshot-and-governance.md) | Snapshot determinista del contrato OpenAPI v1, gobernanza y detección de deriva |
+| [ADR 0025](docs/architecture/adr/0025-separacion-permisos-plataforma-catalogo-superadmin-y-contrato-status.md) | Separación de permisos de plataforma, catálogo único SuperAdmin y enum de status en contrato |
 | [ADR-Inventory-001](docs/architecture/adr/inventory-001-ledger-plus-materialized-quantity.md) | Ledger append-only + cantidad materializada en `StockLevel` |
 | [ADR-Inventory-002](docs/architecture/adr/inventory-002-container-model-without-ui-trigger.md) | Contenedores (ubicaciones internas) — modelo de datos |
 | [ADR-Inventory-003](docs/architecture/adr/inventory-003-optimistic-concurrency-stock.md) | Concurrencia optimista en `StockLevel` (`RowVersion`) |

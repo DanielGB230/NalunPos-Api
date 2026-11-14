@@ -2,6 +2,9 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Pos.Api.Contracts.Requests;
+using Pos.Application.Common.Attributes;
+using Pos.Application.Common.Authorization;
+using Pos.Application.Platform.Tenants.Commands.CreateTenant;
 using Pos.Application.Users.Commands;
 using Pos.Architecture.Tests.Support;
 using Xunit;
@@ -101,6 +104,57 @@ public class RoleGovernanceTests
         Assert.DoesNotContain(
             typeof(UpdateUserRoleCommand).GetConstructors().Single().GetParameters(),
             p => string.Equals(p.Name, "tenantId", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void PlatformRequests_HasPermission_MustBeContainedIn_SuperAdminRoleCatalog()
+    {
+        var applicationAssembly = typeof(CreateTenantCommand).Assembly;
+        var platformTypes = applicationAssembly.GetTypes()
+            .Where(t => t.Namespace != null && t.Namespace.StartsWith("Pos.Application.Platform", StringComparison.Ordinal))
+            .ToList();
+
+        var superAdminPermissions = SuperAdminRoleCatalog.Permissions;
+        var violations = new List<string>();
+
+        foreach (var type in platformTypes)
+        {
+            var attributes = type.GetCustomAttributes(typeof(HasPermissionAttribute), inherit: false)
+                .Cast<HasPermissionAttribute>();
+
+            foreach (var attr in attributes)
+            {
+                if (!superAdminPermissions.Contains(attr.Permission))
+                {
+                    violations.Add($"Tipo '{type.FullName}' declara permiso '{attr.Permission}' no contenido en SuperAdminRoleCatalog.");
+                }
+            }
+        }
+
+        Assert.True(
+            violations.Count == 0,
+            $"Se encontraron declaraciones [HasPermission] en Pos.Application.Platform.* no contenidas en SuperAdminRoleCatalog:\n{string.Join("\n", violations)}");
+    }
+
+    [Fact]
+    public void DefaultTenantRoleCatalog_MustNotContain_PlatformPermissions()
+    {
+        var violations = new List<string>();
+
+        foreach (var roleDef in DefaultTenantRoleCatalog.All)
+        {
+            foreach (var permission in roleDef.Permissions)
+            {
+                if (permission.StartsWith("Permissions.Platform.", StringComparison.OrdinalIgnoreCase))
+                {
+                    violations.Add($"Rol de tenant '{roleDef.Name}' contiene el permiso de plataforma '{permission}'.");
+                }
+            }
+        }
+
+        Assert.True(
+            violations.Count == 0,
+            $"Ningún rol de DefaultTenantRoleCatalog puede contener permisos de plataforma:\n{string.Join("\n", violations)}");
     }
 }
 

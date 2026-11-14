@@ -112,14 +112,6 @@ public static class Permissions
         public const string Ping = "Permissions.PosDevices.Ping";
     }
 
-    public static class Tenants
-    {
-        public const string View = "Permissions.Tenants.View";
-        public const string Create = "Permissions.Tenants.Create";
-        public const string Update = "Permissions.Tenants.Update";
-        public const string Delete = "Permissions.Tenants.Delete";
-    }
-
     public static class Roles
     {
         public const string View = "Permissions.Roles.View";
@@ -152,7 +144,19 @@ public static class Permissions
 
     public static class Platform
     {
-        public const string DeadLetterView = "Permissions.Platform.DeadLetter.View";
-        public const string DeadLetterReprocess = "Permissions.Platform.DeadLetter.Reprocess";
+        public static class DeadLetter
+        {
+            public const string View = "Permissions.Platform.DeadLetter.View";
+            public const string Reprocess = "Permissions.Platform.DeadLetter.Reprocess";
+        }
+
+        public static class Tenants
+        {
+            public const string View = "Permissions.Platform.Tenants.View";
+            public const string Create = "Permissions.Platform.Tenants.Create";
+        }
+
+        public const string DeadLetterView = DeadLetter.View;
+        public const string DeadLetterReprocess = DeadLetter.Reprocess;
     }
 }

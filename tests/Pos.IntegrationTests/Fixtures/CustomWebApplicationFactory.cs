@@ -13,9 +13,23 @@ namespace Pos.IntegrationTests.Fixtures;
 
 public class CustomWebApplicationFactory : WebApplicationFactory<Program>
 {
+    private readonly string _environment;
+
+    public CustomWebApplicationFactory()
+    {
+        _environment = "Testing";
+    }
+
+    private CustomWebApplicationFactory(string environment)
+    {
+        _environment = environment;
+    }
+
+    public static CustomWebApplicationFactory ForEnvironment(string environment) => new(environment);
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        builder.UseEnvironment("Testing");
+        builder.UseEnvironment(_environment);
         builder.UseSetting("ConnectionStrings:DefaultConnection", "");
         builder.UseSetting("SuperAdminSettings:Email", "superadmin@test.com");
         builder.UseSetting("SuperAdminSettings:Password", "TestPassword123!");

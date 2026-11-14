@@ -182,4 +182,56 @@ public class RoleTests
                 null,
                 _timeProvider));
     }
+
+    private static readonly string[] s_initialPermissions = ["Permissions.Platform.DeadLetter.View", "Permissions.Platform.DeadLetter.Reprocess", "Permissions.Obsolete.Legacy"];
+    private static readonly string[] s_targetPermissions =
+    [
+        "Permissions.Platform.DeadLetter.View",
+        "Permissions.Platform.Tenants.View",
+        "Permissions.Platform.Tenants.Create",
+        "permissions.platform.tenants.create",
+        "   "
+    ];
+
+    [Fact]
+    public void SyncPermissions_AddsMissingRemovesObsoleteDeduplicatesAndIsIdempotent()
+    {
+        // Arrange
+        var role = Role.CreatePlatformRole(
+            Role.SuperAdminRoleId,
+            PlatformScope.TenantId,
+            PlatformRoles.SuperAdmin,
+            "Administrador Global",
+            s_initialPermissions,
+            _timeProvider);
+
+        // Act 1: Sincronizar permisos
+        role.SyncPermissions(s_targetPermissions);
+
+        // Assert 1: Debe contener exactamente los permisos target válidos sin duplicados ni obsoletos
+        Assert.Equal(3, role.Permissions.Count);
+        Assert.Contains("Permissions.Platform.DeadLetter.View", role.Permissions);
+        Assert.Contains("Permissions.Platform.Tenants.View", role.Permissions);
+        Assert.Contains("Permissions.Platform.Tenants.Create", role.Permissions);
+        Assert.DoesNotContain("Permissions.Platform.DeadLetter.Reprocess", role.Permissions);
+        Assert.DoesNotContain("Permissions.Obsolete.Legacy", role.Permissions);
+
+        // Act 2: Idempotencia - sincronizar de nuevo no altera la colección
+        role.SyncPermissions(s_targetPermissions);
+        Assert.Equal(3, role.Permissions.Count);
+    }
+
+    [Fact]
+    public void SyncPermissions_WithNullTargetPermissions_ThrowsArgumentNullException()
+    {
+        var role = Role.CreatePlatformRole(
+            Role.SuperAdminRoleId,
+            PlatformScope.TenantId,
+            PlatformRoles.SuperAdmin,
+            "Administrador Global",
+            null,
+            _timeProvider);
+
+        Assert.Throws<ArgumentNullException>(() => role.SyncPermissions(null!));
+    }
 }

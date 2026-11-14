@@ -181,3 +181,4 @@ Todas las decisiones estructurales están documentadas en `docs/architecture/adr
 22. [ADR 0022: Outbox Concurrente con Lease Atómico, Idempotencia y Dead-Letter](adr/0022-outbox-concurrente-lease-idempotencia-deadletter.md)
 23. [ADR 0023: Contrato Canónico de Roles, Resolución Fail-Closed y Sesión bajo RLS](adr/0023-contrato-de-roles-y-sesion-de-autenticacion.md)
 24. [ADR 0024: Snapshot Determinista del Contrato OpenAPI v1 y Gobernanza](adr/0024-openapi-contract-snapshot-and-governance.md)
+25. [ADR 0025: Separación de Permisos de Plataforma, Catálogo Canónico SuperAdmin y Tipado de Estado de Tenants en el Contrato](adr/0025-separacion-permisos-plataforma-catalogo-superadmin-y-contrato-status.md)
