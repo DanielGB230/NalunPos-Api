@@ -68,7 +68,9 @@ public class InventoryController : ControllerBase
             productId,
             request.WarehouseId,
             request.PageNumber,
-            request.PageSize);
+            request.PageSize,
+            request.StartDate,
+            request.EndDate);
 
         var result = await _dispatcher.SendAsync(query, cancellationToken);
         return this.ToActionResult(result);

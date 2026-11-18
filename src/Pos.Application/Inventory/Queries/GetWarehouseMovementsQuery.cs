@@ -16,7 +16,9 @@ namespace Pos.Application.Inventory.Queries;
 public record GetWarehouseMovementsQuery(
     Guid WarehouseId,
     int PageNumber = 1,
-    int PageSize = 20
+    int PageSize = 20,
+    DateTime? StartDate = null,
+    DateTime? EndDate = null
 ) : IQuery<Result<PagedResult<InventoryMovementDto>>>;
 
 public class GetWarehouseMovementsQueryHandler
@@ -51,8 +53,8 @@ public class GetWarehouseMovementsQueryHandler
             productId: null,
             warehouseId: request.WarehouseId,
             movementType: null,
-            dateFrom: null,
-            dateTo: null,
+            dateFrom: request.StartDate,
+            dateTo: request.EndDate,
             request.PageNumber,
             request.PageSize,
             cancellationToken);

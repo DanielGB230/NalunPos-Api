@@ -80,7 +80,9 @@ public class WarehousesController : ControllerBase
         var query = new GetWarehouseMovementsQuery(
             warehouseId,
             request.PageNumber,
-            request.PageSize);
+            request.PageSize,
+            request.StartDate,
+            request.EndDate);
 
         var result = await _dispatcher.SendAsync(query, cancellationToken);
         return this.ToActionResult(result);

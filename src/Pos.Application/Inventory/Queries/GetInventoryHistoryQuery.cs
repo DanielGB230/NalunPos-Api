@@ -13,7 +13,9 @@ public record GetInventoryHistoryQuery(
     Guid ProductId,
     Guid? WarehouseId = null,
     int PageNumber = 1,
-    int PageSize = 10
+    int PageSize = 10,
+    DateTime? StartDate = null,
+    DateTime? EndDate = null
 ) : IQuery<Result<PagedResult<InventoryMovementDto>>>;
 
 public class GetInventoryHistoryQueryHandler : IQueryHandler<GetInventoryHistoryQuery, Result<PagedResult<InventoryMovementDto>>>
@@ -41,8 +43,8 @@ public class GetInventoryHistoryQueryHandler : IQueryHandler<GetInventoryHistory
             request.ProductId,
             request.WarehouseId,
             null,
-            null,
-            null,
+            request.StartDate,
+            request.EndDate,
             request.PageNumber,
             request.PageSize,
             cancellationToken);

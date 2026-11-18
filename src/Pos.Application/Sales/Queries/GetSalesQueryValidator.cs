@@ -9,5 +9,7 @@ public class GetSalesQueryValidator : AbstractValidator<GetSalesQuery>
     {
         RuleFor(x => x.PageNumber).ApplyPageNumberRule();
         RuleFor(x => x.PageSize).ApplyPageSizeRule();
+        RuleFor(x => x.StartDate).ApplyUtcInstantRule();
+        RuleFor(x => x.EndDate).ApplyUtcInstantRule();
     }
 }

@@ -10,5 +10,7 @@ public class GetInventoryHistoryQueryValidator : AbstractValidator<GetInventoryH
         RuleFor(x => x.ProductId).NotEmpty().WithMessage("El ProductId es requerido.");
         RuleFor(x => x.PageNumber).ApplyPageNumberRule();
         RuleFor(x => x.PageSize).ApplyPageSizeRule();
+        RuleFor(x => x.StartDate).ApplyUtcInstantRule();
+        RuleFor(x => x.EndDate).ApplyUtcInstantRule();
     }
 }

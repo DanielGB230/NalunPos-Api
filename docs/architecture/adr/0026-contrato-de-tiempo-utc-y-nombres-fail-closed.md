@@ -30,10 +30,13 @@
 - No existe conversión silenciosa (ni `ToUniversalTime()` ni `SpecifyKind` en escritura): el instante debe construirse correctamente en origen con `TimeProvider.GetUtcNow().UtcDateTime`.
 - El tipo de columna no cambia: el conversor es `DateTime` → `DateTime` (`ValueConverter<DateTime, DateTime>`) y `DateTime?` → `DateTime?`, por lo que **no genera migraciones**.
 
-### 5. Excepción explícita: fechas de calendario
-- `InventoryMovement.ExpirationDate` (`DateTime?`) es una fecha de vencimiento de lote, no un instante: se documenta como exclusión explícita y no se toca.
-- Los filtros de calendario de los Requests (`StartDate`/`EndDate` en inventario y ventas, `ExpirationDate` en órdenes de compra) tampoco son instantes y quedan fuera del alcance de la convención y de la guarda de nombres.
-- La convención no necesita una lista de exclusiones: al exigir el sufijo `Utc`, las fechas de calendario quedan fuera por diseño y sus configuraciones Fluent no se modifican.
+### 5. Fechas de calendario: solo `ExpirationDate`
+- `InventoryMovement.ExpirationDate` y la `ExpirationDate` de las líneas de orden de compra son fechas de calendario (vencimiento de lote/orden): no representan un instante, no se comparan contra columnas `*Utc` y quedan fuera de la convención y de la guarda de nombres. Repositorios y dominio no las reinterpretan.
+- Los filtros HTTP `StartDate`/`EndDate` **no** son fechas de calendario: ventas, kardex por almacén e historial por producto los comparan contra `CreatedAtUtc`/`OccurredAtUtc`, por lo que su contrato es un instante UTC con offset explícito (`Z` o `±HH:MM`).
+- El borde HTTP aplica ese contrato con un único model binder para `DateTime`/`DateTime?` de query string (`Pos.Api/ModelBinding`). Un valor sin offset (`2026-01-01`, `2026-01-01T00:00:00`) o una fecha sin hora se rechazan con `400 ProblemDetails` y `code = "DateRange.OffsetRequired"`. Nunca se normaliza en silencio ni se ejecuta `try/catch` en el repositorio.
+- Los validadores de `GetSalesQuery`, `GetWarehouseMovementsQuery` y `GetInventoryHistoryQuery` verifican además que el instante tenga `Kind=Utc` (defensa en profundidad, regla única en `DateRangeRules`). Los filtros de dichas queries se propagan al repositorio, que conserva su semántica y sus firmas.
+- Los reportes por día de negocio en la zona horaria del tenant (por ejemplo, agrupar "del 1 al 31 en hora local") no forman parte de estos filtros: quedan para el módulo de reportes, que deberá resolver los límites del día a instantes UTC antes de consultar.
+- No existe todavía superficie HTTP de auditoría; cuando se cree, deberá usar el mismo contrato (`TimestampUtc`) y el mismo binder.
 
 ### 6. Guardas de arquitectura (`Pos.Architecture.Tests`)
 - `UtcTimeGovernanceTests.DateTimeProperties_InDomainAndDtos_MustBeNamedWithUtcSuffix`: audita por reflexión las propiedades `DateTime`/`DateTime?` de `Pos.Domain.Entities`, de los `*.DTOs` de `Pos.Application` y de `Pos.Api.Contracts.Responses`. Exige sufijo `Utc` o pertenencia a la lista de exclusión documentada (hoy solo `InventoryMovement.ExpirationDate`), y verifica que la lista no quede obsoleta.
@@ -55,5 +58,7 @@
 - Sin migraciones, sin cambios de esquema y sin dependencias nuevas.
 
 ### Negativas / Trade-offs
-- `ExpirationDate` y los filtros de calendario siguen siendo `DateTime` sin sufijo: cualquier consumidor debe tratarlos como fechas, no como instantes (documentado aquí).
+- Solo `ExpirationDate` sigue siendo una fecha de calendario: cualquier consumidor debe tratarla como fecha, nunca como instante (documentado aquí).
+- Los filtros `StartDate`/`EndDate` exigen offset explícito: un cliente que envíe una fecha sin zona recibe `400` en lugar de un resultado silenciosamente desplazado. Es intencional y fail-closed.
+- Los reportes por día de negocio con zona horaria del tenant no se resuelven en estos filtros; requieren el módulo de reportes, que convertirá los límites locales a instantes UTC.
 - Cualquier código que construya un `DateTime` de instante sin `Kind=Utc` fallará al guardar; es intencional y exige usar `TimeProvider`.

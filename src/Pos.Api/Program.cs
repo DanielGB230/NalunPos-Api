@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Pos.Api.BackgroundServices;
 using Pos.Api.Extensions;
 using Pos.Api.Middleware;
+using Pos.Api.ModelBinding;
 using Pos.Api.Options;
 using Pos.Application;
 using Pos.Infrastructure;
@@ -55,7 +56,11 @@ builder.Services.AddCustomAuthentication(builder.Configuration);
 builder.Services.AddCustomCors(builder.Configuration);
 
 // 9. Configuración de Controladores y ProblemDetails
-builder.Services.AddControllers()
+builder.Services.AddControllers(options =>
+    {
+        // Contrato de filtros de fecha en query string: instante UTC con offset explícito.
+        options.ModelBinderProviders.Insert(0, new UtcInstantModelBinderProvider());
+    })
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
