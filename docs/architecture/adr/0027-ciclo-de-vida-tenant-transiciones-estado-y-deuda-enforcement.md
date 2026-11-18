@@ -57,9 +57,9 @@ Se adopta la siguiente matriz como contrato del ciclo de vida:
 
 ### 5. Contrato HTTP
 - Se expone `PATCH /api/v1/platform/tenants/{id}/status` en `TenantsController`, ultra-delgado y delegando en `IDispatcher`.
-- El cuerpo usa `ChangeTenantStatusRequest(TenantStatus Status)`, serializado como enum string con el `JsonStringEnumConverter` global.
-- El validador de borde `ChangeTenantStatusRequestValidator` solo admite `Active` o `Suspended`; cualquier otro valor (incluido `PendingProvisioning`) se rechaza con `400 Bad Request` y código estable `Tenant.InvalidStatus`. El validador se registra desde el ensamblado `Pos.Api` y se invoca explícitamente en el controlador.
-- Respuestas documentadas: `200` (transición aplicada), `400` (estado de cuerpo inválido), `401`, `403`, `404` (`Tenant.NotFound`) y `409` (`Tenant.InvalidTransition`, `Tenant.AlreadyActive`, `Tenant.AlreadySuspended`).
+- El cuerpo usa `ChangeStatusRequest(bool IsActive)`, serializado como JSON booleano (`{ "isActive": true }` activa, `{ "isActive": false }` suspende).
+- No hay validador de borde en el controlador: el mapeo `isActive=true → ActivateTenantCommand`, `isActive=false → SuspendTenantCommand` se hace directamente en el controlador, igual que `UsersController.ChangeUserStatus`.
+- Respuestas documentadas: `200` (transición aplicada), `401`, `403`, `404` (`Tenant.NotFound`) y `409` (`Tenant.InvalidTransition`, `Tenant.AlreadyActive`, `Tenant.AlreadySuspended`).
 - La autorización de controlador sigue siendo `[Authorize(Roles = SuperAdmin)]`: un `TenantAdmin` real recibe `403 Forbidden` antes de ejecutar el comando.
 
 ### 6. Eventos

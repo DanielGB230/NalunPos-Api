@@ -1,7 +1,6 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Hosting;
@@ -184,10 +183,11 @@ public class TenantStatusSqlServerIntegrationTests : IAsyncLifetime
         return (tenantId, adminEmail, adminPassword);
     }
 
-    private static Task<HttpResponseMessage> ChangeStatusAsync(HttpClient client, Guid tenantId, string status)
+    private static Task<HttpResponseMessage> ChangeStatusAsync(HttpClient client, Guid tenantId, bool isActive)
     {
-        var content = new StringContent($"{{\"status\":\"{status}\"}}", Encoding.UTF8, "application/json");
-        return client.PatchAsync($"/api/v1/platform/tenants/{tenantId}/status", content);
+        return client.PatchAsJsonAsync(
+            $"/api/v1/platform/tenants/{tenantId}/status",
+            new ChangeStatusRequest(isActive));
     }
 
     private static async Task<string?> ReadProblemCodeAsync(HttpResponseMessage response)
@@ -216,30 +216,30 @@ public class TenantStatusSqlServerIntegrationTests : IAsyncLifetime
 
         using var client = CreateClient(superAdminToken);
 
-        // 2. PendingProvisioning -> Active
-        var activateResponse = await ChangeStatusAsync(client, tenantId, "Active");
+        // 2. PendingProvisioning -> Active  (isActive = true)
+        var activateResponse = await ChangeStatusAsync(client, tenantId, true);
         Assert.Equal(HttpStatusCode.OK, activateResponse.StatusCode);
         Assert.True(await activateResponse.Content.ReadFromJsonAsync<bool>(s_jsonOptions));
         Assert.Equal(TenantStatus.Active, await GetTenantStatusAsync(tenantId));
 
-        // 3. Repetir Active -> 409 Tenant.AlreadyActive
-        var alreadyActiveResponse = await ChangeStatusAsync(client, tenantId, "Active");
+        // 3. Repetir Active -> 409 Tenant.AlreadyActive  (isActive = true)
+        var alreadyActiveResponse = await ChangeStatusAsync(client, tenantId, true);
         Assert.Equal(HttpStatusCode.Conflict, alreadyActiveResponse.StatusCode);
         Assert.Equal("Tenant.AlreadyActive", await ReadProblemCodeAsync(alreadyActiveResponse));
 
-        // 4. Active -> Suspended
-        var suspendResponse = await ChangeStatusAsync(client, tenantId, "Suspended");
+        // 4. Active -> Suspended  (isActive = false)
+        var suspendResponse = await ChangeStatusAsync(client, tenantId, false);
         Assert.Equal(HttpStatusCode.OK, suspendResponse.StatusCode);
         Assert.True(await suspendResponse.Content.ReadFromJsonAsync<bool>(s_jsonOptions));
         Assert.Equal(TenantStatus.Suspended, await GetTenantStatusAsync(tenantId));
 
-        // 5. Repetir Suspended -> 409 Tenant.AlreadySuspended
-        var alreadySuspendedResponse = await ChangeStatusAsync(client, tenantId, "Suspended");
+        // 5. Repetir Suspended -> 409 Tenant.AlreadySuspended  (isActive = false)
+        var alreadySuspendedResponse = await ChangeStatusAsync(client, tenantId, false);
         Assert.Equal(HttpStatusCode.Conflict, alreadySuspendedResponse.StatusCode);
         Assert.Equal("Tenant.AlreadySuspended", await ReadProblemCodeAsync(alreadySuspendedResponse));
 
-        // 6. Suspended -> Active
-        var reactivateResponse = await ChangeStatusAsync(client, tenantId, "Active");
+        // 6. Suspended -> Active  (isActive = true)
+        var reactivateResponse = await ChangeStatusAsync(client, tenantId, true);
         Assert.Equal(HttpStatusCode.OK, reactivateResponse.StatusCode);
         Assert.Equal(TenantStatus.Active, await GetTenantStatusAsync(tenantId));
     }
@@ -253,8 +253,8 @@ public class TenantStatusSqlServerIntegrationTests : IAsyncLifetime
 
         using var client = CreateClient(superAdminToken);
 
-        // Act
-        var response = await ChangeStatusAsync(client, tenantId, "Suspended");
+        // Act: isActive = false sobre PendingProvisioning -> Suspend -> Tenant.InvalidTransition
+        var response = await ChangeStatusAsync(client, tenantId, false);
 
         // Assert
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
@@ -269,30 +269,12 @@ public class TenantStatusSqlServerIntegrationTests : IAsyncLifetime
         string superAdminToken = await LoginAsSuperAdminAsync();
         using var client = CreateClient(superAdminToken);
 
-        // Act
-        var response = await ChangeStatusAsync(client, Guid.NewGuid(), "Active");
+        // Act: isActive = true sobre tenant inexistente
+        var response = await ChangeStatusAsync(client, Guid.NewGuid(), true);
 
         // Assert
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         Assert.Equal("Tenant.NotFound", await ReadProblemCodeAsync(response));
-    }
-
-    [Fact]
-    public async Task SuperAdmin_SendPendingProvisioningInBody_Returns400InvalidStatusAtTheEdge()
-    {
-        // Arrange
-        string superAdminToken = await LoginAsSuperAdminAsync();
-        var (tenantId, _, _) = await CreateTenantAsync(superAdminToken);
-
-        using var client = CreateClient(superAdminToken);
-
-        // Act
-        var response = await ChangeStatusAsync(client, tenantId, "PendingProvisioning");
-
-        // Assert
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Equal("Tenant.InvalidStatus", await ReadProblemCodeAsync(response));
-        Assert.Equal(TenantStatus.PendingProvisioning, await GetTenantStatusAsync(tenantId));
     }
 
     [Fact]
@@ -314,8 +296,8 @@ public class TenantStatusSqlServerIntegrationTests : IAsyncLifetime
 
         using var tenantAdminClient = CreateClient(authResult.Token);
 
-        // Act
-        var response = await ChangeStatusAsync(tenantAdminClient, tenantId, "Active");
+        // Act: isActive = true -> TenantAdmin recibe 403
+        var response = await ChangeStatusAsync(tenantAdminClient, tenantId, true);
 
         // Assert
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);

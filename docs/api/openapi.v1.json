@@ -291,17 +291,6 @@
         ],
         "type": "object"
       },
-      "ChangeTenantStatusRequest": {
-        "properties": {
-          "status": {
-            "$ref": "#/components/schemas/TenantStatus"
-          }
-        },
-        "required": [
-          "status"
-        ],
-        "type": "object"
-      },
       "CloseCashRegisterSessionRequest": {
         "properties": {
           "actualFinalAmount": {
@@ -6906,17 +6895,17 @@
           "content": {
             "application/*+json": {
               "schema": {
-                "$ref": "#/components/schemas/ChangeTenantStatusRequest"
+                "$ref": "#/components/schemas/ChangeStatusRequest"
               }
             },
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ChangeTenantStatusRequest"
+                "$ref": "#/components/schemas/ChangeStatusRequest"
               }
             },
             "text/json": {
               "schema": {
-                "$ref": "#/components/schemas/ChangeTenantStatusRequest"
+                "$ref": "#/components/schemas/ChangeStatusRequest"
               }
             }
           },
@@ -6942,26 +6931,6 @@
               }
             },
             "description": "OK"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "401": {
             "content": {

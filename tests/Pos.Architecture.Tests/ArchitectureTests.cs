@@ -524,6 +524,10 @@ public class ArchitectureTests
         Assert.NotEmpty(controllerFiles);
 
         var resultValueRegex = new System.Text.RegularExpressions.Regex(@"\b(result|res|commandResult|queryResult)\.Value\b", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        // Prohibido en controladores: inyeccion/uso de validadores de borde ni construccion directa de ProblemDetails.
+        var prohibitedControllerRegex = new System.Text.RegularExpressions.Regex(
+            @"\b(IValidator<|ValidationResultFactory|PosProblemDetailsFactory)\b",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
         var violations = new List<string>();
 
         foreach (var file in controllerFiles)
@@ -543,12 +547,19 @@ public class ArchitectureTests
                     var relativePath = Path.GetRelativePath(SolutionDirectory.Root, file);
                     violations.Add($"{relativePath} (Línea {i + 1}): {trimmed}");
                 }
+
+                if (prohibitedControllerRegex.IsMatch(line))
+                {
+                    var relativePath = Path.GetRelativePath(SolutionDirectory.Root, file);
+                    violations.Add($"{relativePath} (Línea {i + 1}): {trimmed}");
+                }
             }
         }
 
         Assert.True(
             violations.Count == 0,
-            $"Se detectaron accesos directos prohibidos a '.Value' de Result en controladores. Se debe usar 'this.ToActionResult(result)':\n{string.Join("\n", violations)}"
+            $"Se detectaron accesos directos prohibidos a '.Value' de Result o uso de validación/ProblemDetails en controladores. " +
+            $"Los controladores deben ser ultra-delgados y delegar en IDispatcher; no usar IValidator<>, ValidationResultFactory ni PosProblemDetailsFactory:\n{string.Join("\n", violations)}"
         );
     }
 

@@ -1,21 +1,17 @@
 using Asp.Versioning;
-using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
-using Pos.Api.Common;
 using Pos.Api.Contracts.Requests;
 using Pos.Api.Extensions;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Common.Models;
-using Pos.Application.Common.Validation;
 using Pos.Application.Platform.Tenants.Commands.ActivateTenant;
 using Pos.Application.Platform.Tenants.Commands.CreateTenant;
 using Pos.Application.Platform.Tenants.Commands.SuspendTenant;
 using Pos.Application.Platform.Tenants.DTOs;
 using Pos.Application.Platform.Tenants.Queries.GetTenants;
 using Pos.Domain.Common;
-using Pos.Domain.Enums;
 
 namespace Pos.Api.Controllers.Platform;
 
@@ -32,15 +28,10 @@ namespace Pos.Api.Controllers.Platform;
 public class TenantsController : ControllerBase
 {
     private readonly IDispatcher _dispatcher;
-    private readonly IValidator<ChangeTenantStatusRequest> _changeTenantStatusRequestValidator;
 
-    public TenantsController(
-        IDispatcher dispatcher,
-        IValidator<ChangeTenantStatusRequest> changeTenantStatusRequestValidator)
+    public TenantsController(IDispatcher dispatcher)
     {
         _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
-        _changeTenantStatusRequestValidator = changeTenantStatusRequestValidator
-            ?? throw new ArgumentNullException(nameof(changeTenantStatusRequestValidator));
     }
 
     /// <summary>
@@ -91,7 +82,7 @@ public class TenantsController : ControllerBase
 
     /// <summary>
     /// Activa o suspende un Tenant existente.
-    /// El cuerpo solo admite los estados <c>Active</c> o <c>Suspended</c>.
+    /// El cuerpo solo admite <c>true</c> (activar) o <c>false</c> (suspender).
     /// </summary>
     /// <param name="id">Identificador del Tenant</param>
     /// <param name="request">Request con el estado destino</param>
@@ -99,25 +90,16 @@ public class TenantsController : ControllerBase
     /// <returns><c>true</c> si la transición se aplicó correctamente</returns>
     [HttpPatch("{id:guid}/status")]
     [ProducesResponseType(typeof(bool), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> ChangeTenantStatus(
         Guid id,
-        [FromBody] ChangeTenantStatusRequest request,
+        [FromBody] ChangeStatusRequest request,
         CancellationToken cancellationToken)
     {
-        var validationResult = await _changeTenantStatusRequestValidator.ValidateAsync(request, cancellationToken);
-        if (!validationResult.IsValid)
-        {
-            var validationError = ValidationResultFactory.CreateError(validationResult.Errors);
-            var problemDetails = PosProblemDetailsFactory.CreateProblemDetails(HttpContext, validationError);
-            return new ObjectResult(problemDetails) { StatusCode = problemDetails.Status };
-        }
-
-        var result = request.Status == TenantStatus.Active
+        var result = request.IsActive
             ? await _dispatcher.SendAsync(new ActivateTenantCommand(id), cancellationToken)
             : await _dispatcher.SendAsync(new SuspendTenantCommand(id), cancellationToken);
 
