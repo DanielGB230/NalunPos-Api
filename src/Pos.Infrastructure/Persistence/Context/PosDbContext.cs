@@ -106,6 +106,10 @@ public class PosDbContext : DbContext, IUnitOfWork
         // Aplica todas las IEntityTypeConfiguration<T> del ensamblado Infrastructure
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(PosDbContext).Assembly);
 
+        // Contrato de tiempo: toda propiedad *Utc se lee con Kind=Utc y falla al
+        // persistir valores no-UTC (ver UtcDateTimeConvention)
+        UtcDateTimeConvention.Apply(modelBuilder);
+
         // Global Query Filters multi-tenant (ver ApplyTenantQueryFilters)
         ApplyTenantQueryFilters(modelBuilder);
     }

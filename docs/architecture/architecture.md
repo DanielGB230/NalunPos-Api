@@ -182,3 +182,4 @@ Todas las decisiones estructurales están documentadas en `docs/architecture/adr
 23. [ADR 0023: Contrato Canónico de Roles, Resolución Fail-Closed y Sesión bajo RLS](adr/0023-contrato-de-roles-y-sesion-de-autenticacion.md)
 24. [ADR 0024: Snapshot Determinista del Contrato OpenAPI v1 y Gobernanza](adr/0024-openapi-contract-snapshot-and-governance.md)
 25. [ADR 0025: Separación de Permisos de Plataforma, Catálogo Canónico SuperAdmin y Tipado de Estado de Tenants en el Contrato](adr/0025-separacion-permisos-plataforma-catalogo-superadmin-y-contrato-status.md)
+26. [ADR 0026: Contrato de Tiempo — Instantes UTC con Sufijo `Z`, Regla de Nombres y Persistencia Fail-Closed](adr/0026-contrato-de-tiempo-utc-y-nombres-fail-closed.md)

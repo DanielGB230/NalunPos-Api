@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -203,6 +204,33 @@ public class PlatformTenantProvisioningIntegrationTests : IAsyncLifetime
         var adminRole = await dbContext.Roles.IgnoreQueryFilters().FirstOrDefaultAsync(r => r.Id == adminUserInDb.RoleId);
         Assert.NotNull(adminRole);
         Assert.Equal(TenantRoles.TenantAdmin, adminRole.Name);
+    }
+
+    [Fact]
+    public async Task GetTenants_SerializesCreatedAtUtc_AsUtcInstantWithZSuffix()
+    {
+        // 1. SuperAdmin real (sembrado en SQL Server) y tenant recién aprovisionado
+        string superAdminToken = await LoginAsSuperAdminAsync();
+        var (tenantId, _, _) = await CreateTenantAsync(superAdminToken);
+
+        // 2. GET /api/v1/platform/tenants -> 200 OK
+        using var client = CreateClient(superAdminToken);
+        var getResponse = await client.GetAsync("/api/v1/platform/tenants?pageNumber=1&pageSize=10");
+        Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
+
+        // 3. Inspección del JSON crudo: el instante debe llevar sufijo 'Z' y leerse como Kind=Utc
+        string payload = await getResponse.Content.ReadAsStringAsync();
+        using var document = JsonDocument.Parse(payload);
+        JsonElement tenant = document.RootElement
+            .GetProperty("items")
+            .EnumerateArray()
+            .Single(element => element.GetProperty("id").GetGuid() == tenantId);
+
+        string createdAtUtc = tenant.GetProperty("createdAtUtc").GetString()!;
+        Assert.EndsWith("Z", createdAtUtc, StringComparison.Ordinal);
+
+        DateTime parsed = DateTime.Parse(createdAtUtc, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
+        Assert.Equal(DateTimeKind.Utc, parsed.Kind);
     }
 
     [Fact]
