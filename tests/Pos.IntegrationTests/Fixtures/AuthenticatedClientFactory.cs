@@ -1,5 +1,6 @@
 using System.Net.Http.Headers;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Pos.Domain.Common;
@@ -18,8 +19,9 @@ namespace Pos.IntegrationTests.Fixtures;
 /// <remarks>
 /// Siempre se crea y activa una entidad <see cref="Tenant"/> correspondiente en la base de datos de pruebas,
 /// de modo que el <see cref="TenantStatusEnforcementMiddleware"/> encuentre el tenant en estado
-/// <see cref="TenantStatus.Active"/> y permita el acceso. Cuando no se especifica <paramref name="tenantId"/>,
-/// se genera uno nuevo.
+/// <see cref="TenantStatus.Active"/> y permita el acceso. El identificador real del tenant
+/// (<c>tenant.Id</c>) es el que se usa para el rol, el usuario y el token, de modo que el tenant del token
+/// siempre exista en la base de datos.
 /// </remarks>
 public static class AuthenticatedClientFactory
 {
@@ -29,7 +31,11 @@ public static class AuthenticatedClientFactory
     /// Genera un token JWT y su usuario correspondiente persistido en la base de datos de pruebas.
     /// </summary>
     /// <param name="factory">Fábrica de la aplicación web en pruebas.</param>
-    /// <param name="tenantId">Identificador opcional del tenant. Si es null, se genera uno nuevo.</param>
+    /// <param name="tenantId">
+    /// Identificador de un tenant YA existente que se debe reutilizar. Si es <c>null</c>, la fábrica
+    /// crea un tenant nuevo. Si el tenant indicado no existe, la operación falla de forma explícita
+    /// (fail-fast) para no emitir un token cuyo tenant no exista en la base de datos.
+    /// </param>
     /// <param name="permissions">Lista opcional de permisos asignados al rol creado para el usuario de prueba.</param>
     /// <returns>Tupla con el token JWT generado y la entidad <see cref="User"/> persistida.</returns>
     public static async Task<(string Token, User User)> CreateTokenAsync(
@@ -43,19 +49,12 @@ public static class AuthenticatedClientFactory
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<PosDbContext>();
 
-        Guid effectiveTenantId = tenantId ?? Guid.NewGuid();
+        // 1. Crear PRIMERO el Tenant (o reutilizar el existente indicado por el llamador) y usar
+        //    SIEMPRE tenant.Id como tenantId del rol, del usuario y del token. El middleware de
+        //    control de acceso es fail-closed: un tenantId del token que no exista en BD produce 403.
+        Tenant tenant = await ResolveTenantAsync(db, tenantId);
 
-        // Crear y activar el Tenant para que el middleware de control de acceso lo encuentre en Active.
-        var existingTenant = await db.Tenants.FindAsync(effectiveTenantId);
-        if (existingTenant is null)
-        {
-            var tenant = Tenant.Create(
-                $"Tenant Test {effectiveTenantId.ToString()[..8]}",
-                $"TAX-{effectiveTenantId.ToString()[..8]}",
-                TimeProvider.System);
-            tenant.Activate(TimeProvider.System);
-            db.Tenants.Add(tenant);
-        }
+        Guid effectiveTenantId = tenant.Id;
 
         var role = Role.Create(
             effectiveTenantId,
@@ -81,7 +80,7 @@ public static class AuthenticatedClientFactory
         await db.SaveChangesAsync();
 
         // Invalidar caché de estado para forzar lectura fresca en el middleware
-        var cache = factory.Services.GetRequiredService<Microsoft.Extensions.Caching.Hybrid.HybridCache>();
+        var cache = factory.Services.GetRequiredService<HybridCache>();
         await cache.RemoveAsync(TenantCacheKeys.TenantStatusForTenant(effectiveTenantId));
 
         string token = generator.GenerateToken(user, role.Name);
@@ -89,10 +88,49 @@ public static class AuthenticatedClientFactory
     }
 
     /// <summary>
+    /// Resuelve el tenant de pruebas: reutiliza el existente indicado por el llamador o crea uno
+    /// nuevo ya activo. Devuelve siempre el tenant persistido con su identificador real.
+    /// </summary>
+    private static async Task<Tenant> ResolveTenantAsync(PosDbContext db, Guid? tenantId)
+    {
+        if (tenantId.HasValue)
+        {
+            var existingTenant = await db.Tenants.FindAsync(tenantId.Value);
+            if (existingTenant is null)
+            {
+                throw new InvalidOperationException(
+                    $"El tenant '{tenantId.Value}' no existe en la base de datos de pruebas. " +
+                    "Cree y active el tenant antes de pasarlo a la fábrica de clientes autenticados.");
+            }
+
+            if (existingTenant.Status != TenantStatus.Active)
+            {
+                throw new InvalidOperationException(
+                    $"El tenant '{existingTenant.Id}' no está activo (estado '{existingTenant.Status}'). " +
+                    "El middleware de control de acceso denegaría la petición.");
+            }
+
+            return existingTenant;
+        }
+
+        string uniqueSuffix = Guid.NewGuid().ToString("N")[..8];
+        var tenant = Tenant.Create(
+            $"Tenant Test {uniqueSuffix}",
+            $"TAX-{uniqueSuffix}",
+            TimeProvider.System);
+        tenant.Activate(TimeProvider.System);
+        db.Tenants.Add(tenant);
+        return tenant;
+    }
+
+    /// <summary>
     /// Crea y configura un cliente HTTP autenticado con cabeceras de autorización Bearer e IP X-Forwarded-For simulada.
     /// </summary>
     /// <param name="factory">Fábrica de la aplicación web en pruebas.</param>
-    /// <param name="tenantId">Identificador opcional del tenant. Si es null, se genera uno nuevo.</param>
+    /// <param name="tenantId">
+    /// Identificador de un tenant YA existente que se debe reutilizar. Si es <c>null</c>, la fábrica
+    /// crea un tenant nuevo ya activo.
+    /// </param>
     /// <param name="permissions">Lista opcional de permisos para el rol de pruebas del usuario.</param>
     /// <returns>Tupla con el <see cref="HttpClient"/> configurado, la entidad <see cref="User"/> y el token JWT.</returns>
     public static async Task<(HttpClient Client, User User, string Token)> CreateAuthenticatedClientAsync(

@@ -99,8 +99,9 @@ public class AuthenticationEndpointTests : IClassFixture<CustomWebApplicationFac
     [Fact]
     public async Task PlatformEndpoints_WhenCalledByTenantUser_ShouldReturn403Forbidden()
     {
-        // Arrange
-        var (client, _, _) = await AuthenticatedClientFactory.CreateAuthenticatedClientAsync(_factory, tenantId: Guid.NewGuid());
+        // Arrange - la fábrica crea un tenant activo y devuelve el usuario con su TenantId real.
+        var (client, user, _) = await AuthenticatedClientFactory.CreateAuthenticatedClientAsync(_factory);
+        Assert.NotNull(user.TenantId);
 
         // Act
         var response = await client.GetAsync("/api/v1/platform/tenants");
@@ -112,9 +113,9 @@ public class AuthenticationEndpointTests : IClassFixture<CustomWebApplicationFac
     [Fact]
     public async Task GetUserNotifications_WhenCalledForAnotherUser_ShouldReturn403Forbidden()
     {
-        // Arrange
-        Guid tenantId = Guid.NewGuid();
-        var (client, _, _) = await AuthenticatedClientFactory.CreateAuthenticatedClientAsync(_factory, tenantId: tenantId);
+        // Arrange - el tenant del usuario se toma de la tupla devuelta (user.TenantId).
+        var (client, user, _) = await AuthenticatedClientFactory.CreateAuthenticatedClientAsync(_factory);
+        Assert.NotNull(user.TenantId);
         Guid userBId = Guid.NewGuid();
 
         // Act - User A tries to read User B's notifications
@@ -127,9 +128,9 @@ public class AuthenticationEndpointTests : IClassFixture<CustomWebApplicationFac
     [Fact]
     public async Task GetUserNotifications_WhenCalledForSelf_ShouldNotReturnForbiddenOrUnauthorized()
     {
-        // Arrange
-        Guid tenantId = Guid.NewGuid();
-        var (client, userA, _) = await AuthenticatedClientFactory.CreateAuthenticatedClientAsync(_factory, tenantId: tenantId);
+        // Arrange - el tenant del usuario se toma de la tupla devuelta (user.TenantId).
+        var (client, userA, _) = await AuthenticatedClientFactory.CreateAuthenticatedClientAsync(_factory);
+        Assert.NotNull(userA.TenantId);
 
         // Act - User A reads their own notifications
         var response = await client.GetAsync($"/api/v1/Notifications/user/{userA.Id}");

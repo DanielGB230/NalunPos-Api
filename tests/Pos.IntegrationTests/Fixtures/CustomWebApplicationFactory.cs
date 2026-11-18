@@ -5,7 +5,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Caching.Hybrid;
 using Pos.Infrastructure.Multitenancy;
 using Pos.Infrastructure.Persistence.Context;
 using Pos.Infrastructure.Persistence.Interceptors;
@@ -104,9 +103,8 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
             services.RemoveAll<Pos.Infrastructure.Authentication.IAuthenticationSessionScope>();
             services.AddScoped<Pos.Infrastructure.Authentication.IAuthenticationSessionScope, NoOpAuthenticationSessionScope>();
 
-#pragma warning disable EXTEXP0018
-            services.AddHybridCache();
-#pragma warning restore EXTEXP0018
+            // HybridCache NO se registra aquí: ya lo registra AddInfrastructureServices()
+            // (src/Pos.Infrastructure/DependencyInjection.cs) en el pipeline de producción.
         });
     }
 }
