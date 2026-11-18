@@ -58,24 +58,18 @@ public class TenantStatusEnforcementMiddleware
         {
             var tenantId = tenantContext.TenantId!.Value;
 
-            var status = await statusReader.GetStatusAsync(tenantId);
-            // Solo deniega cuando el tenant EXISTE en BD pero no está activo.
-            // Un tenant inexistente (null) no se bloquea aquí para evitar romper
-            // flujos legados; el login (LoginCommandHandler) aplica la política de
-            // forma estricta (fail-closed: null → Tenant.NotActive).
-            if (status is not null)
+            var status = await statusReader.GetStatusAsync(tenantId, context.RequestAborted);
+            // Fail-closed: se deniega también cuando el tenant no existe (status == null).
+            var accessError = TenantAccessPolicy.ValidateAccess(status);
+            if (accessError is not null)
             {
-                var accessError = TenantAccessPolicy.ValidateAccess(status);
-                if (accessError is not null)
-                {
-                    var problemDetails = PosProblemDetailsFactory.CreateProblemDetails(context, accessError);
-                    context.Response.StatusCode = problemDetails.Status ?? StatusCodes.Status403Forbidden;
-                    context.Response.ContentType = "application/problem+json";
+                var problemDetails = PosProblemDetailsFactory.CreateProblemDetails(context, accessError);
+                context.Response.StatusCode = problemDetails.Status ?? StatusCodes.Status403Forbidden;
+                context.Response.ContentType = "application/problem+json";
 
-                    var json = System.Text.Json.JsonSerializer.Serialize(problemDetails);
-                    await context.Response.WriteAsync(json, context.RequestAborted);
-                    return;
-                }
+                var json = System.Text.Json.JsonSerializer.Serialize(problemDetails);
+                await context.Response.WriteAsync(json, context.RequestAborted);
+                return;
             }
         }
 

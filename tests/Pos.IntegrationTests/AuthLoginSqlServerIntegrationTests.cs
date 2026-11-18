@@ -420,7 +420,7 @@ public class AuthLoginSqlServerIntegrationTests : IAsyncLifetime
     [Fact]
     public async Task AuthAndRoles_AgainstSqlServer_CrossTenantRoleIsolation_MustPreventTenantAFromResolvingTenantBRole()
     {
-        Guid tenantAId = Guid.NewGuid();
+        Guid tenantAId;
         Guid tenantBId = Guid.NewGuid();
         string unique = Guid.NewGuid().ToString("N")[..10];
 
@@ -431,10 +431,21 @@ public class AuthLoginSqlServerIntegrationTests : IAsyncLifetime
         string emailA = $"admin_a_{unique}@tenanta.test";
 
         // 1. Sembrar roles y usuarios en Tenant A y Tenant B
-        await using (var dbA = _fixture.CreateDbContext(tenantAId))
+        await using (var dbA = _fixture.CreateDbContext(tenantId: null, isSuperAdmin: true))
         {
             using var scope = _factory.Services.CreateScope();
             var hasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
+
+            // Crear el Tenant A con ID generado automáticamente (sin Create(Guid id, ...))
+            var tenantA = Pos.Domain.Entities.Tenant.Create(
+                $"Tenant A {Guid.NewGuid().ToString()[..8]}",
+                $"TAX-A-{Guid.NewGuid().ToString()[..8]}",
+                TimeProvider.System);
+            tenantA.Activate(TimeProvider.System);
+            dbA.Tenants.Add(tenantA);
+            await dbA.SaveChangesAsync();
+            tenantAId = tenantA.Id;
+
             roleA = Role.CreateSystemRole(tenantAId, TenantRoles.TenantAdmin, "Admin A", [Permissions.Users.Update, Permissions.Roles.View], TimeProvider.System);
             userA = User.Create(
                 new Email(emailA),
@@ -446,14 +457,6 @@ public class AuthLoginSqlServerIntegrationTests : IAsyncLifetime
                 TimeProvider.System);
             dbA.Roles.Add(roleA);
             dbA.Users.Add(userA);
-            // Crear y activar el Tenant A con el mismo ID que el usuario
-            var tenantA = Pos.Domain.Entities.Tenant.Create(
-                tenantAId,
-                $"Tenant A {tenantAId.ToString()[..8]}",
-                $"TAX-A-{tenantAId.ToString()[..8]}",
-                TimeProvider.System);
-            tenantA.Activate(TimeProvider.System);
-            dbA.Tenants.Add(tenantA);
             await dbA.SaveChangesAsync();
         }
 

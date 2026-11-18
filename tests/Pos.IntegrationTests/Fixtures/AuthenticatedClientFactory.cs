@@ -7,6 +7,7 @@ using Pos.Domain.Entities;
 using Pos.Domain.Enums;
 using Pos.Domain.ValueObjects;
 using Pos.Infrastructure.Authentication;
+using Pos.Infrastructure.Caching;
 using Pos.Infrastructure.Persistence.Context;
 
 namespace Pos.IntegrationTests.Fixtures;
@@ -78,6 +79,10 @@ public static class AuthenticatedClientFactory
 
         db.Users.Add(user);
         await db.SaveChangesAsync();
+
+        // Invalidar caché de estado para forzar lectura fresca en el middleware
+        var cache = factory.Services.GetRequiredService<Microsoft.Extensions.Caching.Hybrid.HybridCache>();
+        await cache.RemoveAsync(TenantCacheKeys.TenantStatusForTenant(effectiveTenantId));
 
         string token = generator.GenerateToken(user, role.Name);
         return (token, user);

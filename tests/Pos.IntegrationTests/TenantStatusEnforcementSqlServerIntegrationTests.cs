@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Caching.Hybrid;
 using Pos.Api.Contracts.Requests;
 using Pos.Application.Authentication.Commands.Login;
 using Pos.Application.Common.Interfaces;
@@ -20,6 +21,7 @@ using Pos.Domain.ValueObjects;
 using Pos.Infrastructure.Persistence.Context;
 using Pos.Infrastructure.Persistence.Interceptors;
 using Pos.Infrastructure.Persistence.Seed;
+using Pos.Infrastructure.Caching;
 using Pos.IntegrationTests.Fixtures;
 using Xunit;
 
@@ -231,6 +233,49 @@ public class TenantStatusEnforcementSqlServerIntegrationTests : IAsyncLifetime
     }
 
     /// <summary>
+    /// (g) Petición autenticada con tenantId inexistente → 403 code Tenant.NotActive (fail-closed).
+    /// </summary>
+    [Fact]
+    public async Task InexistentTenant_TenantRequest_Returns403NotActive()
+    {
+        // Arrange: SuperAdmin crea y activa un tenant, obtiene token de TenantAdmin,
+        // luego elimina el tenant de BD e invalida la caché de estado.
+        string superAdminToken = await LoginAsSuperAdminAsync();
+        var (tenantId, adminEmail, adminPassword) = await CreateTenantAsync(superAdminToken);
+
+        using var saClient = CreateClient(superAdminToken);
+        var activateResp = await saClient.PatchAsJsonAsync(
+            $"/api/v1/platform/tenants/{tenantId}/status",
+            new ChangeStatusRequest(true));
+        Assert.Equal(HttpStatusCode.OK, activateResp.StatusCode);
+
+        using var anonClient = CreateClient();
+        var loginResp = await LoginAsync(anonClient, adminEmail, adminPassword);
+        Assert.Equal(HttpStatusCode.OK, loginResp.StatusCode);
+        var loginPayload = await loginResp.Content.ReadFromJsonAsync<LoginResponse>(s_jsonOptions);
+        Assert.NotNull(loginPayload);
+        string token = loginPayload!.Token!;
+
+        // Eliminar el tenant de BD (tenantId ahora inexistente)
+        await using var db = _fixture.CreateDbContext(tenantId: null, isSuperAdmin: true);
+        var tenantToDelete = await db.Tenants.SingleAsync(t => t.Id == tenantId);
+        db.Tenants.Remove(tenantToDelete);
+        await db.SaveChangesAsync();
+
+        // Invalidar caché de estado para forzar lectura fresca (null = inexistente)
+        var cache = _factory.Services.GetRequiredService<Microsoft.Extensions.Caching.Hybrid.HybridCache>();
+        await cache.RemoveAsync(TenantCacheKeys.TenantStatusForTenant(tenantId));
+
+        // Act: petición autenticada con tenantId inexistente → 403 Tenant.NotActive
+        using var tenantClient = CreateClient(token);
+        var response = await tenantClient.GetAsync("/api/v1/users");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Equal(TenantAccessPolicy.NotActiveCode, await ReadProblemCodeAsync(response));
+    }
+
+    /// <summary>
     /// (b) Tras activar (PATCH status isActive=true): login 200 y petición de tenant con ese token → 200.
     /// </summary>
     [Fact]
@@ -290,8 +335,9 @@ public class TenantStatusEnforcementSqlServerIntegrationTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.OK, suspendResponse.StatusCode);
         Assert.Equal(TenantStatus.Suspended, await GetTenantStatusAsync(tenantId));
 
-        // Esperar a que expire la caché (TTL = 1 s)
-        await Task.Delay(1500);
+        // Invalidar caché de estado para forzar lectura fresca (suspendido → denegar)
+        var cacheSuspend = _factory.Services.GetRequiredService<Microsoft.Extensions.Caching.Hybrid.HybridCache>();
+        await cacheSuspend.RemoveAsync(TenantCacheKeys.TenantStatusForTenant(tenantId));
 
         // Act (c1): el MISMO token → 403 Tenant.Suspended
         using var tenantClient = CreateClient(token);
@@ -332,8 +378,9 @@ public class TenantStatusEnforcementSqlServerIntegrationTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.OK, reactivateResponse.StatusCode);
         Assert.Equal(TenantStatus.Active, await GetTenantStatusAsync(tenantId));
 
-        // Esperar a que expire la caché (TTL = 1 s)
-        await Task.Delay(1500);
+        // Invalidar caché de estado para forzar lectura fresca (activo → permitir)
+        var cacheReactive = _factory.Services.GetRequiredService<Microsoft.Extensions.Caching.Hybrid.HybridCache>();
+        await cacheReactive.RemoveAsync(TenantCacheKeys.TenantStatusForTenant(tenantId));
 
         // Act: login y petición → 200
         using var client = CreateClient();

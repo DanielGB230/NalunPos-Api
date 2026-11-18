@@ -45,15 +45,6 @@ public class Tenant : AggregateRoot<Guid>
         return Create(name, new CompanyTaxId(taxId), timeProvider);
     }
 
-    /// <summary>
-    /// Crea un Tenant con un identificador explícito (útil para pruebas de integración
-    /// donde el identificador debe coincidir con el de un usuario ya existente).
-    /// </summary>
-    public static Tenant Create(Guid id, string name, string taxId, TimeProvider timeProvider)
-    {
-        return new Tenant(id, name, new CompanyTaxId(taxId), timeProvider);
-    }
-
     public Result Activate(TimeProvider timeProvider)
     {
         ArgumentNullException.ThrowIfNull(timeProvider);
