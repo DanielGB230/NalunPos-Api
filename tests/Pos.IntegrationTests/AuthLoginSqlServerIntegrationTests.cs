@@ -202,6 +202,12 @@ public class AuthLoginSqlServerIntegrationTests : IAsyncLifetime
         Guid createdTenantId = await createTenantResp.Content.ReadFromJsonAsync<Guid>();
         Assert.NotEqual(Guid.Empty, createdTenantId);
 
+        // Activar el tenant antes de permitir login de sus usuarios
+        var activateResp = await superAdminClient.PatchAsJsonAsync(
+            $"/api/v1/platform/tenants/{createdTenantId}/status",
+            new ChangeStatusRequest(true));
+        Assert.Equal(HttpStatusCode.OK, activateResp.StatusCode);
+
         // 3. Crear usuarios adicionales para Supervisor, InventoryManager y Cajero en el tenant recién aprovisionado
         Dictionary<string, string> roleEmails = new()
         {
@@ -375,6 +381,12 @@ public class AuthLoginSqlServerIntegrationTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Created, createTenantResp.StatusCode);
         Guid tenantId = await createTenantResp.Content.ReadFromJsonAsync<Guid>();
 
+        // Activar el tenant antes de permitir login
+        var activateResp = await superAdminClient.PatchAsJsonAsync(
+            $"/api/v1/platform/tenants/{tenantId}/status",
+            new ChangeStatusRequest(true));
+        Assert.Equal(HttpStatusCode.OK, activateResp.StatusCode);
+
         using var anonymousClient = CreateClient();
         var loginResp = await anonymousClient.PostAsJsonAsync("/api/v1/auth/login", new LoginRequest(adminEmail, password));
         Assert.Equal(HttpStatusCode.OK, loginResp.StatusCode);
@@ -434,6 +446,14 @@ public class AuthLoginSqlServerIntegrationTests : IAsyncLifetime
                 TimeProvider.System);
             dbA.Roles.Add(roleA);
             dbA.Users.Add(userA);
+            // Crear y activar el Tenant A con el mismo ID que el usuario
+            var tenantA = Pos.Domain.Entities.Tenant.Create(
+                tenantAId,
+                $"Tenant A {tenantAId.ToString()[..8]}",
+                $"TAX-A-{tenantAId.ToString()[..8]}",
+                TimeProvider.System);
+            tenantA.Activate(TimeProvider.System);
+            dbA.Tenants.Add(tenantA);
             await dbA.SaveChangesAsync();
         }
 
@@ -496,6 +516,16 @@ public class AuthLoginSqlServerIntegrationTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Created, createBResp.StatusCode);
         Guid tenantBId = await createBResp.Content.ReadFromJsonAsync<Guid>();
         Assert.NotEqual(tenantAId, tenantBId);
+
+        // Activar ambos tenants antes de permitir login
+        var activateA = await superAdminClient.PatchAsJsonAsync(
+            $"/api/v1/platform/tenants/{tenantAId}/status",
+            new ChangeStatusRequest(true));
+        var activateB = await superAdminClient.PatchAsJsonAsync(
+            $"/api/v1/platform/tenants/{tenantBId}/status",
+            new ChangeStatusRequest(true));
+        Assert.Equal(HttpStatusCode.OK, activateA.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, activateB.StatusCode);
 
         // 2. Obtener JWT reales de ambos tenants y crear un rol distintivo en cada uno
         using var loginClient = CreateClient();

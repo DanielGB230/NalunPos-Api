@@ -284,6 +284,13 @@ public class TenantStatusSqlServerIntegrationTests : IAsyncLifetime
         string superAdminToken = await LoginAsSuperAdminAsync();
         var (tenantId, adminEmail, adminPassword) = await CreateTenantAsync(superAdminToken);
 
+        // Activar el tenant antes de permitir login
+        using var saClient = CreateClient(superAdminToken);
+        var activateResp = await saClient.PatchAsJsonAsync(
+            $"/api/v1/platform/tenants/{tenantId}/status",
+            new ChangeStatusRequest(true));
+        Assert.Equal(HttpStatusCode.OK, activateResp.StatusCode);
+
         using var authClient = CreateClient();
         var loginResponse = await authClient.PostAsJsonAsync(
             "/api/v1/auth/login",
@@ -296,11 +303,11 @@ public class TenantStatusSqlServerIntegrationTests : IAsyncLifetime
 
         using var tenantAdminClient = CreateClient(authResult.Token);
 
-        // Act: isActive = true -> TenantAdmin recibe 403
+        // Act: isActive = true -> TenantAdmin recibe 403 (no tiene permiso de plataforma)
         var response = await ChangeStatusAsync(tenantAdminClient, tenantId, true);
 
         // Assert
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
-        Assert.Equal(TenantStatus.PendingProvisioning, await GetTenantStatusAsync(tenantId));
+        Assert.Equal(TenantStatus.Active, await GetTenantStatusAsync(tenantId));
     }
 }

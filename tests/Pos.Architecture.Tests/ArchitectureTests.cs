@@ -564,6 +564,65 @@ public class ArchitectureTests
     }
 
     [Fact]
+    public void TenantStatus_MustOnlyBeReadBy_DomainPolicyAndTransitions()
+    {
+        var srcDir = Path.Combine(SolutionDirectory.Root, "src");
+        Assert.True(Directory.Exists(srcDir), $"El directorio de código fuente '{srcDir}' no existe.");
+
+        // Solo estos archivos pueden leer .Status de un Tenant directamente (tienen responsabilidad legítima):
+        // - Tenant.cs: el agregado es dueño del estado y sus transiciones.
+        // - TenantAccessPolicy.cs: fuente única de la regla de acceso por estado.
+        // - TenantStatusTransitions.cs: matriz de transiciones de estado.
+        var allowedFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "Tenant.cs",
+            "TenantAccessPolicy.cs",
+            "TenantStatusTransitions.cs",
+            "TenantStatusReader.cs"
+        };
+
+        var tenantStatusReadRegex = new System.Text.RegularExpressions.Regex(
+            @"\btenant\.\bStatus\b|\b_tenant\.\bStatus\b|\bTenant\b.*\.\bStatus\b",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        var violations = new List<string>();
+
+        foreach (var file in Directory.GetFiles(srcDir, "*.cs", SearchOption.AllDirectories))
+        {
+            var fileName = Path.GetFileName(file);
+            if (allowedFiles.Contains(fileName))
+            {
+                continue;
+            }
+
+            var lines = File.ReadAllLines(file);
+            for (int i = 0; i < lines.Length; i++)
+            {
+                var line = lines[i];
+                var trimmed = line.Trim();
+                if (trimmed.StartsWith("//", StringComparison.Ordinal) ||
+                    trimmed.StartsWith("/*", StringComparison.Ordinal) ||
+                    trimmed.StartsWith('*'))
+                {
+                    continue;
+                }
+
+                if (tenantStatusReadRegex.IsMatch(line))
+                {
+                    var relativePath = Path.GetRelativePath(SolutionDirectory.Root, file);
+                    violations.Add($"{relativePath} (Línea {i + 1}): {trimmed}");
+                }
+            }
+        }
+
+        Assert.True(
+            violations.Count == 0,
+            $"Se detectaron lecturas directas de 'Tenant.Status' fuera de la capa de dominio (solo Tenant.cs, " +
+            $"TenantAccessPolicy.cs y TenantStatusTransitions.cs pueden leerlo). " +
+            $"La regla de acceso por estado debe centralizarse en TenantAccessPolicy. Violaciones:\n{string.Join("\n", violations)}"
+        );
+    }
+
+    [Fact]
     public void ClearDomainEvents_MustOnlyBeCalledFrom_InsertOutboxMessagesInterceptor()
     {
         var srcDir = Path.Combine(SolutionDirectory.Root, "src");

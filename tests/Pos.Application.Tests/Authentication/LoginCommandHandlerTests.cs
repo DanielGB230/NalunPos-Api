@@ -2,6 +2,7 @@ using Pos.Application.Tests.Support.Fakes;
 using Pos.Application.Authentication.Commands.Login;
 using Pos.Domain.Common;
 using Pos.Domain.Entities;
+using Pos.Domain.Enums;
 using Pos.Domain.ValueObjects;
 using Xunit;
 
@@ -12,11 +13,17 @@ public class LoginCommandHandlerTests
     private readonly FakeAuthUserLookup _authUserLookup = new();
     private readonly FakePasswordHasher _passwordHasher = new();
     private readonly FakeTokenGenerator _tokenGenerator = new();
+    private readonly FakeTenantStatusReader _tenantStatusReader = new();
     private readonly LoginCommandHandler _handler;
 
     public LoginCommandHandlerTests()
     {
-        _handler = new LoginCommandHandler(_authUserLookup, _passwordHasher, _tokenGenerator, TimeProvider.System);
+        _handler = new LoginCommandHandler(
+            _authUserLookup,
+            _passwordHasher,
+            _tokenGenerator,
+            _tenantStatusReader,
+            TimeProvider.System);
     }
 
     [Fact]
@@ -66,6 +73,7 @@ public class LoginCommandHandlerTests
             timeProvider: TimeProvider.System);
         _authUserLookup.Users.Add(user);
         _authUserLookup.SetRoleName(tenantAdminRoleId, TenantRoles.TenantAdmin);
+        _tenantStatusReader.SetStatus(tenantId, TenantStatus.Active);
 
         var command = new LoginCommand("admin@tenant.com", "SecretPassword!");
 
@@ -103,6 +111,7 @@ public class LoginCommandHandlerTests
 
         _authUserLookup.Users.Add(user);
         _authUserLookup.SetRoleName(roleId, canonicalRoleName);
+        _tenantStatusReader.SetStatus(tenantId, TenantStatus.Active);
 
         var command = new LoginCommand(email, "SecretPassword123!");
 
@@ -114,6 +123,145 @@ public class LoginCommandHandlerTests
         Assert.Equal(canonicalRoleName, result.Value.Role);
         Assert.Equal(roleId, result.Value.RoleId);
         Assert.Equal(tenantId, result.Value.TenantId);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenTenantIsPendingProvisioning_ShouldReturnForbiddenNotActiveAfterPassword()
+    {
+        // Arrange: credenciales válidas y contraseña correcta, pero tenant en PendingProvisioning
+        Guid tenantId = Guid.NewGuid();
+        var user = User.Create(
+            new Email("pending@tenant.com"),
+            new PasswordHash(_passwordHasher.HashPassword("Password123!")),
+            Guid.NewGuid(),
+            tenantId: tenantId,
+            firstName: "Pending",
+            lastName: "User",
+            timeProvider: TimeProvider.System);
+        _authUserLookup.Users.Add(user);
+        _authUserLookup.SetRoleName(user.RoleId, TenantRoles.TenantAdmin);
+        _tenantStatusReader.SetStatus(tenantId, TenantStatus.PendingProvisioning);
+
+        var command = new LoginCommand("pending@tenant.com", "Password123!");
+
+        // Act
+        var result = await _handler.HandleAsync(command, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsFailure);
+        Assert.Equal(ErrorType.Forbidden, result.Error.Type);
+        Assert.Equal(TenantAccessPolicy.NotActiveCode, result.Error.Code);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenTenantIsSuspended_ShouldReturnForbiddenSuspendedAfterPassword()
+    {
+        // Arrange: credenciales válidas, pero tenant suspendido
+        Guid tenantId = Guid.NewGuid();
+        var user = User.Create(
+            new Email("suspended@tenant.com"),
+            new PasswordHash(_passwordHasher.HashPassword("Password123!")),
+            Guid.NewGuid(),
+            tenantId: tenantId,
+            firstName: "Suspended",
+            lastName: "User",
+            timeProvider: TimeProvider.System);
+        _authUserLookup.Users.Add(user);
+        _authUserLookup.SetRoleName(user.RoleId, TenantRoles.TenantAdmin);
+        _tenantStatusReader.SetStatus(tenantId, TenantStatus.Suspended);
+
+        var command = new LoginCommand("suspended@tenant.com", "Password123!");
+
+        // Act
+        var result = await _handler.HandleAsync(command, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsFailure);
+        Assert.Equal(ErrorType.Forbidden, result.Error.Type);
+        Assert.Equal(TenantAccessPolicy.SuspendedCode, result.Error.Code);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenTenantDoesNotExist_ShouldReturnForbiddenNotActiveFailClosed()
+    {
+        // Arrange: credenciales válidas, pero el tenant no existe en el lector (null)
+        Guid tenantId = Guid.NewGuid();
+        var user = User.Create(
+            new Email("missing@tenant.com"),
+            new PasswordHash(_passwordHasher.HashPassword("Password123!")),
+            Guid.NewGuid(),
+            tenantId: tenantId,
+            firstName: "Missing",
+            lastName: "Tenant",
+            timeProvider: TimeProvider.System);
+        _authUserLookup.Users.Add(user);
+        _authUserLookup.SetRoleName(user.RoleId, TenantRoles.TenantAdmin);
+        // No se configura status → GetStatusAsync devuelve null (fail-closed)
+
+        var command = new LoginCommand("missing@tenant.com", "Password123!");
+
+        // Act
+        var result = await _handler.HandleAsync(command, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsFailure);
+        Assert.Equal(ErrorType.Forbidden, result.Error.Type);
+        Assert.Equal(TenantAccessPolicy.NotActiveCode, result.Error.Code);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WithInvalidCredentialsAgainstSuspendedTenant_ShouldReturn401GenericNotRevealingStatus()
+    {
+        // Arrange: tenant suspendido, pero contraseña incorrecta → debe devolver 401 genérico,
+        // no revelar el estado del tenant sin credenciales válidas.
+        Guid tenantId = Guid.NewGuid();
+        var user = User.Create(
+            new Email("suspended@tenant.com"),
+            new PasswordHash(_passwordHasher.HashPassword("RightPassword!")),
+            Guid.NewGuid(),
+            tenantId: tenantId,
+            firstName: "Suspended",
+            lastName: "User",
+            timeProvider: TimeProvider.System);
+        _authUserLookup.Users.Add(user);
+        _authUserLookup.SetRoleName(user.RoleId, TenantRoles.TenantAdmin);
+        _tenantStatusReader.SetStatus(tenantId, TenantStatus.Suspended);
+
+        var command = new LoginCommand("suspended@tenant.com", "WrongPassword!");
+
+        // Act
+        var result = await _handler.HandleAsync(command, CancellationToken.None);
+
+        // Assert: mismo error genérico de credenciales inválidas
+        Assert.True(result.IsFailure);
+        Assert.Equal(ErrorType.Unauthorized, result.Error.Type);
+        Assert.Equal("Credenciales de acceso inválidas.", result.Error.Message);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WithInactiveUser_ShouldReturnUnauthorizedError()
+    {
+        // Arrange
+        var user = User.Create(
+            new Email("inactive@tenant.com"),
+            new PasswordHash(_passwordHasher.HashPassword("Password123!")),
+            Guid.NewGuid(),
+            tenantId: Guid.NewGuid(),
+            firstName: "User",
+            lastName: "Tenant",
+            timeProvider: TimeProvider.System);
+        user.Deactivate(TimeProvider.System);
+        _authUserLookup.Users.Add(user);
+
+        var command = new LoginCommand("inactive@tenant.com", "Password123!");
+
+        // Act
+        var result = await _handler.HandleAsync(command, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsFailure);
+        Assert.Equal(ErrorType.Unauthorized, result.Error.Type);
+        Assert.Equal("Credenciales de acceso inválidas.", result.Error.Message);
     }
 
     [Fact]
@@ -133,6 +281,7 @@ public class LoginCommandHandlerTests
 
         _authUserLookup.Users.Add(user);
         _authUserLookup.SetRoleName(missingRoleId, "__CORRUPTED__");
+        _tenantStatusReader.SetStatus(tenantId, TenantStatus.Active);
 
         var command = new LoginCommand("corrupt@tenant.com", "Password123!");
 
@@ -222,32 +371,6 @@ public class LoginCommandHandlerTests
         _authUserLookup.Users.Add(user);
 
         var command = new LoginCommand("user@tenant.com", "WrongPassword!");
-
-        // Act
-        var result = await _handler.HandleAsync(command, CancellationToken.None);
-
-        // Assert
-        Assert.True(result.IsFailure);
-        Assert.Equal(ErrorType.Unauthorized, result.Error.Type);
-        Assert.Equal("Credenciales de acceso inválidas.", result.Error.Message);
-    }
-
-    [Fact]
-    public async Task HandleAsync_WithInactiveUser_ShouldReturnUnauthorizedError()
-    {
-        // Arrange
-        var user = User.Create(
-            new Email("inactive@tenant.com"),
-            new PasswordHash(_passwordHasher.HashPassword("Password123!")),
-            Guid.NewGuid(),
-            tenantId: Guid.NewGuid(),
-            firstName: "User",
-            lastName: "Tenant",
-            timeProvider: TimeProvider.System);
-        user.Deactivate(TimeProvider.System);
-        _authUserLookup.Users.Add(user);
-
-        var command = new LoginCommand("inactive@tenant.com", "Password123!");
 
         // Act
         var result = await _handler.HandleAsync(command, CancellationToken.None);

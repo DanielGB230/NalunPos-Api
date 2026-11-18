@@ -17,6 +17,9 @@ public enum ErrorType
     /// <summary>El usuario no tiene permisos para la operación.</summary>
     Unauthorized,
 
+    /// <summary>El acceso está denegado por política de negocio (ej: tenant suspendido o inactivo).</summary>
+    Forbidden,
+
     /// <summary>Error de negocio genérico no clasificado en las categorías anteriores.</summary>
     Failure
 }
@@ -50,6 +53,9 @@ public sealed record DomainError(string Code, string Message, ErrorType Type)
 
     public static DomainError Unauthorized(string code, string message)
         => new(code, message, ErrorType.Unauthorized);
+
+    public static DomainError Forbidden(string code, string message)
+        => new(code, message, ErrorType.Forbidden);
 
     public static DomainError Failure(string code, string message)
         => new(code, message, ErrorType.Failure);

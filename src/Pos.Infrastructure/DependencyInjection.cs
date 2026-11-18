@@ -7,6 +7,7 @@ using Pos.Application.Common.Interfaces;
 using Pos.Domain.Interfaces;
 using Pos.Infrastructure.AiOrchestration.Adapters;
 using Pos.Infrastructure.Authentication;
+using Pos.Infrastructure.Caching;
 using Pos.Infrastructure.EventBus;
 using Pos.Infrastructure.ExternalServices.Dummy;
 using Pos.Infrastructure.Multitenancy;
@@ -115,6 +116,7 @@ public static class DependencyInjection
         services.AddScoped<IOutboxPlatformReader, Pos.Infrastructure.Persistence.OutboxPlatformReader>();
         services.AddScoped<IOutboxLeaseClaimer, Pos.Infrastructure.Persistence.Outbox.SqlOutboxLeaseClaimer>();
         services.AddScoped<Pos.Application.Common.Authorization.ICurrentUserPermissions, CurrentUserPermissions>();
+        services.AddScoped<ITenantStatusReader, TenantStatusReader>();
 
         // ── Seeders ───────────────────────────────────────────────────────────
         services.AddScoped<SuperAdminSeeder>();

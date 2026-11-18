@@ -292,6 +292,12 @@ public class DateRangeFilterHttpIntegrationTests : IAsyncLifetime
         Guid tenantId = await createTenantResponse.Content.ReadFromJsonAsync<Guid>();
         Assert.NotEqual(Guid.Empty, tenantId);
 
+        // Activar el tenant antes de permitir login
+        var activateResp = await superAdminClient.PatchAsJsonAsync(
+            $"/api/v1/platform/tenants/{tenantId}/status",
+            new ChangeStatusRequest(true));
+        Assert.Equal(HttpStatusCode.OK, activateResp.StatusCode);
+
         using var anonymousClient = CreateClient();
         var loginResponse = await anonymousClient.PostAsJsonAsync(
             "/api/v1/auth/login",

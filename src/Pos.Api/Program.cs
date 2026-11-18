@@ -45,6 +45,11 @@ builder.Services.AddOptions<SuperAdminSettings>()
     .ValidateDataAnnotations()
     .ValidateOnStart();
 
+builder.Services.AddOptions<Pos.Infrastructure.TenantStatusOptions>()
+    .Bind(builder.Configuration.GetSection(Pos.Infrastructure.TenantStatusOptions.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+
 // 6. Registro de Background Workers
 builder.Services.AddHostedService<OutboxProcessorBackgroundService>();
 builder.Services.AddHostedService<InvoiceReconciliationBackgroundService>();
@@ -104,6 +109,7 @@ app.UseHttpsRedirection();
 app.UseCors("AllowFrontend");
 app.UseAuthentication();
 app.UseMiddleware<TenantResolutionMiddleware>();
+app.UseMiddleware<TenantStatusEnforcementMiddleware>();
 app.UseAuthorization();
 app.UseRateLimiter();
 app.MapCustomHealthChecks();

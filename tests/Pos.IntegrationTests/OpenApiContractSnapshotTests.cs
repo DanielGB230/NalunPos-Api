@@ -4,6 +4,9 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using FluentAssertions;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.DependencyInjection;
+using Pos.Domain.Entities;
+using Pos.Infrastructure.Persistence.Context;
 using Pos.IntegrationTests.Fixtures;
 using Xunit;
 
@@ -104,7 +107,24 @@ public class OpenApiContractSnapshotTests : IClassFixture<OpenApiTestWebApplicat
     public async Task OpenApiAndScalarEndpoints_WhenOutsideDevelopmentEnvironment_AreNotExposed()
     {
         using var standardFactory = new CustomWebApplicationFactory();
-        var (client, _, _) = await AuthenticatedClientFactory.CreateAuthenticatedClientAsync(standardFactory);
+
+        // Crear un Tenant real y activo en la base de datos de prueba para que el
+        // TenantStatusEnforcementMiddleware permita el acceso (fail-closed: tenant
+        // inexistente o no activo recibe 403). El propósito de esta prueba es verificar
+        // que /openapi/v1.json no está mapeado fuera de Development, no probar el
+        // middleware de enforcements.
+        Guid activeTenantId;
+        using (var scope = standardFactory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<PosDbContext>();
+            var tenant = Tenant.Create("Empresa OpenApi Test", "TAX-OPENAPI-TEST", TimeProvider.System);
+            tenant.Activate(TimeProvider.System);
+            db.Tenants.Add(tenant);
+            await db.SaveChangesAsync();
+            activeTenantId = tenant.Id;
+        }
+
+        var (client, _, _) = await AuthenticatedClientFactory.CreateAuthenticatedClientAsync(standardFactory, activeTenantId);
 
         var openApiResponse = await client.GetAsync("/openapi/v1.json");
         var scalarResponse = await client.GetAsync("/scalar");
@@ -115,7 +135,18 @@ public class OpenApiContractSnapshotTests : IClassFixture<OpenApiTestWebApplicat
             "La consola /scalar no debe exponerse en entorno Testing (debe responder 404).");
 
         using var prodFactory = CustomWebApplicationFactory.ForEnvironment("Production");
-        var (prodClient, _, _) = await AuthenticatedClientFactory.CreateAuthenticatedClientAsync(prodFactory);
+        // Crear tenant activo también en el entorno Production
+        Guid prodTenantId;
+        using (var scope = prodFactory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<PosDbContext>();
+            var tenant = Tenant.Create("Empresa OpenApi Prod", "TAX-OPENAPI-PROD", TimeProvider.System);
+            tenant.Activate(TimeProvider.System);
+            db.Tenants.Add(tenant);
+            await db.SaveChangesAsync();
+            prodTenantId = tenant.Id;
+        }
+        var (prodClient, _, _) = await AuthenticatedClientFactory.CreateAuthenticatedClientAsync(prodFactory, prodTenantId);
         var prodOpenApiResponse = await prodClient.GetAsync("/openapi/v1.json");
         var prodScalarResponse = await prodClient.GetAsync("/scalar");
 

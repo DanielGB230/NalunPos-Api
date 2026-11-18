@@ -39,4 +39,13 @@ public static class TenantCacheKeys
 
         return PermissionsForRole(tenantId.Value, roleId);
     }
+
+    /// <summary>
+    /// Construye la clave de caché para el estado de ciclo de vida de un tenant.
+    /// </summary>
+    public static string TenantStatusForTenant(Guid tenantId)
+    {
+        TenantGuard.EnsureNotEmpty(tenantId, nameof(tenantId));
+        return $"tenant:{tenantId:D}:status";
+    }
 }

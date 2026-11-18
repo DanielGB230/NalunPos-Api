@@ -220,7 +220,15 @@ public class AuthenticationEndpointTests : IClassFixture<CustomWebApplicationFac
         var db = scope.ServiceProvider.GetRequiredService<Pos.Infrastructure.Persistence.Context.PosDbContext>();
         var hasher = scope.ServiceProvider.GetRequiredService<Pos.Application.Common.Interfaces.IPasswordHasher>();
 
-        Guid tenantId = Guid.NewGuid();
+        // Crear y activar el Tenant primero, usar su ID generado para el usuario
+        var tenant = Pos.Domain.Entities.Tenant.Create(
+            $"Tenant Test {Guid.NewGuid().ToString()[..8]}",
+            $"TAX-{Guid.NewGuid().ToString()[..8]}",
+            TimeProvider.System);
+        tenant.Activate(TimeProvider.System);
+        db.Tenants.Add(tenant);
+        Guid tenantId = tenant.Id;
+
         var role = Pos.Domain.Entities.Role.CreateSystemRole(tenantId, TenantRoles.Cajero, null, null, TimeProvider.System);
         db.Roles.Add(role);
 

@@ -240,7 +240,14 @@ public class PlatformTenantProvisioningIntegrationTests : IAsyncLifetime
         string superAdminToken = await LoginAsSuperAdminAsync();
         var (tenantId, adminEmail, adminPassword) = await CreateTenantAsync(superAdminToken);
 
-        // 2. Login real por HTTP con el TenantAdmin recién creado
+        // 2. Activar el tenant antes de permitir login (solo Active puede autenticarse)
+        using var saClient = CreateClient(superAdminToken);
+        var activateResp = await saClient.PatchAsJsonAsync(
+            $"/api/v1/platform/tenants/{tenantId}/status",
+            new ChangeStatusRequest(true));
+        Assert.Equal(HttpStatusCode.OK, activateResp.StatusCode);
+
+        // 3. Login real por HTTP con el TenantAdmin recién creado
         using var client = CreateClient();
         var loginResponse = await client.PostAsJsonAsync("/api/v1/auth/login", new LoginRequest(
             adminEmail,
@@ -263,7 +270,14 @@ public class PlatformTenantProvisioningIntegrationTests : IAsyncLifetime
         string superAdminToken = await LoginAsSuperAdminAsync();
         var (tenantId, adminEmail, adminPassword) = await CreateTenantAsync(superAdminToken);
 
-        // 2. Login como TenantAdmin para obtener su token JWT
+        // 2. Activar el tenant antes de permitir login
+        using var saClient = CreateClient(superAdminToken);
+        var activateResp = await saClient.PatchAsJsonAsync(
+            $"/api/v1/platform/tenants/{tenantId}/status",
+            new ChangeStatusRequest(true));
+        Assert.Equal(HttpStatusCode.OK, activateResp.StatusCode);
+
+        // 3. Login como TenantAdmin para obtener su token JWT
         using var authClient = CreateClient();
         var loginResponse = await authClient.PostAsJsonAsync("/api/v1/auth/login", new LoginRequest(
             adminEmail,
@@ -274,12 +288,12 @@ public class PlatformTenantProvisioningIntegrationTests : IAsyncLifetime
         Assert.NotNull(authResult);
         string tenantAdminToken = authResult.Token;
 
-        // 3. AISLAMIENTO MULTI-TENANT: TenantAdmin llama GET /api/v1/platform/tenants -> 403 Forbidden
+        // 4. AISLAMIENTO MULTI-TENANT: TenantAdmin llama GET /api/v1/platform/tenants -> 403 Forbidden
         using var platformClient = CreateClient(tenantAdminToken);
         var getResponse = await platformClient.GetAsync("/api/v1/platform/tenants");
         Assert.Equal(HttpStatusCode.Forbidden, getResponse.StatusCode);
 
-        // 4. AISLAMIENTO MULTI-TENANT: TenantAdmin llama POST /api/v1/platform/tenants -> 403 Forbidden
+        // 5. AISLAMIENTO MULTI-TENANT: TenantAdmin llama POST /api/v1/platform/tenants -> 403 Forbidden
         var createForbiddenReq = new CreateTenantRequest(
             "EmpresaIntrusa",
             "20999888777",
