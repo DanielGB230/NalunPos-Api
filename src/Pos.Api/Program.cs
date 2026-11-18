@@ -1,6 +1,8 @@
 using System.Text.Json.Serialization;
+using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Pos.Api.BackgroundServices;
+using Pos.Api.Contracts.Validators;
 using Pos.Api.Extensions;
 using Pos.Api.Middleware;
 using Pos.Api.ModelBinding;
@@ -26,6 +28,9 @@ builder.Services.AddCustomRateLimiting(builder.Configuration);
 builder.Services
     .AddApplicationServices()
     .AddInfrastructureServices(builder.Configuration);
+
+// 4.1 Validadores FluentValidation declarados en el borde HTTP (Pos.Api)
+builder.Services.AddValidatorsFromAssemblyContaining<ChangeTenantStatusRequestValidator>();
 
 // 5. Registro de configuración para OutboxWorker, InvoiceReconciliation y SuperAdminSettings con ValidateOnStart
 builder.Services.AddOptions<OutboxSettings>()

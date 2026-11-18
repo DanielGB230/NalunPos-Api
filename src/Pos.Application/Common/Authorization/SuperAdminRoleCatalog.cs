@@ -12,7 +12,8 @@ public static class SuperAdminRoleCatalog
         Common.Authorization.Permissions.Platform.DeadLetterView,
         Common.Authorization.Permissions.Platform.DeadLetterReprocess,
         Common.Authorization.Permissions.Platform.Tenants.View,
-        Common.Authorization.Permissions.Platform.Tenants.Create
+        Common.Authorization.Permissions.Platform.Tenants.Create,
+        Common.Authorization.Permissions.Platform.Tenants.Update
     };
 }
 

@@ -1,3 +1,4 @@
+using Pos.Domain.Common;
 using Pos.Domain.Entities;
 using Pos.Domain.Enums;
 using Pos.Domain.Exceptions;
@@ -30,7 +31,7 @@ public class TenantTests
     }
 
     [Fact]
-    public void Activate_WhenNotActive_ShouldChangeStatusAndEmitTenantStatusChangedDomainEvent()
+    public void Activate_WhenPendingProvisioning_ShouldChangeStatusAndEmitTenantStatusChangedDomainEvent()
     {
         // Arrange
         var tenant = Tenant.Create("Supermercado Central", "20987654321", _timeProvider);
@@ -38,12 +39,13 @@ public class TenantTests
         var oldStatus = tenant.Status; // PendingProvisioning
 
         // Act
-        tenant.Activate(_timeProvider);
+        var result = tenant.Activate(_timeProvider);
 
         // Assert
+        Assert.True(result.IsSuccess);
         Assert.Equal(TenantStatus.Active, tenant.Status);
         Assert.NotNull(tenant.UpdatedAtUtc);
-        
+
         var statusEvent = tenant.DomainEvents.OfType<DomainEvents.TenantStatusChangedDomainEvent>().SingleOrDefault();
         Assert.NotNull(statusEvent);
         Assert.Equal(tenant.Id, statusEvent.TenantId);
@@ -53,7 +55,30 @@ public class TenantTests
     }
 
     [Fact]
-    public void Activate_WhenAlreadyActive_ShouldNotEmitEvent()
+    public void Activate_WhenSuspended_ShouldReactivateAndEmitTenantStatusChangedDomainEvent()
+    {
+        // Arrange
+        var tenant = Tenant.Create("Supermercado Central", "20987654321", _timeProvider);
+        tenant.Activate(_timeProvider);
+        tenant.Suspend(_timeProvider);
+        tenant.ClearDomainEvents();
+        var oldStatus = tenant.Status; // Suspended
+
+        // Act
+        var result = tenant.Activate(_timeProvider);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        Assert.Equal(TenantStatus.Active, tenant.Status);
+
+        var statusEvent = tenant.DomainEvents.OfType<DomainEvents.TenantStatusChangedDomainEvent>().SingleOrDefault();
+        Assert.NotNull(statusEvent);
+        Assert.Equal(oldStatus, statusEvent.OldStatus);
+        Assert.Equal(TenantStatus.Active, statusEvent.NewStatus);
+    }
+
+    [Fact]
+    public void Activate_WhenAlreadyActive_ShouldReturnConflictAndNotEmitEvent()
     {
         // Arrange
         var tenant = Tenant.Create("Supermercado Central", "20987654321", _timeProvider);
@@ -61,15 +86,18 @@ public class TenantTests
         tenant.ClearDomainEvents();
 
         // Act
-        tenant.Activate(_timeProvider);
+        var result = tenant.Activate(_timeProvider);
 
         // Assert
+        Assert.True(result.IsFailure);
+        Assert.Equal(ErrorType.Conflict, result.Error.Type);
+        Assert.Equal(TenantStatusTransitions.AlreadyActiveCode, result.Error.Code);
         Assert.Equal(TenantStatus.Active, tenant.Status);
         Assert.Empty(tenant.DomainEvents.OfType<DomainEvents.TenantStatusChangedDomainEvent>());
     }
 
     [Fact]
-    public void Suspend_WhenNotSuspended_ShouldChangeStatusAndEmitTenantStatusChangedDomainEvent()
+    public void Suspend_WhenActive_ShouldChangeStatusAndEmitTenantStatusChangedDomainEvent()
     {
         // Arrange
         var tenant = Tenant.Create("Supermercado Central", "20987654321", _timeProvider);
@@ -78,9 +106,10 @@ public class TenantTests
         var oldStatus = tenant.Status; // Active
 
         // Act
-        tenant.Suspend(_timeProvider);
+        var result = tenant.Suspend(_timeProvider);
 
         // Assert
+        Assert.True(result.IsSuccess);
         Assert.Equal(TenantStatus.Suspended, tenant.Status);
         Assert.NotNull(tenant.UpdatedAtUtc);
 
@@ -93,17 +122,40 @@ public class TenantTests
     }
 
     [Fact]
-    public void Suspend_WhenAlreadySuspended_ShouldNotEmitEvent()
+    public void Suspend_WhenPendingProvisioning_ShouldReturnInvalidTransitionConflictAndNotEmitEvent()
     {
         // Arrange
         var tenant = Tenant.Create("Supermercado Central", "20987654321", _timeProvider);
+        tenant.ClearDomainEvents();
+
+        // Act
+        var result = tenant.Suspend(_timeProvider);
+
+        // Assert
+        Assert.True(result.IsFailure);
+        Assert.Equal(ErrorType.Conflict, result.Error.Type);
+        Assert.Equal(TenantStatusTransitions.InvalidTransitionCode, result.Error.Code);
+        Assert.Equal(TenantStatus.PendingProvisioning, tenant.Status);
+        Assert.Null(tenant.UpdatedAtUtc);
+        Assert.Empty(tenant.DomainEvents.OfType<DomainEvents.TenantStatusChangedDomainEvent>());
+    }
+
+    [Fact]
+    public void Suspend_WhenAlreadySuspended_ShouldReturnConflictAndNotEmitEvent()
+    {
+        // Arrange
+        var tenant = Tenant.Create("Supermercado Central", "20987654321", _timeProvider);
+        tenant.Activate(_timeProvider);
         tenant.Suspend(_timeProvider);
         tenant.ClearDomainEvents();
 
         // Act
-        tenant.Suspend(_timeProvider);
+        var result = tenant.Suspend(_timeProvider);
 
         // Assert
+        Assert.True(result.IsFailure);
+        Assert.Equal(ErrorType.Conflict, result.Error.Type);
+        Assert.Equal(TenantStatusTransitions.AlreadySuspendedCode, result.Error.Code);
         Assert.Equal(TenantStatus.Suspended, tenant.Status);
         Assert.Empty(tenant.DomainEvents.OfType<DomainEvents.TenantStatusChangedDomainEvent>());
     }
@@ -132,9 +184,10 @@ public class TenantTests
 
         // Act - Activate
         timeProvider.SetUtcNow(activatedTime);
-        tenant.Activate(timeProvider);
+        var result = tenant.Activate(timeProvider);
 
         // Assert - Activate
+        Assert.True(result.IsSuccess);
         Assert.Equal(TenantStatus.Active, tenant.Status);
         Assert.Equal(activatedTime.UtcDateTime, tenant.UpdatedAtUtc);
         var statusEvent = tenant.DomainEvents.OfType<DomainEvents.TenantStatusChangedDomainEvent>().Single();

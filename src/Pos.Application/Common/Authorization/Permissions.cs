@@ -154,6 +154,7 @@ public static class Permissions
         {
             public const string View = "Permissions.Platform.Tenants.View";
             public const string Create = "Permissions.Platform.Tenants.Create";
+            public const string Update = "Permissions.Platform.Tenants.Update";
         }
 
         public const string DeadLetterView = DeadLetter.View;

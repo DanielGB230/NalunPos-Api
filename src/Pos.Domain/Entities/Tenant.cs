@@ -45,36 +45,42 @@ public class Tenant : AggregateRoot<Guid>
         return Create(name, new CompanyTaxId(taxId), timeProvider);
     }
 
-    public void Activate(TimeProvider timeProvider)
+    public Result Activate(TimeProvider timeProvider)
     {
         ArgumentNullException.ThrowIfNull(timeProvider);
-        if (Status == TenantStatus.Active)
+
+        var transitionError = TenantStatusTransitions.ValidateActivation(Status);
+        if (transitionError is not null)
         {
-            return;
+            return Result.Failure(transitionError);
         }
 
         var oldStatus = Status;
         Status = TenantStatus.Active;
         var utcNow = timeProvider.GetUtcNow().UtcDateTime;
         UpdatedAtUtc = utcNow;
-        
+
         RaiseDomainEvent(new TenantStatusChangedDomainEvent(Id, oldStatus, Status, UpdatedAtUtc.Value));
+        return Result.Success();
     }
 
-    public void Suspend(TimeProvider timeProvider)
+    public Result Suspend(TimeProvider timeProvider)
     {
         ArgumentNullException.ThrowIfNull(timeProvider);
-        if (Status == TenantStatus.Suspended)
+
+        var transitionError = TenantStatusTransitions.ValidateSuspension(Status);
+        if (transitionError is not null)
         {
-            return;
+            return Result.Failure(transitionError);
         }
 
         var oldStatus = Status;
         Status = TenantStatus.Suspended;
         var utcNow = timeProvider.GetUtcNow().UtcDateTime;
         UpdatedAtUtc = utcNow;
-        
+
         RaiseDomainEvent(new TenantStatusChangedDomainEvent(Id, oldStatus, Status, UpdatedAtUtc.Value));
+        return Result.Success();
     }
 
     public void UpdateName(string name, TimeProvider timeProvider)
