@@ -21,6 +21,9 @@ public class DefaultRoleSeederParityTests
 
         public Task<bool> ExistsByEmailAsync(string email, Guid? excludeId = null, CancellationToken cancellationToken = default)
             => Task.FromResult(false);
+
+        public Task<AuthUser?> FindByIdAsync(Guid userId, CancellationToken cancellationToken = default)
+            => Task.FromResult<AuthUser?>(null);
     }
 
     [Fact]

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Pos.Domain.Authentication;
 using Pos.Domain.Common;
 using Pos.Domain.Entities;
 using Pos.Domain.Interfaces;
@@ -79,6 +80,7 @@ public class PosDbContext : DbContext, IUnitOfWork
     public DbSet<SystemNotification> SystemNotifications => Set<SystemNotification>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
     public DbSet<AgentActionRecord> AgentActionRecords => Set<AgentActionRecord>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
     // ── Configuración EF Core ─────────────────────────────────────────────────
 

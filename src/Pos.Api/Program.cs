@@ -55,6 +55,16 @@ builder.Services.AddOptions<Pos.Infrastructure.AccessTokenLifetimeOptions>()
     .ValidateDataAnnotations()
     .ValidateOnStart();
 
+// 5b. Registro de opciones de Refresh Token con ValidateOnStart
+builder.Services.AddOptions<Pos.Application.Common.Options.RefreshTokenOptions>()
+    .Bind(builder.Configuration.GetSection(Pos.Application.Common.Options.RefreshTokenOptions.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+
+// Exponer el POCO de opciones como singleton para inyección directa en handlers de Application
+builder.Services.AddSingleton<Pos.Application.Common.Options.RefreshTokenOptions>(
+    sp => sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<Pos.Application.Common.Options.RefreshTokenOptions>>().Value);
+
 // 6. Registro de Background Workers
 builder.Services.AddHostedService<OutboxProcessorBackgroundService>();
 builder.Services.AddHostedService<InvoiceReconciliationBackgroundService>();
@@ -79,6 +89,9 @@ builder.Services.AddCustomProblemDetails();
 
 // 10. Configuración de OpenAPI y Scalar
 builder.Services.AddCustomOpenApi();
+
+// 10b. Escritor de cookie de refresh token (F1.G)
+builder.Services.AddScoped<RefreshTokenCookieWriter>();
 
 // 11. Health Checks nativos (.NET 10 / H13)
 builder.Services.AddCustomHealthChecks();

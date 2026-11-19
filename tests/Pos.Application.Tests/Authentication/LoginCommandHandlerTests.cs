@@ -1,5 +1,6 @@
 using Pos.Application.Tests.Support.Fakes;
 using Pos.Application.Authentication.Commands.Login;
+using Pos.Application.Common.Options;
 using Pos.Domain.Common;
 using Pos.Domain.Entities;
 using Pos.Domain.Enums;
@@ -14,6 +15,10 @@ public class LoginCommandHandlerTests
     private readonly FakePasswordHasher _passwordHasher = new();
     private readonly FakeTokenGenerator _tokenGenerator = new();
     private readonly FakeTenantStatusReader _tenantStatusReader = new();
+    private readonly FakeRefreshTokenStore _refreshTokenStore = new();
+    private readonly FakeRefreshTokenGenerator _refreshTokenGenerator = new();
+    private readonly TimeProvider _timeProvider = TimeProvider.System;
+    private readonly RefreshTokenOptions _refreshTokenOptions = new() { RefreshTokenDays = 7 };
     private readonly LoginCommandHandler _handler;
 
     public LoginCommandHandlerTests()
@@ -22,7 +27,11 @@ public class LoginCommandHandlerTests
             _authUserLookup,
             _passwordHasher,
             _tokenGenerator,
-            _tenantStatusReader);
+            _tenantStatusReader,
+            _refreshTokenStore,
+            _refreshTokenGenerator,
+            _timeProvider,
+            _refreshTokenOptions);
     }
 
     [Fact]

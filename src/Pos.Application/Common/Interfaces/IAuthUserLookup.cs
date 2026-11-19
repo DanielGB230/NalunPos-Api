@@ -15,4 +15,5 @@ public interface IAuthUserLookup
 {
     Task<AuthUser?> FindByEmailAsync(string email, CancellationToken cancellationToken = default);
     Task<bool> ExistsByEmailAsync(string email, Guid? excludeId = null, CancellationToken cancellationToken = default);
+    Task<AuthUser?> FindByIdAsync(Guid userId, CancellationToken cancellationToken = default);
 }

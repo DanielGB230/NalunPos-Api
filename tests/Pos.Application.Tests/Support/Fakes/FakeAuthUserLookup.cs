@@ -53,6 +53,23 @@ public sealed class FakeAuthUserLookup : IAuthUserLookup
         return Task.FromResult(_users.Any(u => u.Email.Value == normalized && (excludeId == null || u.Id != excludeId.Value)));
     }
 
+    public Task<AuthUser?> FindByIdAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        var user = _users.FirstOrDefault(u => u.Id == userId);
+        if (user is null)
+        {
+            return Task.FromResult<AuthUser?>(null);
+        }
+
+        string role = ResolveRoleName(user);
+        if (role == "__CORRUPTED__")
+        {
+            return Task.FromResult<AuthUser?>(null);
+        }
+
+        return Task.FromResult<AuthUser?>(new AuthUser(user, role));
+    }
+
     private string ResolveRoleName(User user)
     {
         if (user.RoleId == Role.SuperAdminRoleId && !user.TenantId.HasValue)

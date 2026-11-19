@@ -100,4 +100,93 @@ public class AuthUserLookup : IAuthUserLookup
             .IgnoreQueryFilters()
             .AnyAsync(u => u.Email == emailVo && (excludeId == null || u.Id != excludeId.Value), cancellationToken);
     }
+
+    public async Task<AuthUser?> FindByIdAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        if (userId == Guid.Empty)
+        {
+            return null;
+        }
+
+        await using var session = await _sessionScope.BeginAsync(cancellationToken);
+
+        User? user;
+        await session.EnableGlobalUserLookupAsync(cancellationToken);
+        try
+        {
+            user = await _dbContext.Users
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
+        }
+        finally
+        {
+            await session.DisableGlobalUserLookupAsync(cancellationToken);
+        }
+
+        if (user is null)
+        {
+            return null;
+        }
+
+        // Resolve role (same logic as FindByEmailAsync)
+        // 1. Caso SuperAdmin: RoleId debe ser SuperAdminRoleId Y TenantId debe ser null (fail-closed)
+        if (user.RoleId == Role.SuperAdminRoleId && !user.TenantId.HasValue)
+        {
+            return new AuthUser(user, PlatformRoles.SuperAdmin);
+        }
+
+        if (user.RoleId == Role.SuperAdminRoleId || !user.TenantId.HasValue)
+        {
+            return null;
+        }
+
+        // 2. Caso Usuario de Tenant: acota el scope al TenantId del usuario y resuelve el Role
+        await session.SetTenantScopeAsync(user.TenantId.Value, cancellationToken);
+
+        var role = await _dbContext.Roles
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(r => r.Id == user.RoleId && r.TenantId == user.TenantId.Value, cancellationToken);
+
+        if (role is null ||
+            string.IsNullOrWhiteSpace(role.Name) ||
+            string.Equals(role.Name.Trim(), PlatformRoles.SuperAdmin, StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        return new AuthUser(user, role.Name.Trim());
+    }
+
+    private async Task<AuthUser?> ResolveAuthUser(
+        User user,
+        IAuthenticationSession session,
+        CancellationToken cancellationToken)
+    {
+        // 1. Caso SuperAdmin: RoleId debe ser SuperAdminRoleId Y TenantId debe ser null (fail-closed)
+        if (user.RoleId == Role.SuperAdminRoleId && !user.TenantId.HasValue)
+        {
+            return new AuthUser(user, PlatformRoles.SuperAdmin);
+        }
+
+        if (user.RoleId == Role.SuperAdminRoleId || !user.TenantId.HasValue)
+        {
+            return null;
+        }
+
+        // 2. Caso Usuario de Tenant: acota el scope al TenantId del usuario y resuelve el Role
+        await session.SetTenantScopeAsync(user.TenantId.Value, cancellationToken);
+
+        var role = await _dbContext.Roles
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(r => r.Id == user.RoleId && r.TenantId == user.TenantId.Value, cancellationToken);
+
+        if (role is null ||
+            string.IsNullOrWhiteSpace(role.Name) ||
+            string.Equals(role.Name.Trim(), PlatformRoles.SuperAdmin, StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        return new AuthUser(user, role.Name.Trim());
+    }
 }

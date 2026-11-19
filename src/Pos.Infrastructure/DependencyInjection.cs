@@ -118,6 +118,11 @@ public static class DependencyInjection
         services.AddScoped<Pos.Application.Common.Authorization.ICurrentUserPermissions, CurrentUserPermissions>();
         services.AddScoped<ITenantStatusReader, TenantStatusReader>();
 
+        // ── Refresh Token (F1.G) ──────────────────────────────────────────────
+        services.AddScoped<IRefreshTokenGenerator, RefreshTokenGenerator>();
+        services.AddScoped<IRefreshTokenStore, RefreshTokenStore>();
+        services.AddScoped<ICurrentUserClaims, HttpContextCurrentUserClaims>();
+
         // ── Seeders ───────────────────────────────────────────────────────────
         services.AddScoped<SuperAdminSeeder>();
         services.AddScoped<Pos.Infrastructure.Persistence.Seed.DefaultRoleSeeder>();

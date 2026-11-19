@@ -1,5 +1,6 @@
 using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
+using Pos.Application.Common.Options;
 using Pos.Domain.Common;
 using Pos.Domain.Enums;
 using Pos.Domain.Interfaces;
@@ -9,6 +10,7 @@ namespace Pos.Application.Authentication.Commands.Login;
 /// <summary>
 /// Handler del comando de inicio de sesión.
 /// Retorna Result<LoginResponse> en lugar de lanzar excepciones por credenciales inválidas.
+/// Emite y persiste el refresh token inicial (hash SHA-256) en una nueva familia.
 /// </summary>
 public class LoginCommandHandler : ICommandHandler<LoginCommand, Result<LoginResponse>>
 {
@@ -16,17 +18,29 @@ public class LoginCommandHandler : ICommandHandler<LoginCommand, Result<LoginRes
     private readonly IPasswordHasher _passwordHasher;
     private readonly ITokenGenerator _tokenGenerator;
     private readonly ITenantStatusReader _tenantStatusReader;
+    private readonly IRefreshTokenStore _refreshTokenStore;
+    private readonly IRefreshTokenGenerator _refreshTokenGenerator;
+    private readonly TimeProvider _timeProvider;
+    private readonly RefreshTokenOptions _options;
 
     public LoginCommandHandler(
         IAuthUserLookup authUserLookup,
         IPasswordHasher passwordHasher,
         ITokenGenerator tokenGenerator,
-        ITenantStatusReader tenantStatusReader)
+        ITenantStatusReader tenantStatusReader,
+        IRefreshTokenStore refreshTokenStore,
+        IRefreshTokenGenerator refreshTokenGenerator,
+        TimeProvider timeProvider,
+        RefreshTokenOptions options)
     {
         _authUserLookup = authUserLookup ?? throw new ArgumentNullException(nameof(authUserLookup));
         _passwordHasher = passwordHasher ?? throw new ArgumentNullException(nameof(passwordHasher));
         _tokenGenerator = tokenGenerator ?? throw new ArgumentNullException(nameof(tokenGenerator));
         _tenantStatusReader = tenantStatusReader ?? throw new ArgumentNullException(nameof(tenantStatusReader));
+        _refreshTokenStore = refreshTokenStore ?? throw new ArgumentNullException(nameof(refreshTokenStore));
+        _refreshTokenGenerator = refreshTokenGenerator ?? throw new ArgumentNullException(nameof(refreshTokenGenerator));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
+        _options = options ?? throw new ArgumentNullException(nameof(options));
     }
 
     public async Task<Result<LoginResponse>> HandleAsync(LoginCommand command, CancellationToken cancellationToken = default)
@@ -72,6 +86,17 @@ public class LoginCommandHandler : ICommandHandler<LoginCommand, Result<LoginRes
 
         AccessTokenResult accessToken = _tokenGenerator.GenerateToken(user, roleName);
 
+        // ── Emitir refresh token inicial (rotación: nueva familia) ──
+        DateTime nowUtc = _timeProvider.GetUtcNow().UtcDateTime;
+        Guid familyId = Guid.CreateVersion7();
+        var refreshMaterial = _refreshTokenGenerator.Generate();
+        await _refreshTokenStore.IssueAsync(
+            user.Id,
+            familyId,
+            refreshMaterial.TokenHash,
+            _options.RefreshTokenLifetime,
+            cancellationToken);
+
         var response = new LoginResponse(
             Token: accessToken.Token,
             UserId: user.Id,
@@ -80,8 +105,9 @@ public class LoginCommandHandler : ICommandHandler<LoginCommand, Result<LoginRes
             Email: user.Email.Value,
             FullName: user.FullName,
             TenantId: user.TenantId,
-            ExpiresAtUtc: accessToken.ExpiresAtUtc
-        );
+            ExpiresAtUtc: accessToken.ExpiresAtUtc,
+            RefreshToken: refreshMaterial.Token,
+            RefreshTokenMaxAgeSeconds: (int)_options.RefreshTokenLifetime.TotalSeconds);
 
         return response;
     }
