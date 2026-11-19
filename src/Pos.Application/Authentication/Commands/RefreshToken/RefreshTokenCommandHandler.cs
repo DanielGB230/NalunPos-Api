@@ -9,8 +9,8 @@ namespace Pos.Application.Authentication.Commands.RefreshToken;
 
 /// <summary>
 /// Handler de rotación de refresh token.
-/// Valida el hash SHA-256 en BD, rota atómicamente en la misma FamilyId, re-valida
-/// usuario/rol fail-closed (ADR 0023) y emite un nuevo access token + refresh token.
+/// Valida el hash SHA-256 en BD, re-valida usuario/rol/tenant fail-closed (ADR 0023)
+/// ANTES de rotar, y solo entonces rota atómicamente en la misma FamilyId.
 /// </summary>
 public class RefreshTokenCommandHandler : ICommandHandler<RefreshTokenCommand, Result<LoginResponse>>
 {
@@ -53,7 +53,7 @@ public class RefreshTokenCommandHandler : ICommandHandler<RefreshTokenCommand, R
 
         string tokenHash = ComputeSha256(command.RefreshToken);
 
-        // 2. Buscar el token por hash para determinar su estado.
+        // 1. Buscar el token por hash para determinar su estado.
         var candidate = await _refreshTokenStore.FindByHashAsync(tokenHash, cancellationToken);
         if (candidate is null)
         {
@@ -62,7 +62,7 @@ public class RefreshTokenCommandHandler : ICommandHandler<RefreshTokenCommand, R
 
         DateTime nowUtc = _timeProvider.GetUtcNow().UtcDateTime;
 
-        // 3. Reuso de token revocado → revocar toda la familia y 401.
+        // 2. Reuso de token revocado → revocar toda la familia y 401.
         if (candidate.IsRevoked)
         {
             await _refreshTokenStore.RevokeFamilyAsync(
@@ -73,7 +73,7 @@ public class RefreshTokenCommandHandler : ICommandHandler<RefreshTokenCommand, R
             return invalid;
         }
 
-        // 4. Token expirado → revocarlo y 401 (sin revocar familia).
+        // 3. Token expirado → revocarlo y 401 (sin revocar familia).
         if (nowUtc >= candidate.ExpiresAtUtc)
         {
             await _refreshTokenStore.RevokeAsync(
@@ -84,7 +84,27 @@ public class RefreshTokenCommandHandler : ICommandHandler<RefreshTokenCommand, R
             return invalid;
         }
 
-        // 5. Token activo: rotación atómica (revocar actual + insertar nuevo en misma familia).
+        // 4. Re-validar usuario y rol fail-closed (ADR 0023) ANTES de rotar.
+        var authUser = await _authUserLookup.FindByIdAsync(candidate.UserId, cancellationToken);
+        if (authUser is null || !authUser.User.IsActive)
+        {
+            return DomainError.Unauthorized(
+                "Auth.UserInvalid",
+                "El usuario asociado al refresh token no existe o está inactivo.");
+        }
+
+        // Control de acceso por estado de tenant (solo usuarios de tenant).
+        if (authUser.User.TenantId.HasValue)
+        {
+            var tenantStatus = await _tenantStatusReader.GetStatusAsync(authUser.User.TenantId.Value, cancellationToken);
+            var accessError = TenantAccessPolicy.ValidateAccess(tenantStatus);
+            if (accessError is not null)
+            {
+                return Result.Fail<LoginResponse>(accessError);
+            }
+        }
+
+        // 5. Token activo y usuario válido: rotación atómica (revocar actual + insertar nuevo en misma familia).
         var material = _refreshTokenGenerator.Generate();
         var rotation = await _refreshTokenStore.RotateAsync(
             tokenHash,
@@ -107,27 +127,7 @@ public class RefreshTokenCommandHandler : ICommandHandler<RefreshTokenCommand, R
             return invalid;
         }
 
-        // 6. Re-validar usuario y rol fail-closed (ADR 0023).
-        var authUser = await _authUserLookup.FindByIdAsync(candidate.UserId, cancellationToken);
-        if (authUser is null || !authUser.User.IsActive)
-        {
-            return DomainError.Unauthorized(
-                "Auth.UserInvalid",
-                "El usuario asociado al refresh token no existe o está inactivo.");
-        }
-
-        // Control de acceso por estado de tenant (solo usuarios de tenant).
-        if (authUser.User.TenantId.HasValue)
-        {
-            var tenantStatus = await _tenantStatusReader.GetStatusAsync(authUser.User.TenantId.Value, cancellationToken);
-            var accessError = TenantAccessPolicy.ValidateAccess(tenantStatus);
-            if (accessError is not null)
-            {
-                return Result.Fail<LoginResponse>(accessError);
-            }
-        }
-
-        // 7. Emitir nuevo access token.
+        // 6. Emitir nuevo access token.
         AccessTokenResult accessToken = _tokenGenerator.GenerateToken(authUser.User, authUser.Role);
 
         var response = new LoginResponse(

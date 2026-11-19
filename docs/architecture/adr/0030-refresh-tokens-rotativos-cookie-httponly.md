@@ -26,7 +26,7 @@
 | Endpoint | Auth | Descripción |
 |---|---|---|
 | `POST /api/v1/auth/login` | `AllowAnonymous` + RateLimit `AuthPolicy` | Credenciales → 200 `LoginResponse` + cookie `nalunpos_rt` |
-| `POST /api/v1/auth/refresh` | `AllowAnonymous` + RateLimit `AuthPolicy` | Lee cookie → rota token → 200 `LoginResponse` + nueva cookie; 401 + limpieza cookie si inválido/expirado/revocado; 401 + revocación familia si reuso |
+| `POST /api/v1/auth/refresh` | `AllowAnonymous` + RateLimit `AuthPolicy` | Lee cookie → **valida usuario/rol/tenant fail-closed** → rota token → 200 `LoginResponse` + nueva cookie; 403/401 + limpieza cookie si usuario inactivo, tenant suspendido/inexistente; 401 + revocación familia si reuso; 401 si token inválido/expirado |
 | `POST /api/v1/auth/logout` | `AllowAnonymous` + RateLimit `AuthPolicy` | Revoca token de cookie (si existe) → borra cookie → 204 idempotente |
 | `GET /api/v1/auth/me` | `Authorize` | Resuelve identidad desde claims JWT → 200 `CurrentUserResponse` (`userId`, `roleId`, `role`, `email`, `fullName`, `tenantId`); 401 si claims incompletos/inconsistentes (fail-closed ADR 0023) |
 
@@ -58,7 +58,7 @@ CREATE TABLE RefreshTokens (
   - `IRefreshTokenStore` → `FindByHashAsync`, `IssueAsync`, `RevokeAsync`, `RevokeFamilyAsync`, `RotateAsync`
   - `ICurrentUserClaims` / `CurrentUserClaims` → lectura de claims desde `HttpContext.User`
 - **CQRS** (un archivo por comando/query, validador propio, `[AllowsNoTenant][PublicUseCase]`):
-  - `RefreshTokenCommand` / `RefreshTokenCommandHandler` → rota token, re-valida usuario/rol fail-closed (ADR 0023)
+  - `RefreshTokenCommand` / `RefreshTokenCommandHandler` → **busca token, valida reuso/expiración, valida usuario/rol/tenant fail-closed (ADR 0023), SOLO DESPUÉS rota** el token
   - `LogoutCommand` / `LogoutCommandHandler` → revoca token, idempotente
   - `GetCurrentUserQuery` / `GetCurrentUserQueryHandler` → resuelve identidad desde claims (sin BD)
 - **LoginCommandHandler** actualizado: emite y persiste refresh token inicial (`IssueAsync`).
@@ -98,6 +98,11 @@ CREATE TABLE RefreshTokens (
 - **Nueva configuración `RefreshToken`** (validada al arranque).
 - **Cookies** requieren HTTPS en producción (`Secure=true`).
 - **Tests de arquitectura** validan validadores, atributos, y ausencia de `result.Value` en controladores.
+
+## Deuda Técnica Explícita
+1. **Ventana de tolerancia para refresh concurrentes**: si dos peticiones concurrentes usan el mismo refresh token válido, una ganará la rotación y la otra recibirá 401 (concurrencia optimista vía `RotateAsync`). No hay reintento automático; el cliente debe volver a loguearse.
+2. **Vigencia absoluta de la familia**: no hay expiración máxima de la `FamilyId` independientemente de la rotación; una familia puede vivir indefinidamente mientras se rotan tokens. Futura mejora: añadir `FamilyExpiresAtUtc` y purgar familias expiradas.
+3. **Purga de tokens expirados/revocados**: no hay job de limpieza automática de `RefreshTokens` antiguos; la tabla crece indefinidamente. Futura mejora: job periódico que elimine tokens con `RevokedAtUtc` o `ExpiresAtUtc` anterior a umbral configurable.
 
 ## Alternativas Consideradas
 1. **Refresh token sin rotación**: rechazado por riesgo de robo prolongado.

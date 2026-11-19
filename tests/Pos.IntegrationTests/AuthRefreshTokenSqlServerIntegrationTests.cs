@@ -74,7 +74,8 @@ public class AuthRefreshTokenSqlServerIntegrationTests : IAsyncLifetime
                         ["ConnectionStrings:DefaultConnection"] = _fixture.ConnectionString,
                         ["RateLimiting:AuthPolicy:PermitLimit"] = "500",
                         ["RateLimiting:SensitiveOperationsPolicy:PermitLimit"] = "500",
-                        ["RateLimiting:GlobalApiPolicy:PermitLimit"] = "1000"
+                        ["RateLimiting:GlobalApiPolicy:PermitLimit"] = "1000",
+                        ["TenantStatus:TenantStatusCacheTtlSeconds"] = "1"
                     });
                 });
 
@@ -357,6 +358,127 @@ public class AuthRefreshTokenSqlServerIntegrationTests : IAsyncLifetime
         Assert.Equal(TenantRoles.TenantAdmin, currentUser.Role);
         Assert.Equal(adminEmail, currentUser.Email);
         Assert.Equal(tenantId, currentUser.TenantId);
+    }
+
+    /// <summary>
+    /// Valida que si el tenant está suspendido, el refresh devuelve 403 Tenant.Suspended
+    /// y el token original NO se consume (sigue activo, no se inserta fila nueva).
+    /// </summary>
+    [Fact]
+    public async Task Refresh_TenantSuspended_Returns403_AndOriginalTokenRemainsActive()
+    {
+        using var anonymousClient = CreateClient();
+        var (email, password) = await SeedAndLoginSuperAdminAsync(anonymousClient);
+        var superAdminLogin = await LoginAsync(anonymousClient, email, password);
+
+        var (tenantId, adminEmail, adminLogin) = await CreateActiveTenantAndLoginAdminAsync(
+            anonymousClient,
+            superAdminLogin.Token);
+
+        var loginResponse = await anonymousClient.PostAsJsonAsync("/api/v1/auth/login", new LoginRequest(adminEmail, "TenantRefreshPass123!"));
+        Assert.Equal(HttpStatusCode.OK, loginResponse.StatusCode);
+        string refreshToken = ReadRefreshCookie(loginResponse);
+
+        // Suspender el tenant
+        using var superAdminClient = CreateClient(superAdminLogin.Token);
+        var suspendResponse = await superAdminClient.PatchAsJsonAsync(
+            $"/api/v1/platform/tenants/{tenantId}/status",
+            new ChangeStatusRequest(false));
+        Assert.Equal(HttpStatusCode.OK, suspendResponse.StatusCode);
+
+        // Esperar a que expire la caché de estado de tenant (TTL 1s configurado en test)
+        await Task.Delay(1500);
+
+        // Refresh con tenant suspendido → 403
+        using var refreshClient = CreateClient();
+        AttachRefreshCookie(refreshClient, refreshToken);
+        var refreshResponse = await refreshClient.PostAsync("/api/v1/auth/refresh", content: null);
+        Assert.Equal(HttpStatusCode.Forbidden, refreshResponse.StatusCode);
+        Assert.Equal("application/problem+json", refreshResponse.Content.Headers.ContentType?.MediaType);
+
+        var problemJson = await refreshResponse.Content.ReadAsStringAsync();
+        using (var doc = JsonDocument.Parse(problemJson))
+        {
+            var code = doc.RootElement.GetProperty("code").GetString();
+            Assert.Equal(TenantAccessPolicy.SuspendedCode, code);
+        }
+
+        // El token original debe seguir activo: segundo refresh (antes de reactivar) también debe fallar con 403
+        using var refreshClient2 = CreateClient();
+        AttachRefreshCookie(refreshClient2, refreshToken);
+        var refreshResponse2 = await refreshClient2.PostAsync("/api/v1/auth/refresh", content: null);
+        Assert.Equal(HttpStatusCode.Forbidden, refreshResponse2.StatusCode);
+
+        // Reactivar tenant
+        var activateResponse = await superAdminClient.PatchAsJsonAsync(
+            $"/api/v1/platform/tenants/{tenantId}/status",
+            new ChangeStatusRequest(true));
+        Assert.Equal(HttpStatusCode.OK, activateResponse.StatusCode);
+
+        // Esperar a que expire la caché de estado de tenant
+        await Task.Delay(1500);
+
+        // El MISMO token debe refrescar con éxito ahora
+        using var refreshClient3 = CreateClient();
+        AttachRefreshCookie(refreshClient3, refreshToken);
+        var refreshResponse3 = await refreshClient3.PostAsync("/api/v1/auth/refresh", content: null);
+        Assert.Equal(HttpStatusCode.OK, refreshResponse3.StatusCode);
+
+        var refreshedPayload = await refreshResponse3.Content.ReadFromJsonAsync<LoginResponse>(s_camelCaseOptions);
+        Assert.NotNull(refreshedPayload);
+        Assert.Equal(TenantRoles.TenantAdmin, refreshedPayload.Role);
+        Assert.Equal(tenantId, refreshedPayload.TenantId);
+    }
+
+    /// <summary>
+    /// Valida que si el usuario está inactivo, el refresh devuelve 401 Auth.UserInvalid
+    /// y el token original NO se consume.
+    /// </summary>
+    [Fact]
+    public async Task Refresh_UserInactive_Returns401_AndOriginalTokenRemainsActive()
+    {
+        using var anonymousClient = CreateClient();
+        var (email, password) = await SeedAndLoginSuperAdminAsync(anonymousClient);
+        var superAdminLogin = await LoginAsync(anonymousClient, email, password);
+
+        var (tenantId, adminEmail, adminLogin) = await CreateActiveTenantAndLoginAdminAsync(
+            anonymousClient,
+            superAdminLogin.Token);
+
+        var loginResponse = await anonymousClient.PostAsJsonAsync("/api/v1/auth/login", new LoginRequest(adminEmail, "TenantRefreshPass123!"));
+        Assert.Equal(HttpStatusCode.OK, loginResponse.StatusCode);
+        string refreshToken = ReadRefreshCookie(loginResponse);
+
+        // Desactivar el usuario directamente en BD
+        await using (var db = _fixture.CreateDbContext(tenantId: tenantId))
+        {
+            var emailVo = new Email(adminEmail);
+            var user = await db.Users
+                .IgnoreQueryFilters()
+                .FirstAsync(u => u.Email == emailVo);
+            user.Deactivate(TimeProvider.System);
+            await db.SaveChangesAsync();
+        }
+
+        // Refresh con usuario inactivo → 401
+        using var refreshClient = CreateClient();
+        AttachRefreshCookie(refreshClient, refreshToken);
+        var refreshResponse = await refreshClient.PostAsync("/api/v1/auth/refresh", content: null);
+        Assert.Equal(HttpStatusCode.Unauthorized, refreshResponse.StatusCode);
+        Assert.Equal("application/problem+json", refreshResponse.Content.Headers.ContentType?.MediaType);
+
+        var problemJson = await refreshResponse.Content.ReadAsStringAsync();
+        using (var doc = JsonDocument.Parse(problemJson))
+        {
+            var code = doc.RootElement.GetProperty("code").GetString();
+            Assert.Equal("Auth.UserInvalid", code);
+        }
+
+        // El token original debe seguir activo: segundo refresh también debe fallar con 401
+        using var refreshClient2 = CreateClient();
+        AttachRefreshCookie(refreshClient2, refreshToken);
+        var refreshResponse2 = await refreshClient2.PostAsync("/api/v1/auth/refresh", content: null);
+        Assert.Equal(HttpStatusCode.Unauthorized, refreshResponse2.StatusCode);
     }
 
     /// <summary>
