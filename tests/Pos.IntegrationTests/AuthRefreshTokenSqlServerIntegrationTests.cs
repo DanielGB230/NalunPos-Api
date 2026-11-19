@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -16,6 +17,7 @@ using Pos.Application.Common.Interfaces;
 using Pos.Domain.Common;
 using Pos.Domain.Entities;
 using Pos.Domain.ValueObjects;
+using Pos.Infrastructure.Caching;
 using Pos.Infrastructure.Persistence.Context;
 using Pos.Infrastructure.Persistence.Interceptors;
 using Pos.IntegrationTests.Fixtures;
@@ -44,6 +46,7 @@ public class AuthRefreshTokenSqlServerIntegrationTests : IAsyncLifetime
 
     private readonly MsSqlTestFixture _fixture;
     private WebApplicationFactory<Program> _factory = null!;
+    private HybridCache _hybridCache = null!;
     private int _ipCounter;
 
     public AuthRefreshTokenSqlServerIntegrationTests(MsSqlTestFixture fixture)
@@ -105,6 +108,10 @@ public class AuthRefreshTokenSqlServerIntegrationTests : IAsyncLifetime
                     });
                 });
             });
+
+        // Force server creation and get HybridCache from test server's services
+        _ = _factory.CreateClient();
+        _hybridCache = _factory.Server.Services.GetRequiredService<HybridCache>();
 
         return Task.CompletedTask;
     }
@@ -205,6 +212,12 @@ public class AuthRefreshTokenSqlServerIntegrationTests : IAsyncLifetime
     {
         client.DefaultRequestHeaders.Remove("Cookie");
         client.DefaultRequestHeaders.TryAddWithoutValidation("Cookie", $"{CookieName}={token}");
+    }
+
+    private async Task InvalidateTenantStatusCacheAsync(Guid tenantId)
+    {
+        string cacheKey = TenantCacheKeys.TenantStatusForTenant(tenantId);
+        await _hybridCache.RemoveAsync(cacheKey);
     }
 
     private async Task<(Guid TenantId, string AdminEmail, LoginResponse AdminLogin)> CreateActiveTenantAndLoginAdminAsync(
@@ -386,8 +399,8 @@ public class AuthRefreshTokenSqlServerIntegrationTests : IAsyncLifetime
             new ChangeStatusRequest(false));
         Assert.Equal(HttpStatusCode.OK, suspendResponse.StatusCode);
 
-        // Esperar a que expire la caché de estado de tenant (TTL 1s configurado en test)
-        await Task.Delay(1500);
+        // Invalidar caché de estado de tenant de forma determinista
+        await InvalidateTenantStatusCacheAsync(tenantId);
 
         // Refresh con tenant suspendido → 403
         using var refreshClient = CreateClient();
@@ -415,8 +428,8 @@ public class AuthRefreshTokenSqlServerIntegrationTests : IAsyncLifetime
             new ChangeStatusRequest(true));
         Assert.Equal(HttpStatusCode.OK, activateResponse.StatusCode);
 
-        // Esperar a que expire la caché de estado de tenant
-        await Task.Delay(1500);
+        // Invalidar caché de estado de tenant de forma determinista
+        await InvalidateTenantStatusCacheAsync(tenantId);
 
         // El MISMO token debe refrescar con éxito ahora
         using var refreshClient3 = CreateClient();
@@ -474,11 +487,40 @@ public class AuthRefreshTokenSqlServerIntegrationTests : IAsyncLifetime
             Assert.Equal("Auth.UserInvalid", code);
         }
 
-        // El token original debe seguir activo: segundo refresh también debe fallar con 401
+        // El token original debe seguir activo: segundo refresh también debe fallar con 401 Auth.UserInvalid (NO Auth.RefreshTokenInvalid)
         using var refreshClient2 = CreateClient();
         AttachRefreshCookie(refreshClient2, refreshToken);
         var refreshResponse2 = await refreshClient2.PostAsync("/api/v1/auth/refresh", content: null);
         Assert.Equal(HttpStatusCode.Unauthorized, refreshResponse2.StatusCode);
+        var problemJson2 = await refreshResponse2.Content.ReadAsStringAsync();
+        using (var doc2 = JsonDocument.Parse(problemJson2))
+        {
+            var code2 = doc2.RootElement.GetProperty("code").GetString();
+            Assert.Equal("Auth.UserInvalid", code2);
+            Assert.NotEqual("Auth.RefreshTokenInvalid", code2);
+        }
+
+        // Reactivar el usuario
+        await using (var db = _fixture.CreateDbContext(tenantId: tenantId))
+        {
+            var emailVo = new Email(adminEmail);
+            var user = await db.Users
+                .IgnoreQueryFilters()
+                .FirstAsync(u => u.Email == emailVo);
+            user.Activate(TimeProvider.System);
+            await db.SaveChangesAsync();
+        }
+
+        // El MISMO token debe refrescar con éxito ahora
+        using var refreshClient3 = CreateClient();
+        AttachRefreshCookie(refreshClient3, refreshToken);
+        var refreshResponse3 = await refreshClient3.PostAsync("/api/v1/auth/refresh", content: null);
+        Assert.Equal(HttpStatusCode.OK, refreshResponse3.StatusCode);
+
+        var refreshedPayload = await refreshResponse3.Content.ReadFromJsonAsync<LoginResponse>(s_camelCaseOptions);
+        Assert.NotNull(refreshedPayload);
+        Assert.Equal(TenantRoles.TenantAdmin, refreshedPayload.Role);
+        Assert.Equal(tenantId, refreshedPayload.TenantId);
     }
 
     /// <summary>

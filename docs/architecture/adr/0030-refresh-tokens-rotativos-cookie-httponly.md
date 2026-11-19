@@ -50,6 +50,7 @@ CREATE TABLE RefreshTokens (
 -- IX_RefreshTokens_UserId
 ```
 - **No implementa `ITenantOwnedEntity`**: el aislamiento es por `UserId` (RLS en `Users`) y `FamilyId`.
+- **No está bajo RLS**: la tabla `RefreshTokens` no tiene `TenantId` ni está cubierta por la `TenantSecurityPolicy`. El acceso se gobierna por hash de token (`TokenHash` único) y `FamilyId` bajo scope de autenticación.
 - **Convención UTC**: todas las columnas `*Utc` con `Kind=Utc` vía `UtcDateTimeConvention`.
 
 ### 5. Capa Application (Puertos y CQRS)
@@ -81,8 +82,8 @@ CREATE TABLE RefreshTokens (
 - **Migración `AddRefreshTokens`**: `has-pending-model-changes` limpio.
 - **Snapshot OpenAPI actualizado**: nuevos paths `/auth/refresh`, `/auth/logout`, `/auth/me` y schema `CurrentUserResponse`.
 
-### 9. RLS bajo `IAuthenticationSessionScope`
-- `RefreshTokenStore` usa `IAuthenticationSessionScope` (patrón `SqlServerAuthenticationSessionScope`) para elevar temporalmente `AllowGlobalUserLookup` y consultar `RefreshTokens` sin filtro de tenant.
+### 9. Acceso a RefreshTokens bajo `IAuthenticationSessionScope`
+- `RefreshTokenStore` usa `IAuthenticationSessionScope` (patrón `SqlServerAuthenticationSessionScope`) para elevar temporalmente `AllowGlobalUserLookup` y consultar `RefreshTokens` **sin filtro de tenant** (la tabla no tiene RLS ni `TenantId`).
 - **No usa `IgnoreQueryFilters()` suelto**: el scope maneja `SESSION_CONTEXT` (`AllowGlobalUserLookup`, `IsSuperAdmin`, `TenantId`) de forma balanceada y segura.
 
 ## Justificación
@@ -100,7 +101,7 @@ CREATE TABLE RefreshTokens (
 - **Tests de arquitectura** validan validadores, atributos, y ausencia de `result.Value` en controladores.
 
 ## Deuda Técnica Explícita
-1. **Ventana de tolerancia para refresh concurrentes**: si dos peticiones concurrentes usan el mismo refresh token válido, una ganará la rotación y la otra recibirá 401 (concurrencia optimista vía `RotateAsync`). No hay reintento automático; el cliente debe volver a loguearse.
+1. **Ventana de tolerancia para refresh concurrentes / reuso detectado**: si dos peticiones concurrentes usan el mismo refresh token válido, una ganará la rotación y la otra detectará reuso (`ReuseDetected`) revocando **toda la familia** (`FamilyId`) y cerrando todas las sesiones del usuario en ese login. No hay reintento automático; el cliente debe volver a loguearse.
 2. **Vigencia absoluta de la familia**: no hay expiración máxima de la `FamilyId` independientemente de la rotación; una familia puede vivir indefinidamente mientras se rotan tokens. Futura mejora: añadir `FamilyExpiresAtUtc` y purgar familias expiradas.
 3. **Purga de tokens expirados/revocados**: no hay job de limpieza automática de `RefreshTokens` antiguos; la tabla crece indefinidamente. Futura mejora: job periódico que elimine tokens con `RevokedAtUtc` o `ExpiresAtUtc` anterior a umbral configurable.
 
