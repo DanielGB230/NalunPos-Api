@@ -2,6 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Pos.Application.Common.Interfaces;
 using Pos.Domain.Common;
@@ -12,19 +13,25 @@ namespace Pos.Infrastructure.Authentication;
 /// <summary>
 /// Generador de tokens JWT utilizando System.IdentityModel.Tokens.Jwt.
 /// Emite los claims acordados: NameIdentifier, Email, Name, roleId, Role (canónico), y tenantId (únicamente para usuarios de tenant).
+/// Calcula la expiración una sola vez y la devuelve junto con el token (fuente única de vigencia, ADR 0029).
 /// </summary>
 public class JwtTokenGenerator : ITokenGenerator
 {
     private readonly IConfiguration _configuration;
     private readonly TimeProvider _timeProvider;
+    private readonly IOptions<AccessTokenLifetimeOptions> _accessTokenLifetimeOptions;
 
-    public JwtTokenGenerator(IConfiguration configuration, TimeProvider timeProvider)
+    public JwtTokenGenerator(
+        IConfiguration configuration,
+        TimeProvider timeProvider,
+        IOptions<AccessTokenLifetimeOptions> accessTokenLifetimeOptions)
     {
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
+        _accessTokenLifetimeOptions = accessTokenLifetimeOptions ?? throw new ArgumentNullException(nameof(accessTokenLifetimeOptions));
     }
 
-    public string GenerateToken(User user, string roleName)
+    public AccessTokenResult GenerateToken(User user, string roleName)
     {
         ArgumentNullException.ThrowIfNull(user);
         ArgumentException.ThrowIfNullOrWhiteSpace(roleName);
@@ -72,13 +79,14 @@ public class JwtTokenGenerator : ITokenGenerator
         }
 
         DateTime utcNow = _timeProvider.GetUtcNow().UtcDateTime;
+        DateTime expiresAtUtc = utcNow.AddMinutes(_accessTokenLifetimeOptions.Value.AccessTokenLifetimeMinutes);
 
         var tokenDescriptor = new SecurityTokenDescriptor
         {
             Subject = new ClaimsIdentity(claims),
             NotBefore = utcNow,
             IssuedAt = utcNow,
-            Expires = utcNow.AddMinutes(60), // Expiración corta (60 min)
+            Expires = expiresAtUtc,
             Issuer = issuer,
             Audience = audience,
             SigningCredentials = credentials
@@ -87,6 +95,6 @@ public class JwtTokenGenerator : ITokenGenerator
         var tokenHandler = new JwtSecurityTokenHandler();
         var token = tokenHandler.CreateToken(tokenDescriptor);
 
-        return tokenHandler.WriteToken(token);
+        return new AccessTokenResult(tokenHandler.WriteToken(token), expiresAtUtc);
     }
 }

@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 using Pos.Api.Contracts.Requests;
 using Pos.Api.Contracts.Responses;
 using Pos.Application.Common.Authorization;
@@ -16,6 +17,7 @@ using Pos.Application.Common.Models;
 using Pos.Domain.Common;
 using Pos.Domain.Entities;
 using Pos.Domain.ValueObjects;
+using Pos.Infrastructure;
 using Pos.Infrastructure.Authentication;
 using Pos.Infrastructure.Persistence.Context;
 using Pos.Infrastructure.Persistence.Interceptors;
@@ -98,7 +100,8 @@ public class OutboxDeadLetterIntegrationTests : IAsyncLifetime
     private async Task<(HttpClient Client, User User)> CreateClientWithTokenAsync(bool isSuperAdmin, IEnumerable<string>? permissions = null)
     {
         var config = _factory.Services.GetRequiredService<IConfiguration>();
-        var generator = new JwtTokenGenerator(config, TimeProvider.System);
+        var accessTokenLifetimeOptions = _factory.Services.GetRequiredService<IOptions<AccessTokenLifetimeOptions>>();
+        var generator = new JwtTokenGenerator(config, TimeProvider.System, accessTokenLifetimeOptions);
 
         User user;
         string roleName;
@@ -151,7 +154,7 @@ public class OutboxDeadLetterIntegrationTests : IAsyncLifetime
             await db.SaveChangesAsync();
         }
 
-        string token = generator.GenerateToken(user, roleName);
+        string token = generator.GenerateToken(user, roleName).Token;
 
         var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
         {

@@ -50,6 +50,11 @@ builder.Services.AddOptions<Pos.Infrastructure.TenantStatusOptions>()
     .ValidateDataAnnotations()
     .ValidateOnStart();
 
+builder.Services.AddOptions<Pos.Infrastructure.AccessTokenLifetimeOptions>()
+    .Bind(builder.Configuration.GetSection(Pos.Infrastructure.AccessTokenLifetimeOptions.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+
 // 6. Registro de Background Workers
 builder.Services.AddHostedService<OutboxProcessorBackgroundService>();
 builder.Services.AddHostedService<InvoiceReconciliationBackgroundService>();

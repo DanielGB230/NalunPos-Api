@@ -3,10 +3,12 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Pos.Domain.Common;
 using Pos.Domain.Entities;
 using Pos.Domain.Enums;
 using Pos.Domain.ValueObjects;
+using Pos.Infrastructure;
 using Pos.Infrastructure.Authentication;
 using Pos.Infrastructure.Caching;
 using Pos.Infrastructure.Persistence.Context;
@@ -44,7 +46,8 @@ public static class AuthenticatedClientFactory
         IEnumerable<string>? permissions = null)
     {
         var config = factory.Services.GetRequiredService<IConfiguration>();
-        var generator = new JwtTokenGenerator(config, TimeProvider.System);
+        var accessTokenLifetimeOptions = factory.Services.GetRequiredService<IOptions<AccessTokenLifetimeOptions>>();
+        var generator = new JwtTokenGenerator(config, TimeProvider.System, accessTokenLifetimeOptions);
 
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<PosDbContext>();
@@ -83,7 +86,7 @@ public static class AuthenticatedClientFactory
         var cache = factory.Services.GetRequiredService<HybridCache>();
         await cache.RemoveAsync(TenantCacheKeys.TenantStatusForTenant(effectiveTenantId));
 
-        string token = generator.GenerateToken(user, role.Name);
+        string token = generator.GenerateToken(user, role.Name).Token;
         return (token, user);
     }
 

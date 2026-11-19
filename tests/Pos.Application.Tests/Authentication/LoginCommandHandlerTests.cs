@@ -22,8 +22,7 @@ public class LoginCommandHandlerTests
             _authUserLookup,
             _passwordHasher,
             _tokenGenerator,
-            _tenantStatusReader,
-            TimeProvider.System);
+            _tenantStatusReader);
     }
 
     [Fact]
@@ -55,6 +54,33 @@ public class LoginCommandHandlerTests
         Assert.Equal("superadmin@pos.com", result.Value.Email);
         Assert.Equal("Super Admin", result.Value.FullName);
         Assert.Null(result.Value.TenantId);
+        Assert.Equal(FakeTokenGenerator.FixedExpiresAtUtc, result.Value.ExpiresAtUtc);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WithValidCredentials_ShouldReturnTheExpirationProvidedByTheTokenGenerator()
+    {
+        // Arrange: el generador es la única fuente de la expiración; el handler no calcula ninguna.
+        var user = User.Create(
+            new Email("expiration@pos.com"),
+            new PasswordHash(_passwordHasher.HashPassword("Password123!")),
+            Role.SuperAdminRoleId,
+            tenantId: null,
+            firstName: "Expiration",
+            lastName: "Owner",
+            timeProvider: TimeProvider.System);
+        _authUserLookup.Users.Add(user);
+
+        var command = new LoginCommand("expiration@pos.com", "Password123!");
+
+        // Act
+        var result = await _handler.HandleAsync(command, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        Assert.NotNull(result.Value);
+        Assert.Equal("fake-jwt-token-for-user", result.Value.Token);
+        Assert.Equal(FakeTokenGenerator.FixedExpiresAtUtc, result.Value.ExpiresAtUtc);
     }
 
     [Fact]

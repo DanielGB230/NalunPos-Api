@@ -16,20 +16,17 @@ public class LoginCommandHandler : ICommandHandler<LoginCommand, Result<LoginRes
     private readonly IPasswordHasher _passwordHasher;
     private readonly ITokenGenerator _tokenGenerator;
     private readonly ITenantStatusReader _tenantStatusReader;
-    private readonly TimeProvider _timeProvider;
 
     public LoginCommandHandler(
         IAuthUserLookup authUserLookup,
         IPasswordHasher passwordHasher,
         ITokenGenerator tokenGenerator,
-        ITenantStatusReader tenantStatusReader,
-        TimeProvider timeProvider)
+        ITenantStatusReader tenantStatusReader)
     {
         _authUserLookup = authUserLookup ?? throw new ArgumentNullException(nameof(authUserLookup));
         _passwordHasher = passwordHasher ?? throw new ArgumentNullException(nameof(passwordHasher));
         _tokenGenerator = tokenGenerator ?? throw new ArgumentNullException(nameof(tokenGenerator));
         _tenantStatusReader = tenantStatusReader ?? throw new ArgumentNullException(nameof(tenantStatusReader));
-        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public async Task<Result<LoginResponse>> HandleAsync(LoginCommand command, CancellationToken cancellationToken = default)
@@ -73,18 +70,17 @@ public class LoginCommandHandler : ICommandHandler<LoginCommand, Result<LoginRes
             }
         }
 
-        string token = _tokenGenerator.GenerateToken(user, roleName);
-        DateTime expiresAtUtc = _timeProvider.GetUtcNow().UtcDateTime.AddHours(1);
+        AccessTokenResult accessToken = _tokenGenerator.GenerateToken(user, roleName);
 
         var response = new LoginResponse(
-            Token: token,
+            Token: accessToken.Token,
             UserId: user.Id,
             RoleId: user.RoleId,
             Role: roleName,
             Email: user.Email.Value,
             FullName: user.FullName,
             TenantId: user.TenantId,
-            ExpiresAtUtc: expiresAtUtc
+            ExpiresAtUtc: accessToken.ExpiresAtUtc
         );
 
         return response;

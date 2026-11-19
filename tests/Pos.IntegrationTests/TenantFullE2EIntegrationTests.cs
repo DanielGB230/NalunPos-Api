@@ -1,10 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
 using Pos.Application.Platform.Tenants.Commands.CreateTenant;
 using Pos.Application.Platform.Tenants.Queries.GetTenants;
 using Pos.Domain.Common;
+using Pos.Infrastructure;
 using Pos.Infrastructure.Authentication;
 using Pos.Infrastructure.Persistence.Context;
 using Pos.IntegrationTests.Fixtures;
@@ -39,7 +41,10 @@ public class TenantFullE2EIntegrationTests
         configuration["JwtSettings:Issuer"] = "NalunPosApi";
         configuration["JwtSettings:Audience"] = "NalunPosClients";
 
-        var tokenGenerator = new JwtTokenGenerator(configuration, TimeProvider.System);
+        var tokenGenerator = new JwtTokenGenerator(
+            configuration,
+            TimeProvider.System,
+            Options.Create(new AccessTokenLifetimeOptions()));
 
         string timestamp = DateTime.UtcNow.ToString("HHmmssff", System.Globalization.CultureInfo.InvariantCulture);
         string companyName = $"Empresa E2E Real {timestamp} S.A.C.";
@@ -71,7 +76,7 @@ public class TenantFullE2EIntegrationTests
         Assert.NotNull(userInDb.PasswordHash.Value);
 
         // 4. JWT Generation & Payload Verification
-        string token = tokenGenerator.GenerateToken(userInDb, authUser.Role);
+        string token = tokenGenerator.GenerateToken(userInDb, authUser.Role).Token;
         Assert.False(string.IsNullOrWhiteSpace(token));
 
         var handler = new JwtSecurityTokenHandler();

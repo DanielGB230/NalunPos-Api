@@ -2,7 +2,9 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using Pos.Application.Common.Interfaces;
 using Pos.Domain.Common;
 using Pos.Domain.Entities;
 using Pos.Domain.ValueObjects;
@@ -22,20 +24,22 @@ public class JwtTokenGeneratorTests
         public override DateTimeOffset GetUtcNow() => utcNow;
     }
 
-    private static JwtTokenGenerator CreateGenerator(DateTimeOffset? utcNow = null)
+    private static JwtTokenGenerator CreateGenerator(DateTimeOffset? utcNow = null, int lifetimeMinutes = 60)
     {
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["JwtSettings:Secret"] = TestSigningKey,
                 ["JwtSettings:Issuer"] = TestIssuer,
-                ["JwtSettings:Audience"] = TestAudience
+                ["JwtSettings:Audience"] = TestAudience,
+                ["JwtSettings:AccessTokenLifetimeMinutes"] = lifetimeMinutes.ToString(System.Globalization.CultureInfo.InvariantCulture)
             })
             .Build();
 
         return new JwtTokenGenerator(
             config,
-            new FixedTimeProvider(utcNow ?? new DateTimeOffset(2026, 11, 11, 12, 0, 0, TimeSpan.Zero)));
+            new FixedTimeProvider(utcNow ?? new DateTimeOffset(2026, 11, 11, 12, 0, 0, TimeSpan.Zero)),
+            Options.Create(new AccessTokenLifetimeOptions { AccessTokenLifetimeMinutes = lifetimeMinutes }));
     }
 
     private static ClaimsPrincipal ValidateAndDecode(string token, DateTimeOffset referenceTime)
@@ -100,7 +104,7 @@ public class JwtTokenGeneratorTests
             "Admin",
             TimeProvider.System);
 
-        string token = generator.GenerateToken(superAdmin, PlatformRoles.SuperAdmin);
+        string token = generator.GenerateToken(superAdmin, PlatformRoles.SuperAdmin).Token;
         Assert.False(string.IsNullOrWhiteSpace(token));
 
         var principal = ValidateAndDecode(token, now);
@@ -145,7 +149,7 @@ public class JwtTokenGeneratorTests
             "Ramos",
             TimeProvider.System);
 
-        string token = generator.GenerateToken(user, canonicalRole);
+        string token = generator.GenerateToken(user, canonicalRole).Token;
         Assert.False(string.IsNullOrWhiteSpace(token));
 
         var principal = ValidateAndDecode(token, now);
@@ -164,6 +168,32 @@ public class JwtTokenGeneratorTests
         Assert.Equal(
             expectedJwtTypes.OrderBy(x => x, StringComparer.Ordinal),
             jwt.Claims.Select(c => c.Type).OrderBy(x => x, StringComparer.Ordinal));
+    }
+
+    [Theory]
+    [InlineData(5)]
+    [InlineData(30)]
+    [InlineData(120)]
+    public void GenerateToken_WithConfiguredLifetime_ReturnsExpirationAndExpClaimFromSameCalculation(int lifetimeMinutes)
+    {
+        var now = new DateTimeOffset(2026, 11, 11, 12, 0, 0, TimeSpan.Zero);
+        var generator = CreateGenerator(now, lifetimeMinutes);
+        var superAdmin = User.Create(
+            new Email("lifetime@platform.test"),
+            new PasswordHash("hashed-password"),
+            Role.SuperAdminRoleId,
+            tenantId: null,
+            "Life",
+            "Time",
+            TimeProvider.System);
+
+        AccessTokenResult accessToken = generator.GenerateToken(superAdmin, PlatformRoles.SuperAdmin);
+
+        DateTime expectedExpiresAtUtc = now.UtcDateTime.AddMinutes(lifetimeMinutes);
+        Assert.Equal(expectedExpiresAtUtc, accessToken.ExpiresAtUtc);
+
+        var jwt = new JwtSecurityTokenHandler().ReadJwtToken(accessToken.Token);
+        Assert.Equal(expectedExpiresAtUtc, jwt.ValidTo);
     }
 
     [Fact]
