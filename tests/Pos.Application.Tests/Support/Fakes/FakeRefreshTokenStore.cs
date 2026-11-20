@@ -2,7 +2,6 @@ namespace Pos.Application.Tests.Support.Fakes;
 
 using System;
 using System.Collections.Concurrent;
-using System.Text.Json.Serialization;
 
 using Pos.Application.Common.Interfaces;
 using Pos.Domain.Authentication;
@@ -10,23 +9,68 @@ using Pos.Domain.Authentication;
 /// <summary>
 /// Falsa de <see cref="IRefreshTokenStore"/> para pruebas unitarias de Application.
 /// Almacena en memoria los tokens emitidos y permite consultar por hash.
+/// Expone contadores de llamadas para verificar que el handler no consume ni revoca
+/// tokens cuando debe denegar o tolerar una rotación concurrente.
 /// </summary>
 public sealed class FakeRefreshTokenStore : IRefreshTokenStore
 {
     private readonly ConcurrentDictionary<string, RefreshTokenEntity> _byHash = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentDictionary<Guid, List<RefreshTokenEntity>> _byFamily = new();
+    private int _rotateCallCount;
+    private int _revokeCallCount;
+    private int _revokeFamilyCallCount;
+
+    public int RotateCallCount => _rotateCallCount;
+
+    public int RevokeCallCount => _revokeCallCount;
+
+    public int RevokeFamilyCallCount => _revokeFamilyCallCount;
+
+    public string? LastRevokeFamilyReason { get; private set; }
+
+    public int TokenCount => _byHash.Count;
+
+    /// <summary>
+    /// Permite simular una carrera perdida en <see cref="RotateAsync"/>: cuando tiene valor,
+    /// la rotación devuelve <c>Success=false</c> con este estado actual del token.
+    /// </summary>
+    public RefreshTokenCandidate? SimulateRotationRace { get; set; }
+
+    /// <summary>
+    /// Inserta un token con estado determinista (sin depender del reloj del sistema).
+    /// </summary>
+    public void SeedToken(
+        Guid userId,
+        Guid familyId,
+        string tokenHash,
+        DateTime createdAtUtc,
+        DateTime expiresAtUtc,
+        string? revokedReason = null,
+        DateTime? revokedAtUtc = null)
+    {
+        var entity = new RefreshTokenEntity(Guid.NewGuid(), userId, tokenHash, familyId, createdAtUtc, expiresAtUtc);
+        if (revokedAtUtc is not null)
+        {
+            entity.Revoke(revokedReason ?? throw new ArgumentNullException(nameof(revokedReason)), revokedAtUtc.Value);
+        }
+
+        _byHash[tokenHash] = entity;
+        if (!_byFamily.TryGetValue(familyId, out var list))
+        {
+            list = [];
+            _byFamily[familyId] = list;
+        }
+        list.Add(entity);
+    }
+
+    public string? GetRevokedReason(string tokenHash) =>
+        _byHash.TryGetValue(tokenHash, out var entity) ? entity.RevokedReason : null;
 
     public Task<RefreshTokenCandidate?> FindByHashAsync(string tokenHash, CancellationToken cancellationToken = default)
     {
         if (_byHash.TryGetValue(tokenHash, out var entity))
         {
-            return Task.FromResult<RefreshTokenCandidate?>(new RefreshTokenCandidate(
-                entity.TokenHash,
-                entity.UserId,
-                entity.FamilyId,
-                entity.RevokedAtUtc is not null,
-                entity.RevokedAtUtc,
-                entity.ExpiresAtUtc));
+            return Task.FromResult<RefreshTokenCandidate?>(ToCandidate(entity));
         }
         return Task.FromResult<RefreshTokenCandidate?>(null);
     }
@@ -46,6 +90,7 @@ public sealed class FakeRefreshTokenStore : IRefreshTokenStore
 
     public Task RevokeAsync(string tokenHash, string reason, DateTime revokedAtUtc, CancellationToken cancellationToken = default)
     {
+        Interlocked.Increment(ref _revokeCallCount);
         if (_byHash.TryGetValue(tokenHash, out var entity))
         {
             entity.Revoke(reason, revokedAtUtc);
@@ -55,6 +100,8 @@ public sealed class FakeRefreshTokenStore : IRefreshTokenStore
 
     public Task RevokeFamilyAsync(Guid familyId, string reason, DateTime revokedAtUtc, CancellationToken cancellationToken = default)
     {
+        Interlocked.Increment(ref _revokeFamilyCallCount);
+        LastRevokeFamilyReason = reason;
         if (_byFamily.TryGetValue(familyId, out var list))
         {
             foreach (var entity in list.Where(e => e.RevokedAtUtc is null))
@@ -72,14 +119,26 @@ public sealed class FakeRefreshTokenStore : IRefreshTokenStore
         TimeSpan lifetime,
         CancellationToken cancellationToken = default)
     {
+        Interlocked.Increment(ref _rotateCallCount);
+
+        if (SimulateRotationRace is not null)
+        {
+            return Task.FromResult(new RefreshTokenRotationOutcome(
+                Success: false,
+                CurrentToken: SimulateRotationRace,
+                NewTokenHash: null,
+                UserId: null,
+                FamilyId: null));
+        }
+
         if (!_byHash.TryGetValue(currentTokenHash, out var current))
         {
-            return Task.FromResult(new RefreshTokenRotationOutcome(false, false, null, null, null));
+            return Task.FromResult(new RefreshTokenRotationOutcome(false, null, null, null, null));
         }
 
         if (current.RevokedAtUtc is not null)
         {
-            return Task.FromResult(new RefreshTokenRotationOutcome(false, true, null, null, null));
+            return Task.FromResult(new RefreshTokenRotationOutcome(false, ToCandidate(current), null, null, null));
         }
 
         current.Revoke(RefreshTokenRevocationReasons.Rotated, nowUtc);
@@ -95,8 +154,18 @@ public sealed class FakeRefreshTokenStore : IRefreshTokenStore
         familyList.Add(entity);
 
         return Task.FromResult(new RefreshTokenRotationOutcome(
-            true, false, newTokenHash, current.UserId, current.FamilyId));
+            true, null, newTokenHash, current.UserId, current.FamilyId));
     }
+
+    private static RefreshTokenCandidate ToCandidate(RefreshTokenEntity entity) =>
+        new(
+            entity.TokenHash,
+            entity.UserId,
+            entity.FamilyId,
+            entity.RevokedAtUtc is not null,
+            entity.RevokedAtUtc,
+            entity.ExpiresAtUtc,
+            entity.RevokedReason);
 
     private sealed class RefreshTokenEntity
     {

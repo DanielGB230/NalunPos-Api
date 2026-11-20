@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Pos.Api.Common;
+using Pos.Application.Authentication;
 using Pos.Application.Authentication.Commands.Login;
 using Pos.Domain.Common;
 
@@ -136,8 +137,12 @@ public static class ResultExtensions
             return controller.Ok(response);
         }
 
-        // Error de autenticación: limpiar la cookie de refresh token.
-        cookieWriter.Clear(controller.Response);
+        // Error de autenticación: limpiar la cookie de refresh token, salvo en una
+        // rotación concurrente (409): la cookie vigente pertenece al ganador.
+        if (!string.Equals(result.Error.Code, RefreshTokenErrors.ConcurrentRotationCode, StringComparison.Ordinal))
+        {
+            cookieWriter.Clear(controller.Response);
+        }
         var problemDetailsService = controller.HttpContext.RequestServices.GetRequiredService<IProblemDetailsService>();
         var statusCode = result.Error.Type switch
         {

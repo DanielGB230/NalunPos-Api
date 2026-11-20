@@ -29,4 +29,16 @@ public class RefreshTokenOptions
     /// Vigencia del refresh token como <see cref="TimeSpan"/>.
     /// </summary>
     public TimeSpan RefreshTokenLifetime => TimeSpan.FromDays(RefreshTokenDays);
+
+    /// <summary>
+    /// Ventana de tolerancia, en segundos, para clasificar como rotación concurrente
+    /// un token revocado por <c>Rotated</c>. Por defecto 10; 0 desactiva la ventana.
+    /// </summary>
+    [Range(0, 60, ErrorMessage = "RotationLeewaySeconds debe estar entre 0 y 60.")]
+    public int RotationLeewaySeconds { get; set; } = 10;
+
+    /// <summary>
+    /// Ventana de tolerancia como <see cref="TimeSpan"/>.
+    /// </summary>
+    public TimeSpan RotationLeeway => TimeSpan.FromSeconds(RotationLeewaySeconds);
 }

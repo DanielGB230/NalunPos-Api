@@ -2,10 +2,13 @@ namespace Pos.Application.Common.Interfaces;
 
 /// <summary>
 /// Resultado de una rotación atómica de refresh token.
+/// Cuando <see cref="Success"/> es <c>false</c>, <see cref="CurrentToken"/> expone el
+/// estado actual del token (o <c>null</c> si no existe) para que el llamador aplique
+/// la política de reuso/rotación concurrente.
 /// </summary>
 public sealed record RefreshTokenRotationOutcome(
     bool Success,
-    bool ReuseDetected,
+    RefreshTokenCandidate? CurrentToken,
     string? NewTokenHash,
     Guid? UserId,
     Guid? FamilyId);
@@ -20,7 +23,8 @@ public sealed record RefreshTokenCandidate(
     Guid FamilyId,
     bool IsRevoked,
     DateTime? RevokedAtUtc,
-    DateTime ExpiresAtUtc);
+    DateTime ExpiresAtUtc,
+    string? RevokedReason);
 
 /// <summary>
 /// Puerto de persistencia de refresh tokens rotativos.
@@ -47,7 +51,8 @@ public interface IRefreshTokenStore
     /// <summary>
     /// Rota atómicamente: revoca el token actual (si aún no está revocado) e inserta
     /// el nuevo en la misma familia, todo en una misma transacción.
-    /// Retorna <c>ReuseDetected=true</c> si el token actual ya estaba revocado.
+    /// Si el token actual ya estaba revocado, retorna <c>Success=false</c> con su
+    /// estado actual en <see cref="RefreshTokenRotationOutcome.CurrentToken"/>.
     /// </summary>
     Task<RefreshTokenRotationOutcome> RotateAsync(
         string currentTokenHash,

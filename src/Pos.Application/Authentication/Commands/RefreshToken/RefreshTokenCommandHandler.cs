@@ -42,9 +42,7 @@ public class RefreshTokenCommandHandler : ICommandHandler<RefreshTokenCommand, R
 
     public async Task<Result<LoginResponse>> HandleAsync(RefreshTokenCommand command, CancellationToken cancellationToken = default)
     {
-        var invalid = DomainError.Unauthorized(
-            "Auth.RefreshTokenInvalid",
-            "Token de actualización inválido, expirado o revocado.");
+        var invalid = RefreshTokenErrors.Invalid;
 
         if (string.IsNullOrWhiteSpace(command.RefreshToken))
         {
@@ -62,15 +60,10 @@ public class RefreshTokenCommandHandler : ICommandHandler<RefreshTokenCommand, R
 
         DateTime nowUtc = _timeProvider.GetUtcNow().UtcDateTime;
 
-        // 2. Reuso de token revocado → revocar toda la familia y 401.
+        // 2. Token revocado: aplicar la política de rotación concurrente vs reuso.
         if (candidate.IsRevoked)
         {
-            await _refreshTokenStore.RevokeFamilyAsync(
-                candidate.FamilyId,
-                RefreshTokenRevocationReasons.ReuseDetected,
-                nowUtc,
-                cancellationToken);
-            return invalid;
+            return await ClassifyRevokedTokenAsync(candidate, nowUtc, cancellationToken);
         }
 
         // 3. Token expirado → revocarlo y 401 (sin revocar familia).
@@ -115,14 +108,10 @@ public class RefreshTokenCommandHandler : ICommandHandler<RefreshTokenCommand, R
 
         if (!rotation.Success)
         {
-            // Concurrencia: el token ya fue consumido por otra petición.
-            if (rotation.ReuseDetected)
+            // Carrera perdida: el token ya fue consumido por otra petición.
+            if (rotation.CurrentToken is not null)
             {
-                await _refreshTokenStore.RevokeFamilyAsync(
-                    candidate.FamilyId,
-                    RefreshTokenRevocationReasons.ReuseDetected,
-                    nowUtc,
-                    cancellationToken);
+                return await ClassifyRevokedTokenAsync(rotation.CurrentToken, nowUtc, cancellationToken);
             }
             return invalid;
         }
@@ -143,6 +132,33 @@ public class RefreshTokenCommandHandler : ICommandHandler<RefreshTokenCommand, R
             RefreshTokenMaxAgeSeconds: (int)_options.RefreshTokenLifetime.TotalSeconds);
 
         return response;
+    }
+
+    private async Task<Result<LoginResponse>> ClassifyRevokedTokenAsync(
+        RefreshTokenCandidate revoked,
+        DateTime nowUtc,
+        CancellationToken cancellationToken)
+    {
+        var classification = RefreshTokenReusePolicy.Classify(
+            revoked.RevokedReason,
+            revoked.RevokedAtUtc,
+            nowUtc,
+            _options.RotationLeeway);
+
+        if (classification == RefreshTokenReuseClassification.ConcurrentRotation)
+        {
+            // Perdedor de una carrera dentro de la ventana: no se revoca la familia
+            // ni se emiten tokens; el cliente reintenta con la cookie vigente.
+            return RefreshTokenErrors.ConcurrentRotation;
+        }
+
+        await _refreshTokenStore.RevokeFamilyAsync(
+            revoked.FamilyId,
+            RefreshTokenRevocationReasons.ReuseDetected,
+            nowUtc,
+            cancellationToken);
+
+        return RefreshTokenErrors.Invalid;
     }
 
     private static string ComputeSha256(string token)

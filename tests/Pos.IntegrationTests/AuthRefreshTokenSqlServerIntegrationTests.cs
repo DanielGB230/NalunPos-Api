@@ -56,7 +56,18 @@ public class AuthRefreshTokenSqlServerIntegrationTests : IAsyncLifetime
 
     public Task InitializeAsync()
     {
-        _factory = new WebApplicationFactory<Program>()
+        _factory = BuildFactory(rotationLeewaySeconds: 0);
+
+        // Force server creation and get HybridCache from test server's services
+        _ = _factory.CreateClient();
+        _hybridCache = _factory.Server.Services.GetRequiredService<HybridCache>();
+
+        return Task.CompletedTask;
+    }
+
+    private WebApplicationFactory<Program> BuildFactory(int rotationLeewaySeconds)
+    {
+        return new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
             {
                 builder.UseEnvironment("Testing");
@@ -78,7 +89,8 @@ public class AuthRefreshTokenSqlServerIntegrationTests : IAsyncLifetime
                         ["RateLimiting:AuthPolicy:PermitLimit"] = "500",
                         ["RateLimiting:SensitiveOperationsPolicy:PermitLimit"] = "500",
                         ["RateLimiting:GlobalApiPolicy:PermitLimit"] = "1000",
-                        ["TenantStatus:TenantStatusCacheTtlSeconds"] = "1"
+                        ["TenantStatus:TenantStatusCacheTtlSeconds"] = "1",
+                        ["RefreshToken:RotationLeewaySeconds"] = rotationLeewaySeconds.ToString(System.Globalization.CultureInfo.InvariantCulture)
                     });
                 });
 
@@ -108,12 +120,6 @@ public class AuthRefreshTokenSqlServerIntegrationTests : IAsyncLifetime
                     });
                 });
             });
-
-        // Force server creation and get HybridCache from test server's services
-        _ = _factory.CreateClient();
-        _hybridCache = _factory.Server.Services.GetRequiredService<HybridCache>();
-
-        return Task.CompletedTask;
     }
 
     public async Task DisposeAsync()
@@ -121,9 +127,11 @@ public class AuthRefreshTokenSqlServerIntegrationTests : IAsyncLifetime
         await _factory.DisposeAsync();
     }
 
-    private HttpClient CreateClient(string? bearerToken = null)
+    private HttpClient CreateClient(string? bearerToken = null) => CreateClient(_factory, bearerToken);
+
+    private HttpClient CreateClient(WebApplicationFactory<Program> factory, string? bearerToken)
     {
-        var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
+        var client = factory.CreateClient(new WebApplicationFactoryClientOptions
         {
             AllowAutoRedirect = false,
             HandleCookies = false
@@ -521,6 +529,89 @@ public class AuthRefreshTokenSqlServerIntegrationTests : IAsyncLifetime
         Assert.NotNull(refreshedPayload);
         Assert.Equal(TenantRoles.TenantAdmin, refreshedPayload.Role);
         Assert.Equal(tenantId, refreshedPayload.TenantId);
+    }
+
+    [Fact]
+    public async Task Refresh_ReuseWithinLeeway_Returns409WithoutCookie_AndFamilyRemainsUsable()
+    {
+        using var factory = BuildFactory(rotationLeewaySeconds: 30);
+        using var anonymousClient = CreateClient(factory, bearerToken: null);
+        var (email, password) = await SeedAndLoginSuperAdminAsync(anonymousClient);
+
+        var loginResponse = await anonymousClient.PostAsJsonAsync("/api/v1/auth/login", new LoginRequest(email, password));
+        Assert.Equal(HttpStatusCode.OK, loginResponse.StatusCode);
+        string firstRefreshToken = ReadRefreshCookie(loginResponse);
+
+        using var winnerClient = CreateClient(factory, bearerToken: null);
+        AttachRefreshCookie(winnerClient, firstRefreshToken);
+        var winnerResponse = await winnerClient.PostAsync("/api/v1/auth/refresh", content: null);
+        Assert.Equal(HttpStatusCode.OK, winnerResponse.StatusCode);
+        string secondRefreshToken = ReadRefreshCookie(winnerResponse);
+
+        // Reuso inmediato del token anterior dentro de la ventana: 409 sin cookie.
+        using var reuseClient = CreateClient(factory, bearerToken: null);
+        AttachRefreshCookie(reuseClient, firstRefreshToken);
+        var reuseResponse = await reuseClient.PostAsync("/api/v1/auth/refresh", content: null);
+
+        Assert.Equal(HttpStatusCode.Conflict, reuseResponse.StatusCode);
+        Assert.Equal("application/problem+json", reuseResponse.Content.Headers.ContentType?.MediaType);
+
+        bool issuedRefreshCookie = reuseResponse.Headers.TryGetValues("Set-Cookie", out var setCookies)
+            && setCookies.Any(c => c.StartsWith($"{CookieName}=", StringComparison.OrdinalIgnoreCase));
+        Assert.False(issuedRefreshCookie, "El 409 no debe emitir una cookie nalunpos_rt.");
+
+        using (var problem = JsonDocument.Parse(await reuseResponse.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal("Auth.RefreshConcurrent", problem.RootElement.GetProperty("code").GetString());
+        }
+
+        // La familia sigue viva: el token rotado por el ganador refresca con 200.
+        using var familyClient = CreateClient(factory, bearerToken: null);
+        AttachRefreshCookie(familyClient, secondRefreshToken);
+        var familyResponse = await familyClient.PostAsync("/api/v1/auth/refresh", content: null);
+        Assert.Equal(HttpStatusCode.OK, familyResponse.StatusCode);
+    }
+
+    [Fact]
+    public async Task Refresh_TwoParallelRequestsWithSameToken_OneSucceedsOneConflicts_AndWinnerTokenStillWorks()
+    {
+        using var factory = BuildFactory(rotationLeewaySeconds: 30);
+        using var anonymousClient = CreateClient(factory, bearerToken: null);
+        var (email, password) = await SeedAndLoginSuperAdminAsync(anonymousClient);
+
+        var loginResponse = await anonymousClient.PostAsJsonAsync("/api/v1/auth/login", new LoginRequest(email, password));
+        Assert.Equal(HttpStatusCode.OK, loginResponse.StatusCode);
+        string refreshToken = ReadRefreshCookie(loginResponse);
+
+        using var firstClient = CreateClient(factory, bearerToken: null);
+        using var secondClient = CreateClient(factory, bearerToken: null);
+        AttachRefreshCookie(firstClient, refreshToken);
+        AttachRefreshCookie(secondClient, refreshToken);
+
+        var responses = await Task.WhenAll(
+            firstClient.PostAsync("/api/v1/auth/refresh", content: null),
+            secondClient.PostAsync("/api/v1/auth/refresh", content: null));
+
+        var successes = responses.Where(r => r.StatusCode == HttpStatusCode.OK).ToArray();
+        var conflicts = responses.Where(r => r.StatusCode == HttpStatusCode.Conflict).ToArray();
+        Assert.Single(successes);
+        Assert.Single(conflicts);
+
+        using (var problem = JsonDocument.Parse(await conflicts[0].Content.ReadAsStringAsync()))
+        {
+            Assert.Equal("Auth.RefreshConcurrent", problem.RootElement.GetProperty("code").GetString());
+        }
+
+        string winnerToken = ReadRefreshCookie(successes[0]);
+        using var winnerClient = CreateClient(factory, bearerToken: null);
+        AttachRefreshCookie(winnerClient, winnerToken);
+        var winnerRefresh = await winnerClient.PostAsync("/api/v1/auth/refresh", content: null);
+        Assert.Equal(HttpStatusCode.OK, winnerRefresh.StatusCode);
+
+        foreach (var response in responses)
+        {
+            response.Dispose();
+        }
     }
 
     /// <summary>

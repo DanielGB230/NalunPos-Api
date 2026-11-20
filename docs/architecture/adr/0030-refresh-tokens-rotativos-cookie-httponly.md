@@ -11,7 +11,7 @@
 - **Solo hash SHA-256** se persiste en BD (`RefreshTokens.TokenHash`, `CHAR(64)`).
 - **Familia de tokens** (`FamilyId`): cada login crea una nueva familia; cada refresh rota el token dentro de la misma familia.
 - **Revocación atómica**: el token actual se revoca y el nuevo se inserta en la misma transacción (`ExecuteUpdateAsync` condicional + `INSERT`).
-- **Detección de reuso**: si un token ya revocado se presenta de nuevo → se revoca **toda la familia** (`ReuseDetected`) y se retorna 401.
+- **Detección de reuso**: si un token ya revocado se presenta de nuevo → se revoca **toda la familia** (`ReuseDetected`) y se retorna 401. La rotación concurrente dentro de la ventana de tolerancia se rige por el ADR 0031 (409 `Auth.RefreshConcurrent`, sin revocar la familia).
 - **Vigencia configurable** (`RefreshTokenDays`, default 7) vía `RefreshTokenOptions` con `ValidateDataAnnotations().ValidateOnStart()`.
 
 ### 2. Cookie HttpOnly `nalunpos_rt`
@@ -101,7 +101,7 @@ CREATE TABLE RefreshTokens (
 - **Tests de arquitectura** validan validadores, atributos, y ausencia de `result.Value` en controladores.
 
 ## Deuda Técnica Explícita
-1. **Ventana de tolerancia para refresh concurrentes / reuso detectado**: si dos peticiones concurrentes usan el mismo refresh token válido, una ganará la rotación y la otra detectará reuso (`ReuseDetected`) revocando **toda la familia** (`FamilyId`) y cerrando todas las sesiones del usuario en ese login. No hay reintento automático; el cliente debe volver a loguearse.
+1. ~~**Ventana de tolerancia para refresh concurrentes / reuso detectado**: si dos peticiones concurrentes usan el mismo refresh token válido, una ganará la rotación y la otra detectará reuso (`ReuseDetected`) revocando **toda la familia** (`FamilyId`) y cerrando todas las sesiones del usuario en ese login. No hay reintento automático; el cliente debe volver a loguearse.~~ **RESUELTA** en el ADR 0031 (ventana de tolerancia `RefreshToken:RotationLeewaySeconds`; el perdedor recibe 409 `Auth.RefreshConcurrent` sin revocar la familia).
 2. **Vigencia absoluta de la familia**: no hay expiración máxima de la `FamilyId` independientemente de la rotación; una familia puede vivir indefinidamente mientras se rotan tokens. Futura mejora: añadir `FamilyExpiresAtUtc` y purgar familias expiradas.
 3. **Purga de tokens expirados/revocados**: no hay job de limpieza automática de `RefreshTokens` antiguos; la tabla crece indefinidamente. Futura mejora: job periódico que elimine tokens con `RevokedAtUtc` o `ExpiresAtUtc` anterior a umbral configurable.
 

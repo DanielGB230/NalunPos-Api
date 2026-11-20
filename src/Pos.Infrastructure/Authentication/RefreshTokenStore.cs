@@ -54,7 +54,8 @@ public class RefreshTokenStore : IRefreshTokenStore
                 entity.FamilyId,
                 entity.RevokedAtUtc is not null,
                 entity.RevokedAtUtc,
-                entity.ExpiresAtUtc);
+                entity.ExpiresAtUtc,
+                entity.RevokedReason);
         }
         finally
         {
@@ -185,14 +186,27 @@ public class RefreshTokenStore : IRefreshTokenStore
 
                 if (revoked == 0)
                 {
-                    // El token ya estaba revocado: posible reuso.
+                    // El token ya estaba revocado: se devuelve su estado actual para que
+                    // el handler distinga rotación concurrente de reuso real.
                     await transaction.RollbackAsync(cancellationToken);
-                    bool stillExists = await _dbContext.RefreshTokens
+                    var current = await _dbContext.RefreshTokens
                         .AsNoTracking()
-                        .AnyAsync(r => r.TokenHash == currentTokenHash, cancellationToken);
+                        .FirstOrDefaultAsync(r => r.TokenHash == currentTokenHash, cancellationToken);
+
+                    RefreshTokenCandidate? currentCandidate = current is null
+                        ? null
+                        : new RefreshTokenCandidate(
+                            current.TokenHash,
+                            current.UserId,
+                            current.FamilyId,
+                            current.RevokedAtUtc is not null,
+                            current.RevokedAtUtc,
+                            current.ExpiresAtUtc,
+                            current.RevokedReason);
+
                     return new RefreshTokenRotationOutcome(
                         Success: false,
-                        ReuseDetected: stillExists,
+                        CurrentToken: currentCandidate,
                         NewTokenHash: null,
                         UserId: null,
                         FamilyId: null);
@@ -218,7 +232,7 @@ public class RefreshTokenStore : IRefreshTokenStore
 
                 return new RefreshTokenRotationOutcome(
                     Success: true,
-                    ReuseDetected: false,
+                    CurrentToken: null,
                     NewTokenHash: newTokenHash,
                     UserId: oldToken.UserId,
                     FamilyId: oldToken.FamilyId);
