@@ -49,7 +49,7 @@ CREATE TABLE RefreshTokens (
 -- IX_RefreshTokens_ExpiresAtUtc
 -- IX_RefreshTokens_UserId
 ```
-- **No implementa `ITenantOwnedEntity`**: el aislamiento es por `UserId` (RLS en `Users`) y `FamilyId`.
+- **No implementa `ITenantOwnedEntity`**: el aislamiento es por `UserId` y `FamilyId`.
 - **No está bajo RLS**: la tabla `RefreshTokens` no tiene `TenantId` ni está cubierta por la `TenantSecurityPolicy`. El acceso se gobierna por hash de token (`TokenHash` único) y `FamilyId` bajo scope de autenticación.
 - **Convención UTC**: todas las columnas `*Utc` con `Kind=Utc` vía `UtcDateTimeConvention`.
 
@@ -66,7 +66,7 @@ CREATE TABLE RefreshTokens (
 
 ### 6. Capa Infrastructure
 - **`RefreshTokenGenerator`**: genera token opaco + hash SHA-256.
-- **`RefreshTokenStore`**: usa `IAuthenticationSessionScope` (RLS) para todas las operaciones; rotación atómica con transacción + `ExecuteUpdateAsync` condicional.
+- **`RefreshTokenStore`**: usa `IAuthenticationSessionScope` para todas las operaciones (acceso por `TokenHash` y `FamilyId`); rotación atómica con transacción + `ExecuteUpdateAsync` condicional.
 - **`RefreshTokenConfiguration`**: Fluent API con índices únicos y filtro `RevokedAtUtc IS NULL`.
 - **`HttpContextCurrentUserClaims`**: implementa `ICurrentUserClaims` leyendo claims estándar (`NameIdentifier`, `roleId`, `Role`, `Email`, `Name`, `tenantId`).
 - **`AuthUserLookup.FindByIdAsync`**: nuevo método para re-validar usuario/rol en refresh (misma lógica fail-closed que `FindByEmailAsync`).
@@ -90,7 +90,7 @@ CREATE TABLE RefreshTokens (
 - **Seguridad**: Rotación + detección de reuso mitiga robo de refresh token (RFC 6749, OWASP).
 - **HttpOnly + SameSite=Strict + Path acotado**: defensa en profundidad contra XSS/CSRF.
 - **Fail-closed**: re-validación de usuario/rol en cada refresh (ADR 0023).
-- **RLS consistente**: `RefreshTokenStore` usa el mismo patrón de scope que `AuthUserLookup`.
+- **Scope de autenticación consistente**: `RefreshTokenStore` usa el mismo patrón de scope que `AuthUserLookup`, con acceso gobernado por `TokenHash` y `FamilyId`.
 - **Sin BD en `/me`**: identidad resuelta 100% desde claims JWT.
 - **Logout idempotente**: UX robusta, sin errores si no hay cookie.
 
