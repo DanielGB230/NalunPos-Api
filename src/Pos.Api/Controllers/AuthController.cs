@@ -68,16 +68,18 @@ public class AuthController : ControllerBase
     /// rota atómicamente en la misma FamilyId y emite un nuevo access token + refresh token.
     /// En caso de token faltante, expirado o revocado → 401 y limpieza de la cookie.
     /// Reuso de token revocado → revoca toda la familia y 401.
+    /// Tenant suspendido o inactivo → 403 sin consumir el token.
     /// Rotación concurrente dentro de la ventana de tolerancia → 409 sin revocar la
     /// familia y sin emitir cookie nueva (el cliente reintenta con la cookie vigente).
     /// </summary>
     /// <param name="cancellationToken">Token de cancelación</param>
-    /// <returns>200 con LoginResponse y nueva cookie; 401 con ProblemDetails y cookie limpiada; 409 en rotación concurrente</returns>
+    /// <returns>200 con LoginResponse y nueva cookie; 401 con ProblemDetails y cookie limpiada; 403 por tenant suspendido/inactivo; 409 en rotación concurrente</returns>
     [AllowAnonymous]
     [HttpPost("refresh")]
     [EnableRateLimiting("AuthPolicy")]
     [ProducesResponseType(typeof(LoginResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Refresh(CancellationToken cancellationToken)

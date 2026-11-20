@@ -264,6 +264,32 @@ public class RefreshTokenCommandHandlerTests
         Assert.Equal(1, _refreshTokenStore.TokenCount);
     }
 
+    [Fact]
+    public async Task HandleAsync_WhenRotationLosesRaceOutsideLeeway_ShouldRevokeFamilyAndReturnInvalid()
+    {
+        var user = SeedActiveSuperAdmin();
+        string tokenHash = HashOf(s_rawToken);
+        SeedToken(user, tokenHash);
+
+        _refreshTokenStore.SimulateRotationRace = new Pos.Application.Common.Interfaces.RefreshTokenCandidate(
+            tokenHash,
+            user.Id,
+            Guid.NewGuid(),
+            IsRevoked: true,
+            RevokedAtUtc: UtcNow.AddSeconds(-11),
+            ExpiresAtUtc: UtcNow.AddDays(7),
+            RevokedReason: RefreshTokenRevocationReasons.Rotated);
+
+        var result = await _handler.HandleAsync(Command());
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(ErrorType.Unauthorized, result.Error.Type);
+        Assert.Equal(RefreshTokenErrors.InvalidCode, result.Error.Code);
+        Assert.Equal(1, _refreshTokenStore.RevokeFamilyCallCount);
+        Assert.Equal(RefreshTokenRevocationReasons.ReuseDetected, _refreshTokenStore.LastRevokeFamilyReason);
+        Assert.Equal(1, _refreshTokenStore.TokenCount);
+    }
+
     private sealed class FixedTimeProvider : TimeProvider
     {
         private readonly DateTimeOffset _utcNow;

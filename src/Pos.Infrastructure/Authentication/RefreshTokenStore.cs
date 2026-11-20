@@ -48,14 +48,7 @@ public class RefreshTokenStore : IRefreshTokenStore
                 return null;
             }
 
-            return new RefreshTokenCandidate(
-                entity.TokenHash,
-                entity.UserId,
-                entity.FamilyId,
-                entity.RevokedAtUtc is not null,
-                entity.RevokedAtUtc,
-                entity.ExpiresAtUtc,
-                entity.RevokedReason);
+            return ToCandidate(entity);
         }
         finally
         {
@@ -195,14 +188,7 @@ public class RefreshTokenStore : IRefreshTokenStore
 
                     RefreshTokenCandidate? currentCandidate = current is null
                         ? null
-                        : new RefreshTokenCandidate(
-                            current.TokenHash,
-                            current.UserId,
-                            current.FamilyId,
-                            current.RevokedAtUtc is not null,
-                            current.RevokedAtUtc,
-                            current.ExpiresAtUtc,
-                            current.RevokedReason);
+                        : ToCandidate(current);
 
                     return new RefreshTokenRotationOutcome(
                         Success: false,
@@ -248,4 +234,17 @@ public class RefreshTokenStore : IRefreshTokenStore
             await session.DisableGlobalUserLookupAsync(cancellationToken);
         }
     }
+
+    /// <summary>
+    /// Proyección única de la entidad persistida al contrato de Application.
+    /// </summary>
+    private static RefreshTokenCandidate ToCandidate(RefreshToken entity) =>
+        new(
+            entity.TokenHash,
+            entity.UserId,
+            entity.FamilyId,
+            entity.RevokedAtUtc is not null,
+            entity.RevokedAtUtc,
+            entity.ExpiresAtUtc,
+            entity.RevokedReason);
 }
