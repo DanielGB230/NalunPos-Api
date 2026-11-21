@@ -34,6 +34,9 @@ namespace Pos.Infrastructure.Migrations
                     b.Property<DateTime>("ExpiresAtUtc")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime>("FamilyExpiresAtUtc")
+                        .HasColumnType("datetime2");
+
                     b.Property<Guid>("FamilyId")
                         .HasColumnType("uniqueidentifier");
 
@@ -60,6 +63,10 @@ namespace Pos.Infrastructure.Migrations
 
                     b.HasIndex("ExpiresAtUtc")
                         .HasDatabaseName("IX_RefreshTokens_ExpiresAtUtc");
+
+                    b.HasIndex("RevokedAtUtc")
+                        .HasDatabaseName("IX_RefreshTokens_RevokedAtUtc")
+                        .HasFilter("[RevokedAtUtc] IS NOT NULL");
 
                     b.HasIndex("TokenHash")
                         .IsUnique()

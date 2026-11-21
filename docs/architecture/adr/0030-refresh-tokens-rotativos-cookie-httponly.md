@@ -13,12 +13,13 @@
 - **Revocación atómica**: el token actual se revoca y el nuevo se inserta en la misma transacción (`ExecuteUpdateAsync` condicional + `INSERT`).
 - **Detección de reuso**: si un token ya revocado se presenta de nuevo → se revoca **toda la familia** (`ReuseDetected`) y se retorna 401. La rotación concurrente dentro de la ventana de tolerancia se rige por el ADR 0031 (409 `Auth.RefreshConcurrent`, sin revocar la familia).
 - **Vigencia configurable** (`RefreshTokenDays`, default 7) vía `RefreshTokenOptions` con `ValidateDataAnnotations().ValidateOnStart()`.
+- **Vigencia absoluta de la familia** (`FamilyExpiresAtUtc`): el primer token la fija como `CreatedAtUtc + FamilyAbsoluteDays` (default 30) y todos los rotados la heredan. La expiración deslizante de cada token nunca la supera (ADR 0033).
 
 ### 2. Cookie HttpOnly `nalunpos_rt`
 - **Nombre**: `nalunpos_rt` (configurable).
 - **Atributos**: `HttpOnly`, `SameSite=Strict`, `Path=/api/v1/auth`.
 - **Secure**: `true` fuera de Development; `SameAsRequest` en Development.
-- **Max-Age**: igual a la vigencia del refresh token en segundos.
+- **Max-Age**: calculado desde el vencimiento **efectivo** del token emitido (`ExpiresAtUtc − ahora`), que puede estar recortado por la vigencia absoluta de la familia; mínimo 1 segundo y nunca negativo (ADR 0033).
 - **Limpieza en error**: solo se borra con `Auth.RefreshTokenInvalid`. Los errores recuperables (403 por estado de tenant, 401 `Auth.UserInvalid`, 409 `Auth.RefreshConcurrent` y fallos de login) conservan la cookie (ADR 0032).
 - **Logout**: borra la cookie de forma idempotente (204 aunque no exista).
 
@@ -41,14 +42,17 @@ CREATE TABLE RefreshTokens (
     RevokedReason NVARCHAR(100) NULL,
     CreatedAtUtc DATETIME2 NOT NULL,
     ExpiresAtUtc DATETIME2 NOT NULL,
+    FamilyExpiresAtUtc DATETIME2 NOT NULL, -- ADR 0033
     RevokedAtUtc DATETIME2 NULL
 );
 -- Índices:
 -- IX_RefreshTokens_TokenHash (UNIQUE)
 -- IX_RefreshTokens_UserId_FamilyId_Active (UNIQUE WHERE RevokedAtUtc IS NULL)
 -- IX_RefreshTokens_ExpiresAtUtc
+-- IX_RefreshTokens_RevokedAtUtc (WHERE RevokedAtUtc IS NOT NULL) -- ADR 0033
 -- IX_RefreshTokens_UserId
 ```
+- **Migración `AddRefreshTokenFamilyExpiryAndPurgeIndex`** (ADR 0033): añade `FamilyExpiresAtUtc` nullable, hace backfill `FamilyExpiresAtUtc = ExpiresAtUtc` y la deja `NOT NULL`; crea el índice filtrado de purga. No pierde filas.
 - **No implementa `ITenantOwnedEntity`**: el aislamiento es por `UserId` y `FamilyId`.
 - **No está bajo RLS**: la tabla `RefreshTokens` no tiene `TenantId` ni está cubierta por la `TenantSecurityPolicy`. El acceso se gobierna por hash de token (`TokenHash` único) y `FamilyId` bajo scope de autenticación.
 - **Convención UTC**: todas las columnas `*Utc` con `Kind=Utc` vía `UtcDateTimeConvention`.
@@ -56,7 +60,8 @@ CREATE TABLE RefreshTokens (
 ### 5. Capa Application (Puertos y CQRS)
 - **Puertos** en `Pos.Application.Common.Interfaces`:
   - `IRefreshTokenGenerator` → `RefreshTokenMaterial(Token, TokenHash)`
-  - `IRefreshTokenStore` → `FindByHashAsync`, `IssueAsync`, `RevokeAsync`, `RevokeFamilyAsync`, `RotateAsync`
+  - `IRefreshTokenStore` → `FindByHashAsync`, `IssueAsync` (devuelve el vencimiento efectivo), `RevokeAsync`, `RevokeFamilyAsync`, `RotateAsync` (devuelve `NewTokenExpiresAtUtc`)
+  - `IRefreshTokenPurger` → `PurgeAsync(nowUtc, retention, batchSize)` (ADR 0033)
   - `ICurrentUserClaims` / `CurrentUserClaims` → lectura de claims desde `HttpContext.User`
 - **CQRS** (un archivo por comando/query, validador propio, `[AllowsNoTenant][PublicUseCase]`):
   - `RefreshTokenCommand` / `RefreshTokenCommandHandler` → **busca token, valida reuso/expiración, valida usuario/rol/tenant fail-closed (ADR 0023), SOLO DESPUÉS rota** el token
@@ -70,13 +75,15 @@ CREATE TABLE RefreshTokens (
 - **`RefreshTokenConfiguration`**: Fluent API con índices únicos y filtro `RevokedAtUtc IS NULL`.
 - **`HttpContextCurrentUserClaims`**: implementa `ICurrentUserClaims` leyendo claims estándar (`NameIdentifier`, `roleId`, `Role`, `Email`, `Name`, `tenantId`).
 - **`AuthUserLookup.FindByIdAsync`**: nuevo método para re-validar usuario/rol en refresh (misma lógica fail-closed que `FindByEmailAsync`).
-- **DI**: registro de `IRefreshTokenGenerator`, `IRefreshTokenStore`, `ICurrentUserClaims`, `RefreshTokenOptions` (singleton POCO para inyección directa en handlers).
+- **`RefreshTokenPurger`**: borrado por lotes con `ExecuteDeleteAsync` sobre subquery de IDs (ADR 0033).
+- **DI**: registro de `IRefreshTokenGenerator`, `IRefreshTokenStore`, `IRefreshTokenPurger`, `ICurrentUserClaims`, `RefreshTokenOptions` (singleton POCO para inyección directa en handlers).
 
 ### 7. Capa API
 - **`RefreshTokenCookieWriter`**: escribe/borra cookie con atributos correctos.
 - **`ResultExtensions.ToAuthResultAsync`**: usa `IProblemDetailsService.WriteAsync` para garantizar `application/problem+json` en errores.
 - **`AuthController`**: endpoints ultra-delgados, delegan en `IDispatcher`, no acceden a `result.Value`.
 - **CORS**: `AllowCredentials()` solo con `CorsSettings:AllowedOrigins` explícitos (ya existente).
+- **`RefreshTokenPurgeBackgroundService`**: `BackgroundService` nativo con `PeriodicTimer` y un scope por ejecución; `Enabled`, `IntervalMinutes`, `RetentionDays` y `BatchSize` configurables con `ValidateOnStart()` (ADR 0033).
 
 ### 8. OpenAPI y Migración
 - **Migración `AddRefreshTokens`**: `has-pending-model-changes` limpio.
@@ -102,8 +109,8 @@ CREATE TABLE RefreshTokens (
 
 ## Deuda Técnica Explícita
 1. ~~**Ventana de tolerancia para refresh concurrentes / reuso detectado**: si dos peticiones concurrentes usan el mismo refresh token válido, una ganará la rotación y la otra detectará reuso (`ReuseDetected`) revocando **toda la familia** (`FamilyId`) y cerrando todas las sesiones del usuario en ese login. No hay reintento automático; el cliente debe volver a loguearse.~~ **RESUELTA** en el ADR 0031 (ventana de tolerancia `RefreshToken:RotationLeewaySeconds`; el perdedor recibe 409 `Auth.RefreshConcurrent` sin revocar la familia).
-2. **Vigencia absoluta de la familia**: no hay expiración máxima de la `FamilyId` independientemente de la rotación; una familia puede vivir indefinidamente mientras se rotan tokens. Futura mejora: añadir `FamilyExpiresAtUtc` y purgar familias expiradas.
-3. **Purga de tokens expirados/revocados**: no hay job de limpieza automática de `RefreshTokens` antiguos; la tabla crece indefinidamente. Futura mejora: job periódico que elimine tokens con `RevokedAtUtc` o `ExpiresAtUtc` anterior a umbral configurable.
+2. ~~**Vigencia absoluta de la familia**: no hay expiración máxima de la `FamilyId` independientemente de la rotación; una familia puede vivir indefinidamente mientras se rotan tokens. Futura mejora: añadir `FamilyExpiresAtUtc` y purgar familias expiradas.~~ **RESUELTA** en el ADR 0033 (`FamilyExpiresAtUtc` fijada en el primer token y heredada en cada rotación; `RefreshToken:FamilyAbsoluteDays`).
+3. ~~**Purga de tokens expirados/revocados**: no hay job de limpieza automática de `RefreshTokens` antiguos; la tabla crece indefinidamente. Futura mejora: job periódico que elimine tokens con `RevokedAtUtc` o `ExpiresAtUtc` anterior a umbral configurable.~~ **RESUELTA** en el ADR 0033 (`IRefreshTokenPurger` + `RefreshTokenPurgeBackgroundService`, borrado por lotes con retención configurable).
 
 ## Alternativas Consideradas
 1. **Refresh token sin rotación**: rechazado por riesgo de robo prolongado.
@@ -112,5 +119,5 @@ CREATE TABLE RefreshTokens (
 4. **`/me` consultando BD**: rechazado; claims JWT ya tienen la info (ADR 0029 vigencia única).
 
 ## Referencias
-- ADR 0001 (Clean Architecture), ADR 0008 (Multi-tenancy), ADR 0018 (TimeProvider), ADR 0023 (Roles/Session), ADR 0026 (UTC), ADR 0029 (Access Token Lifetime).
+- ADR 0001 (Clean Architecture), ADR 0008 (Multi-tenancy), ADR 0018 (TimeProvider), ADR 0023 (Roles/Session), ADR 0026 (UTC), ADR 0029 (Access Token Lifetime), ADR 0033 (Vigencia absoluta y purga de refresh tokens).
 - RFC 6749 (OAuth 2.0), RFC 9457 (ProblemDetails), RFC 6265 (Cookies).

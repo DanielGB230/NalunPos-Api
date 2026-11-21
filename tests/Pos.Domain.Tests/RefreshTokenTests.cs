@@ -7,20 +7,33 @@ namespace Pos.Domain.Tests;
 /// <summary>
 /// Pruebas del agregado <see cref="RefreshToken"/> (dominio puro, sin BD).
 /// Cubre creación, validación de activos, revocación idempotente y rotación.
+/// La vigencia absoluta de la familia tiene su propia suite en
+/// <see cref="RefreshTokenFamilyExpiryTests"/>.
 /// </summary>
 public class RefreshTokenTests
 {
+    private static readonly TimeSpan s_familyAbsolute = TimeSpan.FromDays(30);
+
     private readonly TimeProvider _timeProvider = TimeProvider.System;
     private readonly Guid _userId = Guid.NewGuid();
     private readonly Guid _familyId = Guid.CreateVersion7();
     private readonly string _tokenHash = "a".PadLeft(64, 'a'); // SHA-256 hex (64 chars)
     private readonly TimeSpan _lifetime = TimeSpan.FromDays(7);
 
+    private RefreshToken NewToken(TimeSpan? lifetime = null) =>
+        RefreshToken.CreateInitial(
+            _userId,
+            _tokenHash,
+            _familyId,
+            lifetime ?? _lifetime,
+            s_familyAbsolute,
+            _timeProvider);
+
     [Fact]
-    public void Create_WithValidArguments_ShouldReturnActiveTokenWithUtcTimestamps()
+    public void CreateInitial_WithValidArguments_ShouldReturnActiveTokenWithUtcTimestamps()
     {
         // Act
-        var token = RefreshToken.Create(_userId, _tokenHash, _familyId, _lifetime, _timeProvider);
+        var token = NewToken();
 
         // Assert
         Assert.Equal(_userId, token.UserId);
@@ -28,46 +41,48 @@ public class RefreshTokenTests
         Assert.Equal(_familyId, token.FamilyId);
         Assert.True(token.CreatedAtUtc.Kind == DateTimeKind.Utc);
         Assert.True(token.ExpiresAtUtc.Kind == DateTimeKind.Utc);
+        Assert.True(token.FamilyExpiresAtUtc.Kind == DateTimeKind.Utc);
         Assert.Null(token.RevokedAtUtc);
         Assert.Null(token.ReplacedByTokenHash);
         Assert.Null(token.RevokedReason);
         Assert.True(token.ExpiresAtUtc > token.CreatedAtUtc);
+        Assert.True(token.ExpiresAtUtc <= token.FamilyExpiresAtUtc);
         Assert.True(token.IsActive(token.CreatedAtUtc));
     }
 
     [Fact]
-    public void Create_WithEmptyUserId_ShouldThrowDomainException()
+    public void CreateInitial_WithEmptyUserId_ShouldThrowDomainException()
     {
         // Act & Assert
         var ex = Assert.Throws<DomainException>(() =>
-            RefreshToken.Create(Guid.Empty, _tokenHash, _familyId, _lifetime, _timeProvider));
+            RefreshToken.CreateInitial(Guid.Empty, _tokenHash, _familyId, _lifetime, s_familyAbsolute, _timeProvider));
         Assert.Contains("UserId", ex.Message);
     }
 
     [Fact]
-    public void Create_WithEmptyFamilyId_ShouldThrowDomainException()
+    public void CreateInitial_WithEmptyFamilyId_ShouldThrowDomainException()
     {
         // Act & Assert
         var ex = Assert.Throws<DomainException>(() =>
-            RefreshToken.Create(_userId, _tokenHash, Guid.Empty, _lifetime, _timeProvider));
+            RefreshToken.CreateInitial(_userId, _tokenHash, Guid.Empty, _lifetime, s_familyAbsolute, _timeProvider));
         Assert.Contains("FamilyId", ex.Message);
     }
 
     [Fact]
-    public void Create_WithEmptyTokenHash_ShouldThrowArgumentException()
+    public void CreateInitial_WithEmptyTokenHash_ShouldThrowArgumentException()
     {
         // Act & Assert
         var ex = Assert.Throws<ArgumentException>(() =>
-            RefreshToken.Create(_userId, string.Empty, _familyId, _lifetime, _timeProvider));
+            RefreshToken.CreateInitial(_userId, string.Empty, _familyId, _lifetime, s_familyAbsolute, _timeProvider));
         Assert.Contains("token", ex.Message);
     }
 
     [Fact]
-    public void Create_WithNonPositiveLifetime_ShouldThrowDomainException()
+    public void CreateInitial_WithNonPositiveLifetime_ShouldThrowDomainException()
     {
         // Act & Assert
         var ex = Assert.Throws<DomainException>(() =>
-            RefreshToken.Create(_userId, _tokenHash, _familyId, TimeSpan.Zero, _timeProvider));
+            RefreshToken.CreateInitial(_userId, _tokenHash, _familyId, TimeSpan.Zero, s_familyAbsolute, _timeProvider));
         Assert.Contains("vigencia", ex.Message);
     }
 
@@ -75,7 +90,7 @@ public class RefreshTokenTests
     public void IsActive_WhenNotRevokedAndNotExpired_ShouldReturnTrue()
     {
         // Arrange
-        var token = RefreshToken.Create(_userId, _tokenHash, _familyId, _lifetime, _timeProvider);
+        var token = NewToken();
         var now = _timeProvider.GetUtcNow().UtcDateTime;
 
         // Act
@@ -89,7 +104,7 @@ public class RefreshTokenTests
     public void IsActive_WhenRevoked_ShouldReturnFalse()
     {
         // Arrange
-        var token = RefreshToken.Create(_userId, _tokenHash, _familyId, _lifetime, _timeProvider);
+        var token = NewToken();
         token.Revoke(RefreshTokenRevocationReasons.Logout, _timeProvider);
         var now = _timeProvider.GetUtcNow().UtcDateTime;
 
@@ -104,7 +119,7 @@ public class RefreshTokenTests
     public void IsActive_WhenExpired_ShouldReturnFalse()
     {
         // Arrange
-        var token = RefreshToken.Create(_userId, _tokenHash, _familyId, TimeSpan.FromSeconds(1), _timeProvider);
+        var token = NewToken(TimeSpan.FromSeconds(1));
         var expired = token.ExpiresAtUtc.AddSeconds(2);
 
         // Act
@@ -118,7 +133,7 @@ public class RefreshTokenTests
     public void IsActive_WithNonUtcInstant_ShouldThrowDomainException()
     {
         // Arrange
-        var token = RefreshToken.Create(_userId, _tokenHash, _familyId, _lifetime, _timeProvider);
+        var token = NewToken();
         var local = DateTime.Now; // Kind = Local or Unspecified
 
         // Act & Assert
@@ -130,7 +145,7 @@ public class RefreshTokenTests
     public void Revoke_Once_ShouldSetRevokedAtUtcAndReason()
     {
         // Arrange
-        var token = RefreshToken.Create(_userId, _tokenHash, _familyId, _lifetime, _timeProvider);
+        var token = NewToken();
         var revokedAt = _timeProvider.GetUtcNow().UtcDateTime;
 
         // Act
@@ -146,7 +161,7 @@ public class RefreshTokenTests
     public void Revoke_Twice_ShouldBeIdempotentAndPreserveOriginalReason()
     {
         // Arrange
-        var token = RefreshToken.Create(_userId, _tokenHash, _familyId, _lifetime, _timeProvider);
+        var token = NewToken();
         token.Revoke(RefreshTokenRevocationReasons.Logout, _timeProvider);
         var firstRevokedAt = token.RevokedAtUtc;
 
@@ -162,7 +177,7 @@ public class RefreshTokenTests
     public void Revoke_WithReplacedByTokenHash_ShouldRecordReplacement()
     {
         // Arrange
-        var token = RefreshToken.Create(_userId, _tokenHash, _familyId, _lifetime, _timeProvider);
+        var token = NewToken();
         string newHash = "b".PadLeft(64, 'b');
 
         // Act

@@ -11,7 +11,8 @@ public sealed record RefreshTokenRotationOutcome(
     RefreshTokenCandidate? CurrentToken,
     string? NewTokenHash,
     Guid? UserId,
-    Guid? FamilyId);
+    Guid? FamilyId,
+    DateTime? NewTokenExpiresAtUtc = null);
 
 /// <summary>
 /// Candidato de refresh token recuperado por hash, usado para decidir
@@ -39,8 +40,16 @@ public interface IRefreshTokenStore
 
     /// <summary>
     /// Emite un nuevo refresh token para un usuario y familia dados.
+    /// Devuelve el <see cref="Pos.Domain.Authentication.RefreshToken.ExpiresAtUtc"/>
+    /// efectivo del token emitido (puede quedar recortado por la vigencia absoluta).
     /// </summary>
-    Task IssueAsync(Guid userId, Guid familyId, string tokenHash, TimeSpan lifetime, CancellationToken cancellationToken = default);
+    Task<DateTime> IssueAsync(
+        Guid userId,
+        Guid familyId,
+        string tokenHash,
+        TimeSpan slidingLifetime,
+        TimeSpan familyAbsoluteLifetime,
+        CancellationToken cancellationToken = default);
 
     /// <summary>Revoca un refresh token por hash (una sola vez, idempotente).</summary>
     Task RevokeAsync(string tokenHash, string reason, DateTime revokedAtUtc, CancellationToken cancellationToken = default);

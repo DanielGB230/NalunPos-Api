@@ -14,6 +14,7 @@ using Pos.Api.Contracts.Requests;
 using Pos.Application.Authentication.Commands.Login;
 using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
+using Pos.Domain.Authentication;
 using Pos.Domain.Common;
 using Pos.Domain.Entities;
 using Pos.Domain.ValueObjects;
@@ -640,6 +641,78 @@ public class AuthRefreshTokenSqlServerIntegrationTests : IAsyncLifetime
         {
             response.Dispose();
         }
+    }
+
+    [Fact]
+    public async Task LoginAndSuccessiveRotations_KeepSameFamilyExpiresAtUtc_AndBackdatedFamilyReturns401WithClearedCookie()
+    {
+        using var anonymousClient = CreateClient();
+        var (email, password) = await SeedAndLoginSuperAdminAsync(anonymousClient);
+
+        var loginResponse = await anonymousClient.PostAsJsonAsync("/api/v1/auth/login", new LoginRequest(email, password));
+        Assert.Equal(HttpStatusCode.OK, loginResponse.StatusCode);
+        string currentToken = ReadRefreshCookie(loginResponse);
+
+        var (familyId, familyExpiresAtUtc) = await ReadTokenFamilyAsync(currentToken);
+        Assert.True(familyExpiresAtUtc > DateTime.UtcNow, "El login debe fijar una vigencia absoluta futura.");
+
+        for (int rotation = 0; rotation < 3; rotation++)
+        {
+            using var refreshClient = CreateClient();
+            AttachRefreshCookie(refreshClient, currentToken);
+            var refreshResponse = await refreshClient.PostAsync("/api/v1/auth/refresh", content: null);
+            Assert.Equal(HttpStatusCode.OK, refreshResponse.StatusCode);
+
+            currentToken = ReadRefreshCookie(refreshResponse);
+            var (rotatedFamilyId, rotatedFamilyExpiresAtUtc) = await ReadTokenFamilyAsync(currentToken);
+            Assert.Equal(familyId, rotatedFamilyId);
+            Assert.Equal(familyExpiresAtUtc, rotatedFamilyExpiresAtUtc);
+        }
+
+        // Retroceder en BD la vigencia absoluta y la expiración del token actual.
+        string currentHash = HashOf(currentToken);
+        DateTime backdated = DateTime.UtcNow.AddSeconds(-5);
+        await using (var db = _fixture.CreateDbContext(isSuperAdmin: true))
+        {
+            await db.Database.ExecuteSqlInterpolatedAsync($"""
+                UPDATE RefreshTokens
+                SET FamilyExpiresAtUtc = {backdated}, ExpiresAtUtc = {backdated}
+                WHERE TokenHash = {currentHash}
+                """);
+        }
+
+        using var expiredClient = CreateClient();
+        AttachRefreshCookie(expiredClient, currentToken);
+        var expiredResponse = await expiredClient.PostAsync("/api/v1/auth/refresh", content: null);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, expiredResponse.StatusCode);
+        using (var problem = JsonDocument.Parse(await expiredResponse.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal("Auth.RefreshTokenInvalid", problem.RootElement.GetProperty("code").GetString());
+        }
+
+        RefreshTokenCookieAssertions.AssertSetCookie(expiredResponse, RefreshCookieExpectation.Cleared);
+
+        await using (var db = _fixture.CreateDbContext(isSuperAdmin: true))
+        {
+            var row = await db.RefreshTokens.AsNoTracking().SingleAsync(r => r.TokenHash == currentHash);
+            Assert.NotNull(row.RevokedAtUtc);
+            Assert.Equal(RefreshTokenRevocationReasons.Expired, row.RevokedReason);
+        }
+    }
+
+    private async Task<(Guid FamilyId, DateTime FamilyExpiresAtUtc)> ReadTokenFamilyAsync(string rawToken)
+    {
+        string hash = HashOf(rawToken);
+        await using var db = _fixture.CreateDbContext(isSuperAdmin: true);
+        var row = await db.RefreshTokens.AsNoTracking().SingleAsync(r => r.TokenHash == hash);
+        return (row.FamilyId, row.FamilyExpiresAtUtc);
+    }
+
+    private static string HashOf(string rawToken)
+    {
+        var bytes = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(rawToken));
+        return Convert.ToHexString(bytes).ToLowerInvariant();
     }
 
     /// <summary>

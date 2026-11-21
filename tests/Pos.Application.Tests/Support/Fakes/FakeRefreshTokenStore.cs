@@ -30,6 +30,15 @@ public sealed class FakeRefreshTokenStore : IRefreshTokenStore
 
     public int TokenCount => _byHash.Count;
 
+    /// <summary>Fuente de tiempo determinista para emitir/rotar en pruebas.</summary>
+    public TimeProvider TimeProvider { get; set; } = TimeProvider.System;
+
+    /// <summary>Permite forzar el vencimiento efectivo del próximo token emitido.</summary>
+    public DateTime? NextIssuedExpiresAtUtc { get; set; }
+
+    /// <summary>Permite forzar el vencimiento efectivo del próximo token rotado.</summary>
+    public DateTime? NextRotatedExpiresAtUtc { get; set; }
+
     /// <summary>
     /// Permite simular una carrera perdida en <see cref="RotateAsync"/>: cuando tiene valor,
     /// la rotación devuelve <c>Success=false</c> con este estado actual del token.
@@ -46,9 +55,17 @@ public sealed class FakeRefreshTokenStore : IRefreshTokenStore
         DateTime createdAtUtc,
         DateTime expiresAtUtc,
         string? revokedReason = null,
-        DateTime? revokedAtUtc = null)
+        DateTime? revokedAtUtc = null,
+        DateTime? familyExpiresAtUtc = null)
     {
-        var entity = new RefreshTokenEntity(Guid.NewGuid(), userId, tokenHash, familyId, createdAtUtc, expiresAtUtc);
+        var entity = new RefreshTokenEntity(
+            Guid.NewGuid(),
+            userId,
+            tokenHash,
+            familyId,
+            createdAtUtc,
+            expiresAtUtc,
+            familyExpiresAtUtc ?? expiresAtUtc);
         if (revokedAtUtc is not null)
         {
             entity.Revoke(revokedReason ?? throw new ArgumentNullException(nameof(revokedReason)), revokedAtUtc.Value);
@@ -75,9 +92,28 @@ public sealed class FakeRefreshTokenStore : IRefreshTokenStore
         return Task.FromResult<RefreshTokenCandidate?>(null);
     }
 
-    public Task IssueAsync(Guid userId, Guid familyId, string tokenHash, TimeSpan lifetime, CancellationToken cancellationToken = default)
+    public Task<DateTime> IssueAsync(
+        Guid userId,
+        Guid familyId,
+        string tokenHash,
+        TimeSpan slidingLifetime,
+        TimeSpan familyAbsoluteLifetime,
+        CancellationToken cancellationToken = default)
     {
-        var entity = new RefreshTokenEntity(Guid.NewGuid(), userId, tokenHash, familyId, DateTime.UtcNow, DateTime.UtcNow.Add(lifetime));
+        DateTime nowUtc = TimeProvider.GetUtcNow().UtcDateTime;
+        DateTime familyExpiresAtUtc = nowUtc.Add(familyAbsoluteLifetime);
+        DateTime expiresAtUtc = NextIssuedExpiresAtUtc ?? Min(nowUtc.Add(slidingLifetime), familyExpiresAtUtc);
+        NextIssuedExpiresAtUtc = null;
+
+        var entity = new RefreshTokenEntity(
+            Guid.NewGuid(),
+            userId,
+            tokenHash,
+            familyId,
+            nowUtc,
+            expiresAtUtc,
+            familyExpiresAtUtc);
+
         _byHash[tokenHash] = entity;
         if (!_byFamily.TryGetValue(familyId, out var list))
         {
@@ -85,7 +121,7 @@ public sealed class FakeRefreshTokenStore : IRefreshTokenStore
             _byFamily[familyId] = list;
         }
         list.Add(entity);
-        return Task.CompletedTask;
+        return Task.FromResult(expiresAtUtc);
     }
 
     public Task RevokeAsync(string tokenHash, string reason, DateTime revokedAtUtc, CancellationToken cancellationToken = default)
@@ -144,7 +180,19 @@ public sealed class FakeRefreshTokenStore : IRefreshTokenStore
         current.Revoke(RefreshTokenRevocationReasons.Rotated, nowUtc);
         current.ReplacedByTokenHash = newTokenHash;
 
-        var entity = new RefreshTokenEntity(Guid.NewGuid(), current.UserId, newTokenHash, current.FamilyId, nowUtc, nowUtc.Add(lifetime));
+        DateTime familyExpiresAtUtc = current.FamilyExpiresAtUtc;
+        DateTime expiresAtUtc = NextRotatedExpiresAtUtc ?? Min(nowUtc.Add(lifetime), familyExpiresAtUtc);
+        NextRotatedExpiresAtUtc = null;
+
+        var entity = new RefreshTokenEntity(
+            Guid.NewGuid(),
+            current.UserId,
+            newTokenHash,
+            current.FamilyId,
+            nowUtc,
+            expiresAtUtc,
+            familyExpiresAtUtc);
+
         _byHash[newTokenHash] = entity;
         if (!_byFamily.TryGetValue(current.FamilyId, out var familyList))
         {
@@ -154,8 +202,10 @@ public sealed class FakeRefreshTokenStore : IRefreshTokenStore
         familyList.Add(entity);
 
         return Task.FromResult(new RefreshTokenRotationOutcome(
-            true, null, newTokenHash, current.UserId, current.FamilyId));
+            true, null, newTokenHash, current.UserId, current.FamilyId, expiresAtUtc));
     }
+
+    private static DateTime Min(DateTime left, DateTime right) => left <= right ? left : right;
 
     private static RefreshTokenCandidate ToCandidate(RefreshTokenEntity entity) =>
         new(
@@ -177,9 +227,17 @@ public sealed class FakeRefreshTokenStore : IRefreshTokenStore
         public string? RevokedReason { get; private set; }
         public DateTime CreatedAtUtc { get; }
         public DateTime ExpiresAtUtc { get; }
+        public DateTime FamilyExpiresAtUtc { get; }
         public DateTime? RevokedAtUtc { get; private set; }
 
-        public RefreshTokenEntity(Guid id, Guid userId, string tokenHash, Guid familyId, DateTime createdAtUtc, DateTime expiresAtUtc)
+        public RefreshTokenEntity(
+            Guid id,
+            Guid userId,
+            string tokenHash,
+            Guid familyId,
+            DateTime createdAtUtc,
+            DateTime expiresAtUtc,
+            DateTime familyExpiresAtUtc)
         {
             Id = id;
             UserId = userId;
@@ -187,6 +245,7 @@ public sealed class FakeRefreshTokenStore : IRefreshTokenStore
             FamilyId = familyId;
             CreatedAtUtc = createdAtUtc;
             ExpiresAtUtc = expiresAtUtc;
+            FamilyExpiresAtUtc = familyExpiresAtUtc;
         }
 
         public void Revoke(string reason, DateTime revokedAtUtc)

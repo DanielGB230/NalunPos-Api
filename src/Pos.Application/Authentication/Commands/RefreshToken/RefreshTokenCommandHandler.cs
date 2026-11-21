@@ -119,6 +119,10 @@ public class RefreshTokenCommandHandler : ICommandHandler<RefreshTokenCommand, R
         // 6. Emitir nuevo access token.
         AccessTokenResult accessToken = _tokenGenerator.GenerateToken(authUser.User, authUser.Role);
 
+        DateTime newTokenExpiresAtUtc = rotation.NewTokenExpiresAtUtc
+            ?? throw new InvalidOperationException(
+                "Una rotación exitosa debe informar el vencimiento efectivo del refresh token emitido.");
+
         var response = new LoginResponse(
             Token: accessToken.Token,
             UserId: authUser.User.Id,
@@ -129,9 +133,19 @@ public class RefreshTokenCommandHandler : ICommandHandler<RefreshTokenCommand, R
             TenantId: authUser.User.TenantId,
             ExpiresAtUtc: accessToken.ExpiresAtUtc,
             RefreshToken: material.Token,
-            RefreshTokenMaxAgeSeconds: (int)_options.RefreshTokenLifetime.TotalSeconds);
+            RefreshTokenMaxAgeSeconds: ComputeMaxAgeSeconds(newTokenExpiresAtUtc, nowUtc));
 
         return response;
+    }
+
+    /// <summary>
+    /// Max-Age de la cookie calculado desde el vencimiento efectivo del token rotado.
+    /// Nunca negativo y con un mínimo de 1 segundo (F1.G.6).
+    /// </summary>
+    private static int ComputeMaxAgeSeconds(DateTime expiresAtUtc, DateTime nowUtc)
+    {
+        double seconds = (expiresAtUtc - nowUtc).TotalSeconds;
+        return seconds < 1 ? 1 : (int)Math.Ceiling(seconds);
     }
 
     private async Task<Result<LoginResponse>> ClassifyRevokedTokenAsync(

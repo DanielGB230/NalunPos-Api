@@ -39,6 +39,7 @@ public class RefreshTokenConfiguration : IEntityTypeConfiguration<RefreshToken>
         // Las propiedades *Utc son gestionadas por UtcDateTimeConvention (Kind=Utc).
         builder.Property(r => r.CreatedAtUtc).IsRequired();
         builder.Property(r => r.ExpiresAtUtc).IsRequired();
+        builder.Property(r => r.FamilyExpiresAtUtc).IsRequired();
         builder.Property(r => r.RevokedAtUtc);
 
         // Índices exigidos: TokenHash único; (UserId, FamilyId) único solo entre
@@ -55,6 +56,11 @@ public class RefreshTokenConfiguration : IEntityTypeConfiguration<RefreshToken>
 
         builder.HasIndex(r => r.ExpiresAtUtc)
             .HasDatabaseName("IX_RefreshTokens_ExpiresAtUtc");
+
+        // Índice filtrado que sostiene la purga por RevokedAtUtc (F1.G.6 / ADR 0033).
+        builder.HasIndex(r => r.RevokedAtUtc)
+            .HasFilter("[RevokedAtUtc] IS NOT NULL")
+            .HasDatabaseName("IX_RefreshTokens_RevokedAtUtc");
 
         builder.HasIndex(r => r.UserId)
             .HasDatabaseName("IX_RefreshTokens_UserId");

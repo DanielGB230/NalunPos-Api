@@ -90,11 +90,12 @@ public class LoginCommandHandler : ICommandHandler<LoginCommand, Result<LoginRes
         DateTime nowUtc = _timeProvider.GetUtcNow().UtcDateTime;
         Guid familyId = Guid.CreateVersion7();
         var refreshMaterial = _refreshTokenGenerator.Generate();
-        await _refreshTokenStore.IssueAsync(
+        DateTime issuedExpiresAtUtc = await _refreshTokenStore.IssueAsync(
             user.Id,
             familyId,
             refreshMaterial.TokenHash,
             _options.RefreshTokenLifetime,
+            _options.FamilyAbsoluteLifetime,
             cancellationToken);
 
         var response = new LoginResponse(
@@ -107,8 +108,18 @@ public class LoginCommandHandler : ICommandHandler<LoginCommand, Result<LoginRes
             TenantId: user.TenantId,
             ExpiresAtUtc: accessToken.ExpiresAtUtc,
             RefreshToken: refreshMaterial.Token,
-            RefreshTokenMaxAgeSeconds: (int)_options.RefreshTokenLifetime.TotalSeconds);
+            RefreshTokenMaxAgeSeconds: ComputeMaxAgeSeconds(issuedExpiresAtUtc, nowUtc));
 
         return response;
+    }
+
+    /// <summary>
+    /// Max-Age de la cookie calculado desde el vencimiento efectivo del token emitido.
+    /// Nunca negativo y con un mínimo de 1 segundo (F1.G.6).
+    /// </summary>
+    private static int ComputeMaxAgeSeconds(DateTime expiresAtUtc, DateTime nowUtc)
+    {
+        double seconds = (expiresAtUtc - nowUtc).TotalSeconds;
+        return seconds < 1 ? 1 : (int)Math.Ceiling(seconds);
     }
 }

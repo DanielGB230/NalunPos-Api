@@ -56,11 +56,12 @@ public class RefreshTokenStore : IRefreshTokenStore
         }
     }
 
-    public async Task IssueAsync(
+    public async Task<DateTime> IssueAsync(
         Guid userId,
         Guid familyId,
         string tokenHash,
-        TimeSpan lifetime,
+        TimeSpan slidingLifetime,
+        TimeSpan familyAbsoluteLifetime,
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(tokenHash);
@@ -69,15 +70,17 @@ public class RefreshTokenStore : IRefreshTokenStore
         await session.EnableGlobalUserLookupAsync(cancellationToken);
         try
         {
-            var entity = RefreshToken.Create(
+            var entity = RefreshToken.CreateInitial(
                 userId,
                 tokenHash,
                 familyId,
-                lifetime,
+                slidingLifetime,
+                familyAbsoluteLifetime,
                 _timeProvider);
 
             _dbContext.RefreshTokens.Add(entity);
             await _dbContext.SaveChangesAsync(cancellationToken);
+            return entity.ExpiresAtUtc;
         }
         finally
         {
@@ -204,10 +207,9 @@ public class RefreshTokenStore : IRefreshTokenStore
                     .FirstAsync(r => r.TokenHash == currentTokenHash, cancellationToken);
 
                 // Insertar el nuevo token en la misma familia.
-                var newEntity = RefreshToken.Create(
-                    oldToken.UserId,
+                var newEntity = RefreshToken.CreateRotated(
+                    oldToken,
                     newTokenHash,
-                    oldToken.FamilyId,
                     lifetime,
                     _timeProvider);
 
@@ -221,7 +223,8 @@ public class RefreshTokenStore : IRefreshTokenStore
                     CurrentToken: null,
                     NewTokenHash: newTokenHash,
                     UserId: oldToken.UserId,
-                    FamilyId: oldToken.FamilyId);
+                    FamilyId: oldToken.FamilyId,
+                    NewTokenExpiresAtUtc: newEntity.ExpiresAtUtc);
             }
             catch
             {

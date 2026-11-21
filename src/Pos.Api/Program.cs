@@ -59,6 +59,13 @@ builder.Services.AddOptions<Pos.Infrastructure.AccessTokenLifetimeOptions>()
 builder.Services.AddOptions<Pos.Application.Common.Options.RefreshTokenOptions>()
     .Bind(builder.Configuration.GetSection(Pos.Application.Common.Options.RefreshTokenOptions.SectionName))
     .ValidateDataAnnotations()
+    .Validate(settings => settings.FamilyAbsoluteDays >= settings.RefreshTokenDays,
+        "FamilyAbsoluteDays debe ser mayor o igual que RefreshTokenDays para que la vigencia absoluta de la familia no sea inferior a la deslizante.")
+    .ValidateOnStart();
+
+builder.Services.AddOptions<RefreshTokenPurgeSettings>()
+    .Bind(builder.Configuration.GetSection(RefreshTokenPurgeSettings.SectionName))
+    .ValidateDataAnnotations()
     .ValidateOnStart();
 
 // Exponer el POCO de opciones como singleton para inyección directa en handlers de Application
@@ -68,6 +75,7 @@ builder.Services.AddSingleton<Pos.Application.Common.Options.RefreshTokenOptions
 // 6. Registro de Background Workers
 builder.Services.AddHostedService<OutboxProcessorBackgroundService>();
 builder.Services.AddHostedService<InvoiceReconciliationBackgroundService>();
+builder.Services.AddHostedService<RefreshTokenPurgeBackgroundService>();
 
 // 7. Autenticación JWT y Autorización Fail-Closed
 builder.Services.AddCustomAuthentication(builder.Configuration);
