@@ -140,10 +140,7 @@ public static class ResultExtensions
 
         // La cookie solo se limpia cuando la sesión murió definitivamente
         // (Auth.RefreshTokenInvalid). Ver ADR 0032 y RefreshTokenCookiePolicy.
-        if (RefreshTokenCookiePolicy.ShouldClear(result.Error))
-        {
-            cookieWriter.Clear(controller.Response);
-        }
+        cookieWriter.ClearIfSessionEnded(controller.Response, result.Error);
         var problemDetailsService = controller.HttpContext.RequestServices.GetRequiredService<IProblemDetailsService>();
         var statusCode = result.Error.Type switch
         {

@@ -115,7 +115,7 @@ public class AuthController : ControllerBase
         var result = await _dispatcher.SendAsync(command, cancellationToken);
 
         // Borrar la cookie siempre (idempotencia).
-        _cookieWriter.Clear(Response);
+        _cookieWriter.ClearOnLogout(Response);
 
         return this.ToNoContentResult(result);
     }

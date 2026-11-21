@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Hosting;
 using Pos.Application.Common.Options;
+using Pos.Domain.Common;
 
 namespace Pos.Api.Extensions;
 
@@ -47,8 +48,34 @@ public class RefreshTokenCookieWriter
         response.Cookies.Append(_options.CookieName, token, cookieOptions);
     }
 
-    /// <summary>Borra la cookie de refresh token (expiración inmediata).</summary>
-    public void Clear(HttpResponse response)
+    /// <summary>
+    /// Borra la cookie solo si la sesión murió definitivamente según la política (ADR 0032).
+    /// </summary>
+    public void ClearIfSessionEnded(HttpResponse response, DomainError error)
+    {
+        ArgumentNullException.ThrowIfNull(response);
+        ArgumentNullException.ThrowIfNull(error);
+
+        if (RefreshTokenCookiePolicy.ShouldClear(error))
+        {
+            Clear(response);
+        }
+    }
+
+    /// <summary>
+    /// Borra la cookie siempre (logout idempotente, ADR 0032).
+    /// </summary>
+    public void ClearOnLogout(HttpResponse response)
+    {
+        ArgumentNullException.ThrowIfNull(response);
+        Clear(response);
+    }
+
+    /// <summary>
+    /// Borra la cookie de refresh token (expiración inmediata).
+    /// Privado: solo se accede a través de las operaciones gobernadas por la política.
+    /// </summary>
+    private void Clear(HttpResponse response)
     {
         var cookieOptions = new CookieOptions
         {

@@ -19,8 +19,8 @@ En todos esos casos el navegador perdía el token aunque la sesión siguiera sie
 ## Decisión
 
 1. **Una sola fuente de la regla:** `RefreshTokenCookiePolicy.ShouldClear(DomainError)` en `src/Pos.Api/Extensions` devuelve `true` únicamente cuando el código es `Auth.RefreshTokenInvalid` (comparación `Ordinal`, sin literales: referencia `RefreshTokenErrors.InvalidCode` de Application).
-2. **`ToAuthResultAsync`** consulta la política antes de limpiar la cookie. Se elimina el caso especial del 409, que queda cubierto por la regla general (no es `Auth.RefreshTokenInvalid`). No cambia ningún otro comportamiento.
-3. **Logout no cambia:** sigue borrando la cookie siempre, de forma idempotente, con independencia del resultado del comando.
+2. **API cerrada del writer:** `RefreshTokenCookieWriter.Clear(HttpResponse)` pasa a privado. La superficie pública queda en `Write(...)`, `ClearIfSessionEnded(HttpResponse, DomainError)` —consulta la política y solo entonces borra— y `ClearOnLogout(HttpResponse)` —borra siempre—. `ToAuthResultAsync` llama a `ClearIfSessionEnded(controller.Response, result.Error)` sin condicional propio; el caso especial del 409 queda cubierto por la regla general. Una guarda de arquitectura por reflexión fija esa superficie y prohíbe cualquier método público/interno que borre recibiendo solo `HttpResponse` salvo `ClearOnLogout`.
+3. **Logout no cambia:** llama a `ClearOnLogout(Response)` y sigue borrando la cookie siempre, de forma idempotente, con independencia del resultado del comando.
 4. **OpenAPI no cambia:** no se modifican los `[ProducesResponseType]` ni el contrato HTTP.
 
 Consecuencia directa: la cookie solo se elimina cuando la sesión murió definitivamente (token inexistente, expirado, revocado por logout o por reuso fuera de la ventana de tolerancia).

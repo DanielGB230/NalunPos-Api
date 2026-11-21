@@ -564,82 +564,57 @@ public class ArchitectureTests
     }
 
     [Fact]
-    public void RefreshTokenCookieWriter_Clear_MustOnlyBeCalledFrom_ToAuthResultAsync_And_Logout()
+    public void RefreshTokenCookieWriter_MustExposeExactlyTheGovernedPublicAndInternalApi()
     {
-        var apiDir = SolutionDirectory.PosApi;
-        Assert.True(Directory.Exists(apiDir), $"El directorio de la API '{apiDir}' no existe.");
+        System.Type writerType = typeof(Pos.Api.Extensions.RefreshTokenCookieWriter);
+        Assert.Same(typeof(Program).Assembly, writerType.Assembly);
 
-        var resultExtensionsFile = Path.GetFullPath(Path.Combine(apiDir, "Extensions", "ResultExtensions.cs"));
-        var authControllerFile = Path.GetFullPath(Path.Combine(apiDir, "Controllers", "AuthController.cs"));
-        Assert.True(File.Exists(resultExtensionsFile), $"El archivo de extensiones '{resultExtensionsFile}' no existe.");
-        Assert.True(File.Exists(authControllerFile), $"El controlador de autenticación '{authControllerFile}' no existe.");
+        const System.Reflection.BindingFlags declaredInstance =
+            System.Reflection.BindingFlags.Public |
+            System.Reflection.BindingFlags.NonPublic |
+            System.Reflection.BindingFlags.Instance |
+            System.Reflection.BindingFlags.DeclaredOnly;
 
-        // La regla no puede quedar vacía: ambas ubicaciones autorizadas deben invocar Clear.
-        Assert.Contains("cookieWriter.Clear(", File.ReadAllText(resultExtensionsFile));
-        Assert.Contains("_cookieWriter.Clear(", File.ReadAllText(authControllerFile));
+        var governedMethods = writerType.GetMethods(declaredInstance)
+            .Where(m => (m.IsPublic || m.IsAssembly) && !m.IsSpecialName)
+            .ToArray();
 
-        var allowedCallSites = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase)
-        {
-            [resultExtensionsFile] = new HashSet<string>(StringComparer.Ordinal) { "ToAuthResultAsync" },
-            [authControllerFile] = new HashSet<string>(StringComparer.Ordinal) { "Logout" }
-        };
+        string[] actualNames = governedMethods
+            .Select(m => m.Name)
+            .OrderBy(n => n, StringComparer.Ordinal)
+            .ToArray();
 
-        var violations = new List<string>();
-
-        foreach (var file in Directory.GetFiles(apiDir, "*.cs", SearchOption.AllDirectories))
-        {
-            var text = File.ReadAllText(file);
-            if (!text.Contains(".Clear(", StringComparison.Ordinal))
-            {
-                continue;
-            }
-
-            var tree = Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree.ParseText(text);
-            var invocations = tree.GetRoot().DescendantNodes()
-                .OfType<Microsoft.CodeAnalysis.CSharp.Syntax.InvocationExpressionSyntax>();
-
-            foreach (var invocation in invocations)
-            {
-                if (invocation.Expression is not Microsoft.CodeAnalysis.CSharp.Syntax.MemberAccessExpressionSyntax memberAccess)
-                {
-                    continue;
-                }
-
-                if (memberAccess.Name.Identifier.Text != "Clear")
-                {
-                    continue;
-                }
-
-                string receiver = memberAccess.Expression.ToString();
-                if (receiver != "cookieWriter" && receiver != "_cookieWriter")
-                {
-                    continue;
-                }
-
-                var enclosingMethod = invocation.Ancestors()
-                    .OfType<Microsoft.CodeAnalysis.CSharp.Syntax.MethodDeclarationSyntax>()
-                    .FirstOrDefault();
-                string? methodName = enclosingMethod?.Identifier.Text;
-
-                bool isAllowed = allowedCallSites.TryGetValue(Path.GetFullPath(file), out var allowedMethods) &&
-                                 methodName is not null &&
-                                 allowedMethods.Contains(methodName);
-                if (isAllowed)
-                {
-                    continue;
-                }
-
-                var lineSpan = invocation.GetLocation().GetLineSpan();
-                violations.Add(
-                    $"{Path.GetRelativePath(SolutionDirectory.Root, file)}:{lineSpan.StartLinePosition.Line + 1} -> " +
-                    $"Clear() de RefreshTokenCookieWriter dentro de '{methodName ?? "<desconocido>"}'.");
-            }
-        }
+        string[] expectedNames =
+        [
+            "ClearIfSessionEnded",
+            "ClearOnLogout",
+            "Write"
+        ];
+        Array.Sort(expectedNames, StringComparer.Ordinal);
 
         Assert.True(
-            violations.Count == 0,
-            $"RefreshTokenCookieWriter.Clear solo puede invocarse desde ToAuthResultAsync (Extensions/ResultExtensions.cs) y Logout (Controllers/AuthController.cs):\n{string.Join("\n", violations)}"
-        );
+            expectedNames.SequenceEqual(actualNames, StringComparer.Ordinal),
+            "RefreshTokenCookieWriter debe exponer exactamente Write, ClearIfSessionEnded y ClearOnLogout " +
+            $"(ADR 0032). API pública/interna detectada: [{string.Join(", ", actualNames)}].");
+
+        // Ningún método público/interno con solo HttpResponse puede borrar la cookie:
+        // debe exigir DomainError y pasar por la política, salvo el borrado idempotente del logout.
+        var clearWithoutPolicy = governedMethods
+            .Where(m => !string.Equals(m.Name, "ClearOnLogout", StringComparison.Ordinal))
+            .Where(m =>
+            {
+                var parameters = m.GetParameters();
+                return parameters.Length == 1 &&
+                       parameters[0].ParameterType.FullName == "Microsoft.AspNetCore.Http.HttpResponse";
+            })
+            .ToArray();
+
+        Assert.True(
+            clearWithoutPolicy.Length == 0,
+            "Ningún método público/interno de RefreshTokenCookieWriter puede borrar la cookie recibiendo solo " +
+            "HttpResponse: debe exigir DomainError y pasar por RefreshTokenCookiePolicy.ShouldClear, o ser " +
+            "ClearOnLogout (borrado idempotente del logout). Ver ADR 0032. Métodos infractores: " +
+            string.Join(", ", clearWithoutPolicy.Select(m => m.Name)));
     }
 
     [Fact]
