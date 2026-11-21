@@ -42,7 +42,7 @@ Los códigos viven en `RefreshTokenErrors` (Application) para que la capa API no
 
 ### 4. API
 
-- `ToAuthResultAsync` **no** borra la cookie cuando el código es `Auth.RefreshConcurrent`; en el resto de errores el comportamiento no cambia en este paso.
+- `ToAuthResultAsync` **no** borra la cookie cuando el código es `Auth.RefreshConcurrent`; la política de limpieza completa se define en el ADR 0032 (solo `Auth.RefreshTokenInvalid` limpia la cookie).
 - `POST /api/v1/auth/refresh` documenta `409` (`ProblemDetails`) en OpenAPI.
 
 ### 5. Configuración

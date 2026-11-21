@@ -564,6 +564,85 @@ public class ArchitectureTests
     }
 
     [Fact]
+    public void RefreshTokenCookieWriter_Clear_MustOnlyBeCalledFrom_ToAuthResultAsync_And_Logout()
+    {
+        var apiDir = SolutionDirectory.PosApi;
+        Assert.True(Directory.Exists(apiDir), $"El directorio de la API '{apiDir}' no existe.");
+
+        var resultExtensionsFile = Path.GetFullPath(Path.Combine(apiDir, "Extensions", "ResultExtensions.cs"));
+        var authControllerFile = Path.GetFullPath(Path.Combine(apiDir, "Controllers", "AuthController.cs"));
+        Assert.True(File.Exists(resultExtensionsFile), $"El archivo de extensiones '{resultExtensionsFile}' no existe.");
+        Assert.True(File.Exists(authControllerFile), $"El controlador de autenticación '{authControllerFile}' no existe.");
+
+        // La regla no puede quedar vacía: ambas ubicaciones autorizadas deben invocar Clear.
+        Assert.Contains("cookieWriter.Clear(", File.ReadAllText(resultExtensionsFile));
+        Assert.Contains("_cookieWriter.Clear(", File.ReadAllText(authControllerFile));
+
+        var allowedCallSites = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase)
+        {
+            [resultExtensionsFile] = new HashSet<string>(StringComparer.Ordinal) { "ToAuthResultAsync" },
+            [authControllerFile] = new HashSet<string>(StringComparer.Ordinal) { "Logout" }
+        };
+
+        var violations = new List<string>();
+
+        foreach (var file in Directory.GetFiles(apiDir, "*.cs", SearchOption.AllDirectories))
+        {
+            var text = File.ReadAllText(file);
+            if (!text.Contains(".Clear(", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var tree = Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree.ParseText(text);
+            var invocations = tree.GetRoot().DescendantNodes()
+                .OfType<Microsoft.CodeAnalysis.CSharp.Syntax.InvocationExpressionSyntax>();
+
+            foreach (var invocation in invocations)
+            {
+                if (invocation.Expression is not Microsoft.CodeAnalysis.CSharp.Syntax.MemberAccessExpressionSyntax memberAccess)
+                {
+                    continue;
+                }
+
+                if (memberAccess.Name.Identifier.Text != "Clear")
+                {
+                    continue;
+                }
+
+                string receiver = memberAccess.Expression.ToString();
+                if (receiver != "cookieWriter" && receiver != "_cookieWriter")
+                {
+                    continue;
+                }
+
+                var enclosingMethod = invocation.Ancestors()
+                    .OfType<Microsoft.CodeAnalysis.CSharp.Syntax.MethodDeclarationSyntax>()
+                    .FirstOrDefault();
+                string? methodName = enclosingMethod?.Identifier.Text;
+
+                bool isAllowed = allowedCallSites.TryGetValue(Path.GetFullPath(file), out var allowedMethods) &&
+                                 methodName is not null &&
+                                 allowedMethods.Contains(methodName);
+                if (isAllowed)
+                {
+                    continue;
+                }
+
+                var lineSpan = invocation.GetLocation().GetLineSpan();
+                violations.Add(
+                    $"{Path.GetRelativePath(SolutionDirectory.Root, file)}:{lineSpan.StartLinePosition.Line + 1} -> " +
+                    $"Clear() de RefreshTokenCookieWriter dentro de '{methodName ?? "<desconocido>"}'.");
+            }
+        }
+
+        Assert.True(
+            violations.Count == 0,
+            $"RefreshTokenCookieWriter.Clear solo puede invocarse desde ToAuthResultAsync (Extensions/ResultExtensions.cs) y Logout (Controllers/AuthController.cs):\n{string.Join("\n", violations)}"
+        );
+    }
+
+    [Fact]
     public void TenantStatus_MustOnlyBeReadBy_DomainPolicyAndTransitions()
     {
         var srcDir = Path.Combine(SolutionDirectory.Root, "src");

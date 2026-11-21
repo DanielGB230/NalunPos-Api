@@ -19,7 +19,7 @@
 - **Atributos**: `HttpOnly`, `SameSite=Strict`, `Path=/api/v1/auth`.
 - **Secure**: `true` fuera de Development; `SameAsRequest` en Development.
 - **Max-Age**: igual a la vigencia del refresh token en segundos.
-- **Limpieza en error**: en cualquier 401 de refresh/login, la cookie se borra (`Max-Age=0`).
+- **Limpieza en error**: solo se borra con `Auth.RefreshTokenInvalid`. Los errores recuperables (403 por estado de tenant, 401 `Auth.UserInvalid`, 409 `Auth.RefreshConcurrent` y fallos de login) conservan la cookie (ADR 0032).
 - **Logout**: borra la cookie de forma idempotente (204 aunque no exista).
 
 ### 3. Endpoints

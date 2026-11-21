@@ -42,10 +42,12 @@ public class AuthController : ControllerBase
     /// <summary>
     /// Autentica a un usuario (SuperAdmin o miembro de Tenant) con sus credenciales.
     /// Emite la cookie HttpOnly <c>nalunpos_rt</c> con el refresh token inicial.
+    /// Un login fallido (401, 403 o 400) NO borra la cookie de refresh de una sesión
+    /// válida ya presente en el navegador (ADR 0032).
     /// </summary>
     /// <param name="request">Credenciales de inicio de sesión</param>
     /// <param name="cancellationToken">Token de cancelación</param>
-    /// <returns>Respuesta con Token JWT y datos de perfil (cookie de refresh en la respuesta)</returns>
+    /// <returns>Respuesta con Token JWT y datos de perfil (cookie de refresh en la respuesta); en error, ProblemDetails sin tocar la cookie</returns>
     [AllowAnonymous]
     [HttpPost("login")]
     [EnableRateLimiting("AuthPolicy")]
@@ -66,14 +68,18 @@ public class AuthController : ControllerBase
     /// Rota el refresh token (endurecido: <c>[AllowAnonymous]</c>).
     /// Lee el token de la cookie <c>nalunpos_rt</c>, valida su hash SHA-256 en BD,
     /// rota atómicamente en la misma FamilyId y emite un nuevo access token + refresh token.
-    /// En caso de token faltante, expirado o revocado → 401 y limpieza de la cookie.
-    /// Reuso de token revocado → revoca toda la familia y 401.
-    /// Tenant suspendido o inactivo → 403 sin consumir el token.
+    /// Token inexistente, expirado o revocado (reuso fuera de la ventana) → 401
+    /// <c>Auth.RefreshTokenInvalid</c> y limpieza de la cookie (sesión irrecuperable).
+    /// Reuso de token revocado → revoca toda la familia y 401 <c>Auth.RefreshTokenInvalid</c>.
+    /// Usuario inactivo → 401 <c>Auth.UserInvalid</c> sin consumir el token y sin borrar
+    /// la cookie (recuperable al reactivar). Tenant suspendido o inactivo → 403 sin
+    /// consumir el token y sin borrar la cookie.
     /// Rotación concurrente dentro de la ventana de tolerancia → 409 sin revocar la
-    /// familia y sin emitir cookie nueva (el cliente reintenta con la cookie vigente).
+    /// familia, sin emitir cookie nueva y sin borrar la existente (ADR 0031).
+    /// La política de limpieza se rige por el ADR 0032.
     /// </summary>
     /// <param name="cancellationToken">Token de cancelación</param>
-    /// <returns>200 con LoginResponse y nueva cookie; 401 con ProblemDetails y cookie limpiada; 403 por tenant suspendido/inactivo; 409 en rotación concurrente</returns>
+    /// <returns>200 con LoginResponse y nueva cookie; 401 Auth.RefreshTokenInvalid con la cookie limpiada; 401 Auth.UserInvalid y 403 sin tocar la cookie; 409 en rotación concurrente sin tocar la cookie</returns>
     [AllowAnonymous]
     [HttpPost("refresh")]
     [EnableRateLimiting("AuthPolicy")]

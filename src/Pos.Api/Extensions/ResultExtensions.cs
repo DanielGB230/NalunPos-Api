@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Pos.Api.Common;
-using Pos.Application.Authentication;
 using Pos.Application.Authentication.Commands.Login;
 using Pos.Domain.Common;
 
@@ -120,8 +119,10 @@ public static class ResultExtensions
     /// <summary>
     /// Convierte un <see cref="Result{LoginResponse}"/> de login/refresh en 200 OK con la
     /// respuesta plana y escribe la cookie HttpOnly <c>nalunpos_rt</c>. En caso de error
-    /// (401) borra la cookie y retorna el ProblemDetails usando <see cref="IProblemDetailsService"/>
-    /// que garantiza content-type <c>application/problem+json</c>.
+    /// retorna el ProblemDetails usando <see cref="IProblemDetailsService"/> (content-type
+    /// <c>application/problem+json</c>). La cookie solo se borra cuando
+    /// <see cref="RefreshTokenCookiePolicy.ShouldClear"/> lo indica
+    /// (<c>Auth.RefreshTokenInvalid</c>); los errores recuperables la conservan (ADR 0032).
     /// </summary>
     public static async Task<ActionResult> ToAuthResultAsync(this ControllerBase controller, Result<LoginResponse> result)
     {
@@ -137,9 +138,9 @@ public static class ResultExtensions
             return controller.Ok(response);
         }
 
-        // Error de autenticación: limpiar la cookie de refresh token, salvo en una
-        // rotación concurrente (409): la cookie vigente pertenece al ganador.
-        if (!string.Equals(result.Error.Code, RefreshTokenErrors.ConcurrentRotationCode, StringComparison.Ordinal))
+        // La cookie solo se limpia cuando la sesión murió definitivamente
+        // (Auth.RefreshTokenInvalid). Ver ADR 0032 y RefreshTokenCookiePolicy.
+        if (RefreshTokenCookiePolicy.ShouldClear(result.Error))
         {
             cookieWriter.Clear(controller.Response);
         }

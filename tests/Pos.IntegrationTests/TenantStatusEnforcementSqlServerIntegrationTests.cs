@@ -23,6 +23,7 @@ using Pos.Infrastructure.Persistence.Interceptors;
 using Pos.Infrastructure.Persistence.Seed;
 using Pos.Infrastructure.Caching;
 using Pos.IntegrationTests.Fixtures;
+using Pos.IntegrationTests.Support;
 using Xunit;
 
 namespace Pos.IntegrationTests;
@@ -350,6 +351,9 @@ public class TenantStatusEnforcementSqlServerIntegrationTests : IAsyncLifetime
         var loginResponse2 = await LoginAsync(anonymousClient, adminEmail, adminPassword);
         Assert.Equal(HttpStatusCode.Forbidden, loginResponse2.StatusCode);
         Assert.Equal(TenantAccessPolicy.SuspendedCode, await ReadProblemCodeAsync(loginResponse2));
+
+        // El login fallido no debe borrar la cookie de una sesión válida en otra pestaña.
+        RefreshTokenCookieAssertions.AssertSetCookie(loginResponse2, RefreshCookieExpectation.Absent);
     }
 
     /// <summary>
@@ -422,6 +426,9 @@ public class TenantStatusEnforcementSqlServerIntegrationTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         Assert.Equal(DomainError.Unauthorized("Auth.InvalidCredentials", "Credenciales de acceso inválidas.").Code,
             await ReadProblemCodeAsync(response));
+
+        // Un login fallido no debe borrar la cookie de una sesión válida en otra pestaña.
+        RefreshTokenCookieAssertions.AssertSetCookie(response, RefreshCookieExpectation.Absent);
     }
 
     /// <summary>

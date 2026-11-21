@@ -21,6 +21,7 @@ using Pos.Infrastructure.Caching;
 using Pos.Infrastructure.Persistence.Context;
 using Pos.Infrastructure.Persistence.Interceptors;
 using Pos.IntegrationTests.Fixtures;
+using Pos.IntegrationTests.Support;
 using Xunit;
 
 namespace Pos.IntegrationTests;
@@ -201,14 +202,9 @@ public class AuthRefreshTokenSqlServerIntegrationTests : IAsyncLifetime
 
     private static string ReadRefreshCookie(HttpResponseMessage response)
     {
-        Assert.True(response.Headers.TryGetValues("Set-Cookie", out var setCookieValues),
-            "La respuesta debe incluir la cabecera Set-Cookie con el refresh token.");
-        string? setCookie = setCookieValues!.FirstOrDefault(v => v.StartsWith(CookieName + "=", StringComparison.Ordinal));
-        Assert.NotNull(setCookie);
+        string setCookie = RefreshTokenCookieAssertions.AssertSetCookie(response, RefreshCookieExpectation.Issued)!;
 
-        string token = setCookie!.Split(';')[0][(CookieName.Length + 1)..];
-        Assert.False(string.IsNullOrWhiteSpace(token), "La cookie debe transportar un token opaco no vacío.");
-
+        string token = setCookie.Split(';')[0][(CookieName.Length + 1)..];
         Assert.Contains("httponly", setCookie, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("samesite=strict", setCookie, StringComparison.OrdinalIgnoreCase);
         Assert.Contains($"path={CookiePath}", setCookie, StringComparison.OrdinalIgnoreCase);
@@ -291,11 +287,20 @@ public class AuthRefreshTokenSqlServerIntegrationTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Unauthorized, reuseResponse.StatusCode);
         Assert.Equal("application/problem+json", reuseResponse.Content.Headers.ContentType?.MediaType);
 
+        using (var reuseProblem = JsonDocument.Parse(await reuseResponse.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal("Auth.RefreshTokenInvalid", reuseProblem.RootElement.GetProperty("code").GetString());
+        }
+
+        // El 401 Auth.RefreshTokenInvalid es terminal: la cookie se limpia.
+        RefreshTokenCookieAssertions.AssertSetCookie(reuseResponse, RefreshCookieExpectation.Cleared);
+
         // 4. La cookie rotada también queda revocada por detección de reuso
         using var revokedFamilyClient = CreateClient();
         AttachRefreshCookie(revokedFamilyClient, secondRefreshToken);
         var revokedFamilyResponse = await revokedFamilyClient.PostAsync("/api/v1/auth/refresh", content: null);
         Assert.Equal(HttpStatusCode.Unauthorized, revokedFamilyResponse.StatusCode);
+        RefreshTokenCookieAssertions.AssertSetCookie(revokedFamilyResponse, RefreshCookieExpectation.Cleared);
     }
 
     [Fact]
@@ -313,14 +318,9 @@ public class AuthRefreshTokenSqlServerIntegrationTests : IAsyncLifetime
         var logoutResponse = await logoutClient.PostAsync("/api/v1/auth/logout", content: null);
         Assert.Equal(HttpStatusCode.NoContent, logoutResponse.StatusCode);
 
-        Assert.True(logoutResponse.Headers.TryGetValues("Set-Cookie", out var deleteCookieValues));
-        string deleteCookie = deleteCookieValues!.Single(v => v.StartsWith(CookieName + "=", StringComparison.Ordinal));
+        string deleteCookie = RefreshTokenCookieAssertions.AssertSetCookie(logoutResponse, RefreshCookieExpectation.Cleared)!;
         Assert.Contains($"path={CookiePath}", deleteCookie, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("samesite=strict", deleteCookie, StringComparison.OrdinalIgnoreCase);
-        Assert.True(
-            deleteCookie.Contains("max-age=0", StringComparison.OrdinalIgnoreCase) ||
-            deleteCookie.Contains("expires=thu, 01 jan 1970", StringComparison.OrdinalIgnoreCase),
-            $"La cookie de logout debe expirar de inmediato: {deleteCookie}");
 
         // Refresh posterior con la cookie revocada -> 401
         using var refreshClient = CreateClient();
@@ -424,6 +424,9 @@ public class AuthRefreshTokenSqlServerIntegrationTests : IAsyncLifetime
             Assert.Equal(TenantAccessPolicy.SuspendedCode, code);
         }
 
+        // El 403 por tenant suspendido no consume el token: la cookie debe conservarse.
+        RefreshTokenCookieAssertions.AssertSetCookie(refreshResponse, RefreshCookieExpectation.Absent);
+
         // El token original debe seguir activo: segundo refresh (antes de reactivar) también debe fallar con 403
         using var refreshClient2 = CreateClient();
         AttachRefreshCookie(refreshClient2, refreshToken);
@@ -495,6 +498,9 @@ public class AuthRefreshTokenSqlServerIntegrationTests : IAsyncLifetime
             Assert.Equal("Auth.UserInvalid", code);
         }
 
+        // El 401 Auth.UserInvalid es recuperable (usuario inactivo): la cookie debe conservarse.
+        RefreshTokenCookieAssertions.AssertSetCookie(refreshResponse, RefreshCookieExpectation.Absent);
+
         // El token original debe seguir activo: segundo refresh también debe fallar con 401 Auth.UserInvalid (NO Auth.RefreshTokenInvalid)
         using var refreshClient2 = CreateClient();
         AttachRefreshCookie(refreshClient2, refreshToken);
@@ -532,6 +538,28 @@ public class AuthRefreshTokenSqlServerIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Refresh_WithUnknownToken_Returns401RefreshTokenInvalid_AndClearsCookie()
+    {
+        using var client = CreateClient();
+        AttachRefreshCookie(client, "unknown-refresh-token-value-0123456789");
+
+        var response = await client.PostAsync("/api/v1/auth/refresh", content: null);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+
+        using (var problem = JsonDocument.Parse(await response.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal("Auth.RefreshTokenInvalid", problem.RootElement.GetProperty("code").GetString());
+        }
+
+        // Sesión irrecuperable: la cookie se limpia con Max-Age=0.
+        string clearingCookie = RefreshTokenCookieAssertions.AssertSetCookie(response, RefreshCookieExpectation.Cleared)!;
+        Assert.Contains($"path={CookiePath}", clearingCookie, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("httponly", clearingCookie, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task Refresh_ReuseWithinLeeway_Returns409WithoutCookie_AndFamilyRemainsUsable()
     {
         using var factory = BuildFactory(rotationLeewaySeconds: 30);
@@ -556,9 +584,7 @@ public class AuthRefreshTokenSqlServerIntegrationTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Conflict, reuseResponse.StatusCode);
         Assert.Equal("application/problem+json", reuseResponse.Content.Headers.ContentType?.MediaType);
 
-        bool issuedRefreshCookie = reuseResponse.Headers.TryGetValues("Set-Cookie", out var setCookies)
-            && setCookies.Any(c => c.StartsWith($"{CookieName}=", StringComparison.OrdinalIgnoreCase));
-        Assert.False(issuedRefreshCookie, "El 409 no debe emitir una cookie nalunpos_rt.");
+        RefreshTokenCookieAssertions.AssertSetCookie(reuseResponse, RefreshCookieExpectation.Absent);
 
         using (var problem = JsonDocument.Parse(await reuseResponse.Content.ReadAsStringAsync()))
         {
@@ -601,6 +627,8 @@ public class AuthRefreshTokenSqlServerIntegrationTests : IAsyncLifetime
         {
             Assert.Equal("Auth.RefreshConcurrent", problem.RootElement.GetProperty("code").GetString());
         }
+
+        RefreshTokenCookieAssertions.AssertSetCookie(conflicts[0], RefreshCookieExpectation.Absent);
 
         string winnerToken = ReadRefreshCookie(successes[0]);
         using var winnerClient = CreateClient(factory, bearerToken: null);
