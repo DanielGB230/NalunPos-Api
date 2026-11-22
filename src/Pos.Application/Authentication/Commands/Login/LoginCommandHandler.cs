@@ -108,18 +108,8 @@ public class LoginCommandHandler : ICommandHandler<LoginCommand, Result<LoginRes
             TenantId: user.TenantId,
             ExpiresAtUtc: accessToken.ExpiresAtUtc,
             RefreshToken: refreshMaterial.Token,
-            RefreshTokenMaxAgeSeconds: ComputeMaxAgeSeconds(issuedExpiresAtUtc, nowUtc));
+            RefreshTokenMaxAgeSeconds: RefreshTokenMaxAge.Compute(issuedExpiresAtUtc, nowUtc));
 
         return response;
-    }
-
-    /// <summary>
-    /// Max-Age de la cookie calculado desde el vencimiento efectivo del token emitido.
-    /// Nunca negativo y con un mínimo de 1 segundo (F1.G.6).
-    /// </summary>
-    private static int ComputeMaxAgeSeconds(DateTime expiresAtUtc, DateTime nowUtc)
-    {
-        double seconds = (expiresAtUtc - nowUtc).TotalSeconds;
-        return seconds < 1 ? 1 : (int)Math.Ceiling(seconds);
     }
 }

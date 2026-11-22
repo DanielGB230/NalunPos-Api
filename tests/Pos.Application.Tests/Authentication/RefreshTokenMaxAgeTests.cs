@@ -14,8 +14,9 @@ namespace Pos.Application.Tests.Authentication;
 
 /// <summary>
 /// El Max-Age de la cookie se calcula desde el vencimiento EFECTIVO del token
-/// emitido (puede estar recortado por la vigencia absoluta de la familia), nunca
-/// desde las opciones y nunca por debajo de 1 segundo (F1.G.6).
+/// emitido (puede estar recortado por la vigencia absoluta de la familia) y nunca
+/// desde las opciones (F1.G.6). Los límites de la función pura (mínimo 1 s,
+/// negativos y redondeo) viven en <see cref="RefreshTokenMaxAgeHelperTests"/>.
 /// </summary>
 public class RefreshTokenMaxAgeTests
 {
@@ -110,20 +111,6 @@ public class RefreshTokenMaxAgeTests
     }
 
     [Fact]
-    public async Task Login_MaxAge_IsNeverBelowOneSecond()
-    {
-        _refreshTokenStore.TimeProvider = _timeProvider;
-        _refreshTokenStore.NextIssuedExpiresAtUtc = UtcNow.AddMilliseconds(-500);
-        var user = SeedActiveSuperAdmin();
-
-        var result = await BuildLoginHandler(Options()).HandleAsync(
-            new LoginCommand(user.Email.Value, "Password123!"));
-
-        Assert.True(result.IsSuccess);
-        Assert.Equal(1, result.Value.RefreshTokenMaxAgeSeconds);
-    }
-
-    [Fact]
     public async Task Refresh_MaxAge_ComesFromEffectiveRotationExpiry()
     {
         var user = SeedActiveSuperAdmin();
@@ -159,25 +146,6 @@ public class RefreshTokenMaxAgeTests
 
         Assert.True(result.IsSuccess);
         Assert.Equal(1800, result.Value.RefreshTokenMaxAgeSeconds);
-    }
-
-    [Fact]
-    public async Task Refresh_MaxAge_IsNeverBelowOneSecond()
-    {
-        var user = SeedActiveSuperAdmin();
-        string tokenHash = HashOf(s_rawToken);
-        _refreshTokenStore.SeedToken(
-            user.Id,
-            Guid.NewGuid(),
-            tokenHash,
-            createdAtUtc: UtcNow.AddMinutes(-1),
-            expiresAtUtc: UtcNow.AddMilliseconds(500),
-            familyExpiresAtUtc: UtcNow.AddMilliseconds(500));
-
-        var result = await BuildRefreshHandler(Options()).HandleAsync(new RefreshTokenCommand(s_rawToken));
-
-        Assert.True(result.IsSuccess);
-        Assert.Equal(1, result.Value.RefreshTokenMaxAgeSeconds);
     }
 
     [Fact]

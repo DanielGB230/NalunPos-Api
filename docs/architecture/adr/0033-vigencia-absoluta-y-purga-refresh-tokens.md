@@ -16,7 +16,7 @@
 ### 2. Configuración
 - `RefreshToken:FamilyAbsoluteDays` con defecto **30** y rango `[1, 365]`.
 - `RefreshTokenOptions.FamilyAbsoluteLifetime` deriva de esos días.
-- Validación cruzada al arranque: `FamilyAbsoluteDays >= RefreshTokenDays`. Se aplica con `IValidatableObject` y con `.Validate(...)` en `Program.cs`, junto a `ValidateDataAnnotations()` + `ValidateOnStart()`. Los mensajes están en español.
+- Validación cruzada al arranque: `FamilyAbsoluteDays >= RefreshTokenDays`. Fuente única: `IValidatableObject.Validate`, que `ValidateDataAnnotations()` ejecuta junto a `ValidateOnStart()`. No hay ninguna otra comprobación duplicada. Los mensajes están en español.
 - El `Max-Age` de la cookie se calcula desde el vencimiento **efectivo** devuelto por `IssueAsync`/`RotateAsync` (`ExpiresAtUtc − ahora`), nunca desde las opciones, con mínimo de 1 segundo y sin valores negativos.
 
 ### 3. Migración

@@ -59,8 +59,6 @@ builder.Services.AddOptions<Pos.Infrastructure.AccessTokenLifetimeOptions>()
 builder.Services.AddOptions<Pos.Application.Common.Options.RefreshTokenOptions>()
     .Bind(builder.Configuration.GetSection(Pos.Application.Common.Options.RefreshTokenOptions.SectionName))
     .ValidateDataAnnotations()
-    .Validate(settings => settings.FamilyAbsoluteDays >= settings.RefreshTokenDays,
-        "FamilyAbsoluteDays debe ser mayor o igual que RefreshTokenDays para que la vigencia absoluta de la familia no sea inferior a la deslizante.")
     .ValidateOnStart();
 
 builder.Services.AddOptions<RefreshTokenPurgeSettings>()
