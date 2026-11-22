@@ -217,4 +217,19 @@ public class UpdateUserRoleCommandHandlerTests
         Assert.DoesNotContain(constructor.GetParameters(), p =>
             string.Equals(p.Name, "tenantId", StringComparison.OrdinalIgnoreCase));
     }
+
+    [Fact]
+    public void UpdateUserRoleCommandHandler_MustNotDependOnSessionRevoker()
+    {
+        // El rol se evalúa desde BD en cada petición y el refresh lo recalcula:
+        // cambiar el rol no revoca sesiones (ADR 0034). El handler no debe poder invocarlo.
+        var constructor = typeof(UpdateUserRoleCommandHandler).GetConstructors().Single();
+        Assert.DoesNotContain(constructor.GetParameters(), p =>
+            p.ParameterType == typeof(IUserSessionRevoker));
+
+        var fieldTypes = typeof(UpdateUserRoleCommandHandler)
+            .GetFields(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+            .Select(f => f.FieldType);
+        Assert.DoesNotContain(typeof(IUserSessionRevoker), fieldTypes);
+    }
 }

@@ -10,4 +10,6 @@ public static class RefreshTokenRevocationReasons
     public const string Logout = "Logout";
     public const string ReuseDetected = "ReuseDetected";
     public const string Expired = "Expired";
+    public const string UserDeactivated = "UserDeactivated";
+    public const string UserReactivated = "UserReactivated";
 }

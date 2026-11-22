@@ -10,7 +10,7 @@
 `ToAuthResultAsync` borraba la cookie ante cualquier error. Sin embargo, varios errores no consumen el refresh token y son recuperables:
 
 - **403 por estado de tenant** (`Tenant.Suspended`, `Tenant.NotActive`): el refresh no consume el token; al reactivar el tenant, el mismo token vuelve a funcionar.
-- **401 `Auth.UserInvalid`** (usuario inactivo): el refresh no consume el token; al reactivar el usuario, el mismo token vuelve a funcionar.
+- **401 `Auth.UserInvalid`** (usuario inactivo): el refresh no consume el token; al reactivar el usuario, el mismo token vuelve a funcionar. (Para desactivaciones hechas por el comando de estado, el ADR 0034 revoca la sesión: esta ruta queda como defensa en profundidad para desactivaciones fuera de ese comando.)
 - **409 `Auth.RefreshConcurrent`**: el perdedor de una carrera no debe borrar la cookie nueva del ganador (ADR 0031).
 - **Fallos de login** (401 `Auth.InvalidCredentials`, 403 de tenant, 400 de validación): un intento fallido en una pestaña borraba la cookie de una sesión válida en otra.
 
@@ -27,25 +27,26 @@ Consecuencia directa: la cookie solo se elimina cuando la sesión murió definit
 
 ## Alternativas descartadas
 
-1. **Borrar siempre (comportamiento anterior):** pierde sesiones recuperables. Un tenant suspendido o un usuario desactivado temporalmente obligan a reautenticar aunque el token siga siendo válido tras la reactivación. Un login fallido en una pestaña cierra la sesión de otra.
+1. **Borrar siempre (comportamiento anterior):** pierde sesiones recuperables. Un tenant suspendido obliga a reautenticar aunque el token siga siendo válido tras la reactivación. Un login fallido en una pestaña cierra la sesión de otra. (La desactivación de un usuario ya no es recuperable: revoca la sesión por ADR 0034.)
 2. **Borrar con cualquier 401:** `Auth.UserInvalid` también es recuperable (usuario inactivo). Tratarlo como terminal confunde "sesión no restaurable ahora" con "sesión muerta" y fuerza un login manual evitable.
 3. **Borrar en el front según el código HTTP:** duplica la regla en dos capas y deja la decisión fuera del servidor, que es quien conoce si el token se consumió. Descartada: una sola fuente en la API.
 
 ## Análisis de seguridad
 
 - La cookie es **HttpOnly** (no accesible desde JavaScript), **SameSite=Strict** (no se envía en peticiones cross-site) y está acotada a **`Path=/api/v1/auth`** (solo viaja a login/refresh/logout). Conservarla no amplía la superficie de exposición.
-- Cada refresh **revalida de forma fail-closed**: existencia y estado del usuario, rol vigente y estado del tenant. Mientras el usuario esté inactivo, el rol haya cambiado o el tenant esté suspendido, el refresh responde 401/403 y **no emite tokens**; la cookie por sí sola no concede acceso.
+- Cada refresh **revalida de forma fail-closed**: existencia y estado del usuario, rol vigente y estado del tenant. Mientras el usuario esté inactivo (o quede algún token activo por una desactivación fuera del comando), el rol haya cambiado o el tenant esté suspendido, el refresh responde 401/403 y **no emite tokens**; la cookie por sí sola no concede acceso.
 - El token sigue almacenado solo como hash SHA-256 en BD (ADR 0030). Conservar la cookie en el navegador no altera esa invariante.
 - Un atacante con acceso al navegador ya podría usar la cookie antes del error; no borrarla no le otorga ninguna capacidad nueva.
 - El 409 no emite cookie ni tokens (ADR 0031); el perdedor no gana nada conservando la suya, que pertenece al ganador.
 
 ## Consecuencias verificables
 
-- **Las sesiones NO se revocan** al desactivar un usuario, cambiar su rol o suspender el tenant.
-- Mientras dure ese estado, el refresh **bloquea** la emisión de tokens (401 `Auth.UserInvalid`, 403 de tenant) **sin borrar la cookie**.
-- Al reactivar el usuario o el tenant, la **reactivación reanuda** la sesión con el mismo token dentro de su vigencia.
+- **Desactivar un usuario SÍ revoca todas sus sesiones** (ADR 0034): el refresh posterior devuelve 401 `Auth.RefreshTokenInvalid` y limpia la cookie.
+- **Cambiar el rol o suspender el tenant NO revocan** sesiones: el refresh las bloquea o recalcula el rol sin borrar la cookie.
+- Mientras el tenant esté suspendido, el refresh **bloquea** la emisión de tokens (403) **sin borrar la cookie**; al reactivar el tenant, la **reactivación reanuda** la sesión con el mismo token dentro de su vigencia.
+- Al reactivar un usuario **no se reanuda** el token revocado al desactivarlo: la revocación es terminal para esa sesión (ADR 0034). La ruta recuperable 401 `Auth.UserInvalid` queda como defensa en profundidad para desactivaciones fuera del comando de estado.
 - Un login fallido no afecta a una sesión válida en otra pestaña.
-- `Auth.RefreshTokenInvalid` sigue limpiando la cookie: token inexistente, expirado, revocado por logout o reuso fuera de la ventana.
+- `Auth.RefreshTokenInvalid` sigue limpiando la cookie: token inexistente, expirado, revocado por logout, por cambio de estado del usuario o por reuso fuera de la ventana.
 
 ## Contrato para el frontend
 
@@ -57,3 +58,4 @@ Consecuencia directa: la cookie solo se elimina cuando la sesión murió definit
 
 - [ADR 0030](0030-refresh-tokens-rotativos-cookie-httponly.md): refresh tokens rotativos y cookie HttpOnly.
 - [ADR 0031](0031-ventana-tolerancia-rotacion-refresh-token.md): ventana de tolerancia y 409 `Auth.RefreshConcurrent`.
+- [ADR 0034](0034-revocacion-sesiones-cambio-estado-usuario.md): revocación de sesiones al cambiar el estado del usuario.

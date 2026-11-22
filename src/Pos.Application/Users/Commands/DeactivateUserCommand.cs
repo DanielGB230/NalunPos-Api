@@ -1,6 +1,7 @@
 using Pos.Application.Common.Attributes;
 using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
+using Pos.Domain.Authentication;
 using Pos.Domain.Common;
 using Pos.Domain.Interfaces;
 
@@ -14,13 +15,19 @@ public class DeactivateUserCommandHandler : ICommandHandler<DeactivateUserComman
 {
     private readonly IUserRepository _userRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IUserSessionRevoker _userSessionRevoker;
     private readonly TimeProvider _timeProvider;
 
-    public DeactivateUserCommandHandler(IUserRepository userRepository, IUnitOfWork unitOfWork, TimeProvider timeProvider)
+    public DeactivateUserCommandHandler(
+        IUserRepository userRepository,
+        IUnitOfWork unitOfWork,
+        TimeProvider timeProvider,
+        IUserSessionRevoker userSessionRevoker)
     {
         _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
+        _userSessionRevoker = userSessionRevoker ?? throw new ArgumentNullException(nameof(userSessionRevoker));
     }
 
     public async Task<Result<bool>> HandleAsync(DeactivateUserCommand request, CancellationToken cancellationToken)
@@ -39,6 +46,12 @@ public class DeactivateUserCommandHandler : ICommandHandler<DeactivateUserComman
         user.Deactivate(_timeProvider);
         _userRepository.Update(user);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        // La desactivación ya es efectiva: se revocan todas las sesiones del usuario.
+        await _userSessionRevoker.RevokeAllAsync(
+            user.Id,
+            RefreshTokenRevocationReasons.UserDeactivated,
+            cancellationToken);
 
         return Result.Ok(true);
     }

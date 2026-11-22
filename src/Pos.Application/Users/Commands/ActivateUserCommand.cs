@@ -1,6 +1,7 @@
 using Pos.Application.Common.Attributes;
 using Pos.Application.Common.Authorization;
 using Pos.Application.Common.Interfaces;
+using Pos.Domain.Authentication;
 using Pos.Domain.Common;
 using Pos.Domain.Interfaces;
 
@@ -14,13 +15,19 @@ public class ActivateUserCommandHandler : ICommandHandler<ActivateUserCommand, R
 {
     private readonly IUserRepository _userRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IUserSessionRevoker _userSessionRevoker;
     private readonly TimeProvider _timeProvider;
 
-    public ActivateUserCommandHandler(IUserRepository userRepository, IUnitOfWork unitOfWork, TimeProvider timeProvider)
+    public ActivateUserCommandHandler(
+        IUserRepository userRepository,
+        IUnitOfWork unitOfWork,
+        TimeProvider timeProvider,
+        IUserSessionRevoker userSessionRevoker)
     {
         _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
+        _userSessionRevoker = userSessionRevoker ?? throw new ArgumentNullException(nameof(userSessionRevoker));
     }
 
     public async Task<Result<bool>> HandleAsync(ActivateUserCommand request, CancellationToken cancellationToken)
@@ -35,6 +42,13 @@ public class ActivateUserCommandHandler : ICommandHandler<ActivateUserCommand, R
         {
             return Result.Fail<bool>(DomainError.Conflict("User.AlreadyActive", $"El usuario con ID '{request.Id}' ya se encuentra activo."));
         }
+
+        // Se revoca antes de guardar para cerrar el hueco de una revocación fallida
+        // tras desactivar: el reintento de desactivar devolvería AlreadyInactive.
+        await _userSessionRevoker.RevokeAllAsync(
+            user.Id,
+            RefreshTokenRevocationReasons.UserReactivated,
+            cancellationToken);
 
         user.Activate(_timeProvider);
         _userRepository.Update(user);

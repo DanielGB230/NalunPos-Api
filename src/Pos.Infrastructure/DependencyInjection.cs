@@ -122,6 +122,7 @@ public static class DependencyInjection
         services.AddScoped<IRefreshTokenGenerator, RefreshTokenGenerator>();
         services.AddScoped<IRefreshTokenStore, RefreshTokenStore>();
         services.AddScoped<IRefreshTokenPurger, RefreshTokenPurger>();
+        services.AddScoped<IUserSessionRevoker, UserSessionRevoker>();
         services.AddScoped<ICurrentUserClaims, HttpContextCurrentUserClaims>();
 
         // ── Seeders ───────────────────────────────────────────────────────────
