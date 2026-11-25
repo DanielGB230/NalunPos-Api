@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Pos.Api.BackgroundServices;
 using Pos.Api.Extensions;
 using Pos.Api.Middleware;
@@ -78,10 +79,14 @@ builder.Services.AddHostedService<RefreshTokenPurgeBackgroundService>();
 // 7. Autenticación JWT y Autorización Fail-Closed
 builder.Services.AddCustomAuthentication(builder.Configuration);
 
-// 8. Configuración de CORS. Mismo patrón que OutboxSettings.
+// 8. Configuración de CORS. Mismo patrón que OutboxSettings: Bind + Validate + ValidateOnStart.
+//    - CorsSettings es un POCO simple (sin IValidatableObject ni data annotations).
+//    - CorsOriginsRules contiene las reglas puras de validación de orígenes.
+//    - CorsOriginsOptionsValidator añade el mensaje dinámico con el origen ofensor.
+builder.Services.AddSingleton<IValidateOptions<CorsSettings>, CorsOriginsOptionsValidator>();
 builder.Services.AddOptions<CorsSettings>()
     .Bind(builder.Configuration.GetSection(CorsSettings.SectionName))
-    .ValidateDataAnnotations()
+    .Validate(settings => CorsOriginsRules.HasValidOrigins(settings.AllowedOrigins), CorsOriginsRules.ValidationFailureMessage)
     .ValidateOnStart();
 
 builder.Services.AddCustomCors();
@@ -108,6 +113,12 @@ builder.Services.AddScoped<RefreshTokenCookieWriter>();
 builder.Services.AddCustomHealthChecks();
 
 var app = builder.Build();
+
+// Fail-fast determinista de la configuración CORS (ADR 0035): las opciones se resuelven y
+// validan ANTES de cualquier acceso a la base de datos, para que un error de configuración
+// no se enmascare con un fallo de infraestructura. ValidateOnStart mantiene el fail-fast
+// del host en el resto de caminos de arranque.
+_ = app.Services.GetRequiredService<IOptions<CorsSettings>>().Value;
 
 // Inicialización determinista y fail-fast de Base de Datos y Seeder
 await app.InitializeDatabaseAsync();

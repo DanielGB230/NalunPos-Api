@@ -53,6 +53,7 @@ public class OutboxDeadLetterIntegrationTests : IAsyncLifetime
                 builder.UseSetting("JwtSettings:Secret", "SuperSecretEnterpriseJwtKey_LongEnoughFor256Bits_NalunPos2026!");
                 builder.UseSetting("JwtSettings:Issuer", "NalunPosApi");
                 builder.UseSetting("JwtSettings:Audience", "NalunPosClients");
+                builder.UseSetting("CorsSettings:AllowedOrigins:0", "http://localhost:4200");
 
                 builder.ConfigureTestServices(services =>
                 {

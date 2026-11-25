@@ -18,6 +18,16 @@ public static class CorsOriginsRules
     public const string SectionKey = CorsSettings.SectionName + ":AllowedOrigins";
 
     /// <summary>
+    /// Mensaje de fallo genérico del registro de opciones: identifica la clave de
+    /// configuración y resume las reglas. El detalle del origen ofensor concreto lo
+    /// añade <see cref="CorsOriginsOptionsValidator"/>.
+    /// </summary>
+    public const string ValidationFailureMessage =
+        "CorsSettings:AllowedOrigins es inválida: la lista de orígenes CORS no puede estar vacía y cada " +
+        "origen debe ser una URI absoluta con esquema http o https, host presente y sin path, query, " +
+        "fragment ni userinfo (tampoco se admiten \"*\" ni \"null\").";
+
+    /// <summary>
     /// Terminadores que sólo pueden aparecer después de la autoridad si el origen
     /// lleva path, query o fragment.
     /// </summary>
@@ -44,6 +54,20 @@ public static class CorsOriginsRules
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Predicado de validación para el registro de opciones: <c>true</c> sólo si la lista
+    /// de orígenes es válida (no vacía y sin ningún origen inválido).
+    /// </summary>
+    public static bool HasValidOrigins(IReadOnlyList<string>? origins)
+    {
+        if (origins is null || origins.Count == 0)
+        {
+            return false;
+        }
+
+        return FindInvalidOrigin(origins) is null;
     }
 
     /// <summary>Valida un origen individual según las reglas documentadas en la clase.</summary>

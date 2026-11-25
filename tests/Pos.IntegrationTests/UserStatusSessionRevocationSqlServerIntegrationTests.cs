@@ -17,6 +17,7 @@ using Pos.Domain.Authentication;
 using Pos.Domain.Common;
 using Pos.Domain.Entities;
 using Pos.Domain.ValueObjects;
+using Pos.Infrastructure.Authentication;
 using Pos.Infrastructure.Persistence.Context;
 using Pos.Infrastructure.Persistence.Interceptors;
 using Pos.IntegrationTests.Fixtures;
@@ -389,6 +390,11 @@ public class UserStatusSessionRevocationSqlServerIntegrationTests : IAsyncLifeti
         {
             using var scope = _factory.Services.CreateScope();
             var hasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
+
+            // Role.TenantId es un Guid NO nullable (no Guid?): comparar con null sería siempre
+            // false (CS8073). El centinela de plataforma es PlatformScope.TenantId (ADR 0008 y
+            // ADR 0017) y los roles de tenant (p. ej. Cajero) tienen TenantId = tenantId real,
+            // nunca el centinela: la comparación semánticamente correcta es contra el tenant.
             var role = await db.Roles.FirstAsync(r => r.TenantId == tenantId && r.Name == roleName);
 
             var user = User.Create(
@@ -498,94 +504,36 @@ public class UserStatusSessionRevocationSqlServerIntegrationTests : IAsyncLifeti
     [Fact]
     public async Task RevokeAll_CalledTwice_SecondReturnsZeroAndKeepsOriginalReasonAndTimestamp()
     {
-        // Arrange: siembra un usuario con un token activo
-        var seedingEmail = $"test_{Guid.NewGuid():N}@empresa.test";
-        var seedingPassword = "TestPass123!";
+        // Arrange: usuario de tenant con un refresh token activo.
+        using var anonymousClient = CreateClient();
+        var (tenantId, _, _) = await ProvisionTenantAndLoginAdminAsync(anonymousClient);
+        var (email, password) = await SeedTenantUserAsync(tenantId, TenantRoles.Cajero, TenantUserPassword);
+        var session = await LoginWithRefreshAsync(anonymousClient, email, password);
 
-        await using (var db = _fixture.CreateDbContext(isSuperAdmin: true))
-        {
-            using var scope = _factory.Services.CreateScope();
-            var hasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
-            var role = await db.Roles.FirstAsync(r => r.TenantId == Guid.Empty && r.Name == TenantRoles.Cajero);
-            var user = User.Create(
-                new Email(seedingEmail),
-                new PasswordHash(hasher.HashPassword(seedingPassword)),
-                role.Id,
-                tenantId: null,
-                "Session",
-                "Test",
-                TimeProvider.System);
-            db.Users.Add(user);
-            await db.SaveChangesAsync();
+        await using var db = _fixture.CreateDbContext(tenantId);
+        var revoker = new UserSessionRevoker(db, TimeProvider.System);
 
-            var token = await db.RefreshTokens.FirstAsync(r => r.UserId == user.Id);
-            // Asegurar que no esté revocado aún (propiedades son solo-lectura, así que usamos el contexto para marcarlas)
-            // Nota: en EF Core InMemory las propiedades son settable, en SQL Server se requieren updater
-            // Para este test verificamos el comportamiento idempotente del revocador
-        }
+        // Act 1: primera revocación.
+        int firstRevoked = await revoker.RevokeAllAsync(
+            session.Payload.UserId,
+            RefreshTokenRevocationReasons.UserDeactivated);
 
-        // Act: Primera revocación con UserDeactivated
-        using var factory1 = BuildFactory();
-        var client1 = factory1.CreateClient();
-        var (tenantId1, _, adminLogin1) = await ProvisionTenantAndLoginAsync(client1, seedingEmail, seedingPassword);
-        using var adminClient1 = CreateClient(adminLogin1.Token);
+        // Assert 1: el token activo queda revocado con el motivo y la marca de tiempo.
+        Assert.Equal(1, firstRevoked);
+        var afterFirst = await ReadTokenStateAsync(session.RefreshToken);
+        Assert.NotNull(afterFirst.RevokedAtUtc);
+        Assert.Equal(RefreshTokenRevocationReasons.UserDeactivated, afterFirst.RevokedReason);
 
-        var loginResponse1 = await adminClient1.PostAsJsonAsync("/api/v1/auth/login", new LoginRequest(seedingEmail, seedingPassword));
-        Assert.Equal(HttpStatusCode.OK, loginResponse1.StatusCode);
-        var payload1 = await loginResponse1.Content.ReadFromJsonAsync<LoginResponse>(s_camelCaseOptions);
-        string refreshToken1 = ReadRefreshCookie(loginResponse1);
+        // Act 2: segunda revocación sobre el mismo usuario.
+        int secondRevoked = await revoker.RevokeAllAsync(
+            session.Payload.UserId,
+            RefreshTokenRevocationReasons.UserReactivated);
 
-        var deactivateResponse1 = await adminClient1.PatchAsJsonAsync(
-            $"/api/v1/users/{payload1!.UserId}/status",
-            new ChangeStatusRequest(false));
-        Assert.Equal(HttpStatusCode.OK, deactivateResponse1.StatusCode);
-
-        // Verificar que el token quedó revocado después de la primera llamada
-        var state1 = await ReadTokenStateAsync(refreshToken1);
-        Assert.NotNull(state1.RevokedAtUtc);
-        Assert.Equal(RefreshTokenRevocationReasons.UserDeactivated, state1.RevokedReason);
-
-        // Act: Segunda revocación con UserReactivated (no hay tokens activos por revocar, debería devolver 0)
-        using var factory2 = BuildFactory();
-        var client2 = factory2.CreateClient();
-        var (tenantId2, _, adminLogin2) = await ProvisionTenantAndLoginAsync(client2, seedingEmail, seedingPassword);
-        using var adminClient2 = CreateClient(adminLogin2.Token);
-
-        var deactivateResponse2 = await adminClient2.PatchAsJsonAsync(
-            $"/api/v1/users/{payload1!.UserId}/status",
-            new ChangeStatusRequest(false));
-        // La segunda llamada debería devolver 0 (idempotencia: no hay tokens activos)
-
-        // Assert: Verificar que en BD el token conserva el motivo original y marcas de tiempo
-        await using var dbFinal = _fixture.CreateDbContext(isSuperAdmin: true);
-        var finalState = await dbFinal.RefreshTokens.AsNoTracking()
-            .SingleAsync(r => r.TokenHash == HashOf(refreshToken1));
-        Assert.NotNull(finalState.RevokedAtUtc);
-        Assert.Equal(RefreshTokenRevocationReasons.UserDeactivated, finalState.RevokedReason);
-    }
-
-    private async Task<(Guid TenantId, string AdminEmail, LoginResponse AdminLogin)> ProvisionTenantAndLoginAsync(
-        HttpClient anonymousClient,
-        string email,
-        string password)
-    {
-        var superAdminLogin = await EnsureSuperAdminAndLoginAsync(anonymousClient);
-        string unique = Guid.NewGuid().ToString("N")[..10];
-        string adminEmail = $"tadmin_status_{unique}@empresa.test";
-
-        using var superAdminClient = CreateClient(superAdminLogin.Token);
-        var createResponse = await superAdminClient.PostAsJsonAsync(
-            "/api/v1/platform/tenants",
-            new CreateTenantRequest($"Empresa Status {unique}", $"TAX-STATUS-{unique}", adminEmail, TenantUserPassword));
-        Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
-        Guid tenantId = await createResponse.Content.ReadFromJsonAsync<Guid>();
-
-        var activateResponse = await superAdminClient.PatchAsJsonAsync(
-            $"/api/v1/platform/tenants/{tenantId}/status",
-            new ChangeStatusRequest(true));
-        Assert.Equal(HttpStatusCode.OK, activateResponse.StatusCode);
-
-        LoginResponse adminLogin = await LoginAsync(anonymousClient, adminEmail, TenantUserPassword);
-        return (tenantId, adminEmail, adminLogin);
+        // Assert 2: la segunda llamada no revoca filas y no reescribe el token ya revocado.
+        Assert.Equal(0, secondRevoked);
+        var afterSecond = await ReadTokenStateAsync(session.RefreshToken);
+        Assert.NotNull(afterSecond.RevokedAtUtc);
+        Assert.Equal(afterFirst.RevokedAtUtc, afterSecond.RevokedAtUtc);
+        Assert.Equal(RefreshTokenRevocationReasons.UserDeactivated, afterSecond.RevokedReason);
     }
 }
