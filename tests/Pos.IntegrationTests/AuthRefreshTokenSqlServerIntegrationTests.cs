@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -18,7 +17,6 @@ using Pos.Domain.Authentication;
 using Pos.Domain.Common;
 using Pos.Domain.Entities;
 using Pos.Domain.ValueObjects;
-using Pos.Infrastructure.Caching;
 using Pos.Infrastructure.Persistence.Context;
 using Pos.Infrastructure.Persistence.Interceptors;
 using Pos.IntegrationTests.Fixtures;
@@ -48,7 +46,6 @@ public class AuthRefreshTokenSqlServerIntegrationTests : IAsyncLifetime
 
     private readonly MsSqlTestFixture _fixture;
     private WebApplicationFactory<Program> _factory = null!;
-    private HybridCache _hybridCache = null!;
     private int _ipCounter;
 
     public AuthRefreshTokenSqlServerIntegrationTests(MsSqlTestFixture fixture)
@@ -60,9 +57,8 @@ public class AuthRefreshTokenSqlServerIntegrationTests : IAsyncLifetime
     {
         _factory = BuildFactory(rotationLeewaySeconds: 0);
 
-        // Force server creation and get HybridCache from test server's services
+        // Fuerza la creación del servidor de pruebas antes del primer request.
         _ = _factory.CreateClient();
-        _hybridCache = _factory.Server.Services.GetRequiredService<HybridCache>();
 
         return Task.CompletedTask;
     }
@@ -91,7 +87,6 @@ public class AuthRefreshTokenSqlServerIntegrationTests : IAsyncLifetime
                         ["RateLimiting:AuthPolicy:PermitLimit"] = "500",
                         ["RateLimiting:SensitiveOperationsPolicy:PermitLimit"] = "500",
                         ["RateLimiting:GlobalApiPolicy:PermitLimit"] = "1000",
-                        ["TenantStatus:TenantStatusCacheTtlSeconds"] = "1",
                         ["RefreshToken:RotationLeewaySeconds"] = rotationLeewaySeconds.ToString(System.Globalization.CultureInfo.InvariantCulture)
                     });
                 });
@@ -217,12 +212,6 @@ public class AuthRefreshTokenSqlServerIntegrationTests : IAsyncLifetime
     {
         client.DefaultRequestHeaders.Remove("Cookie");
         client.DefaultRequestHeaders.TryAddWithoutValidation("Cookie", $"{CookieName}={token}");
-    }
-
-    private async Task InvalidateTenantStatusCacheAsync(Guid tenantId)
-    {
-        string cacheKey = TenantCacheKeys.TenantStatusForTenant(tenantId);
-        await _hybridCache.RemoveAsync(cacheKey);
     }
 
     private async Task<(Guid TenantId, string AdminEmail, LoginResponse AdminLogin)> CreateActiveTenantAndLoginAdminAsync(
@@ -409,7 +398,7 @@ public class AuthRefreshTokenSqlServerIntegrationTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.OK, suspendResponse.StatusCode);
 
         // Invalidar caché de estado de tenant de forma determinista
-        await InvalidateTenantStatusCacheAsync(tenantId);
+        await TenantStatusCacheControl.InvalidateAsync(_factory.Services, tenantId);
 
         // Refresh con tenant suspendido → 403
         using var refreshClient = CreateClient();
@@ -441,7 +430,7 @@ public class AuthRefreshTokenSqlServerIntegrationTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.OK, activateResponse.StatusCode);
 
         // Invalidar caché de estado de tenant de forma determinista
-        await InvalidateTenantStatusCacheAsync(tenantId);
+        await TenantStatusCacheControl.InvalidateAsync(_factory.Services, tenantId);
 
         // El MISMO token debe refrescar con éxito ahora
         using var refreshClient3 = CreateClient();

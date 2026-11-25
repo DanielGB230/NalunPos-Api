@@ -91,7 +91,6 @@ public class UserStatusSessionRevocationSqlServerIntegrationTests : IAsyncLifeti
                         ["RateLimiting:AuthPolicy:PermitLimit"] = "500",
                         ["RateLimiting:SensitiveOperationsPolicy:PermitLimit"] = "500",
                         ["RateLimiting:GlobalApiPolicy:PermitLimit"] = "1000",
-                        ["TenantStatus:TenantStatusCacheTtlSeconds"] = "1",
                         ["RefreshToken:RotationLeewaySeconds"] = "0"
                     });
                 });

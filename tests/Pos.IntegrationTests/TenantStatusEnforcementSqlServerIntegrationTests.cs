@@ -10,7 +10,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Caching.Hybrid;
 using Pos.Api.Contracts.Requests;
 using Pos.Application.Authentication.Commands.Login;
 using Pos.Application.Common.Interfaces;
@@ -21,7 +20,6 @@ using Pos.Domain.ValueObjects;
 using Pos.Infrastructure.Persistence.Context;
 using Pos.Infrastructure.Persistence.Interceptors;
 using Pos.Infrastructure.Persistence.Seed;
-using Pos.Infrastructure.Caching;
 using Pos.IntegrationTests.Fixtures;
 using Pos.IntegrationTests.Support;
 using Xunit;
@@ -78,9 +76,7 @@ public class TenantStatusEnforcementSqlServerIntegrationTests : IAsyncLifetime
                         ["ConnectionStrings:DefaultConnection"] = _fixture.ConnectionString,
                         ["RateLimiting:AuthPolicy:PermitLimit"] = "200",
                         ["RateLimiting:SensitiveOperationsPolicy:PermitLimit"] = "200",
-                        ["RateLimiting:GlobalApiPolicy:PermitLimit"] = "500",
-                        // TTL muy bajo (1 s) para evitar esperas y permitir pruebas deterministas de propagación
-                        ["TenantStatus:TenantStatusCacheTtlSeconds"] = "1"
+                        ["RateLimiting:GlobalApiPolicy:PermitLimit"] = "500"
                     });
                 });
 
@@ -264,8 +260,7 @@ public class TenantStatusEnforcementSqlServerIntegrationTests : IAsyncLifetime
         await db.SaveChangesAsync();
 
         // Invalidar caché de estado para forzar lectura fresca (null = inexistente)
-        var cache = _factory.Services.GetRequiredService<Microsoft.Extensions.Caching.Hybrid.HybridCache>();
-        await cache.RemoveAsync(TenantCacheKeys.TenantStatusForTenant(tenantId));
+        await TenantStatusCacheControl.InvalidateAsync(_factory.Services, tenantId);
 
         // Act: petición autenticada con tenantId inexistente → 403 Tenant.NotActive
         using var tenantClient = CreateClient(token);
@@ -337,8 +332,7 @@ public class TenantStatusEnforcementSqlServerIntegrationTests : IAsyncLifetime
         Assert.Equal(TenantStatus.Suspended, await GetTenantStatusAsync(tenantId));
 
         // Invalidar caché de estado para forzar lectura fresca (suspendido → denegar)
-        var cacheSuspend = _factory.Services.GetRequiredService<Microsoft.Extensions.Caching.Hybrid.HybridCache>();
-        await cacheSuspend.RemoveAsync(TenantCacheKeys.TenantStatusForTenant(tenantId));
+        await TenantStatusCacheControl.InvalidateAsync(_factory.Services, tenantId);
 
         // Act (c1): el MISMO token → 403 Tenant.Suspended
         using var tenantClient = CreateClient(token);
@@ -383,8 +377,7 @@ public class TenantStatusEnforcementSqlServerIntegrationTests : IAsyncLifetime
         Assert.Equal(TenantStatus.Active, await GetTenantStatusAsync(tenantId));
 
         // Invalidar caché de estado para forzar lectura fresca (activo → permitir)
-        var cacheReactive = _factory.Services.GetRequiredService<Microsoft.Extensions.Caching.Hybrid.HybridCache>();
-        await cacheReactive.RemoveAsync(TenantCacheKeys.TenantStatusForTenant(tenantId));
+        await TenantStatusCacheControl.InvalidateAsync(_factory.Services, tenantId);
 
         // Act: login y petición → 200
         using var client = CreateClient();

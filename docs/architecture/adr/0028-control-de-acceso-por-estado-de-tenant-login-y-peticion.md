@@ -79,3 +79,9 @@ Se agregó `ErrorType.Forbidden` a `DomainError`, mapeado a HTTP 403 por `PosPro
 - Un token emitido antes de la suspensión funciona hasta que expira el TTL de caché.
 - No hay revocación inmediata de sesiones activas.
 - `NalunPos-Front` no se modifica (fuera de alcance).
+
+### Pruebas
+
+Las pruebas de integración no dependen del TTL: invalidan la caché de estado de tenant de forma explícita con
+`TenantStatusCacheControl.InvalidateAsync(...)` en el punto exacto donde el escenario cambia el estado. La
+invalidación desde producción sigue siendo la deuda 1 de este ADR (sin cambios).

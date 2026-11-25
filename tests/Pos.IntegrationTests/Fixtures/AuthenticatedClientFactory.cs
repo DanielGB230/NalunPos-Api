@@ -1,6 +1,5 @@
 using System.Net.Http.Headers;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -10,7 +9,6 @@ using Pos.Domain.Enums;
 using Pos.Domain.ValueObjects;
 using Pos.Infrastructure;
 using Pos.Infrastructure.Authentication;
-using Pos.Infrastructure.Caching;
 using Pos.Infrastructure.Persistence.Context;
 
 namespace Pos.IntegrationTests.Fixtures;
@@ -83,8 +81,7 @@ public static class AuthenticatedClientFactory
         await db.SaveChangesAsync();
 
         // Invalidar caché de estado para forzar lectura fresca en el middleware
-        var cache = factory.Services.GetRequiredService<HybridCache>();
-        await cache.RemoveAsync(TenantCacheKeys.TenantStatusForTenant(effectiveTenantId));
+        await TenantStatusCacheControl.InvalidateAsync(factory.Services, effectiveTenantId);
 
         string token = generator.GenerateToken(user, role.Name).Token;
         return (token, user);
