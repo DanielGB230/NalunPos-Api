@@ -17,24 +17,24 @@ La política CORS anterior se construía leyendo la configuración cruda dentro 
 - **`src/Pos.Api/appsettings.json`**: `CorsSettings:AllowedOrigins` → lista vacía `[]` (fail-closed por defecto: sin origins no se admite ninguna petición cross-origin).
 - **`src/Pos.Api/appsettings.Development.json`**: 4 orígenes `http://localhost:4200`, `https://localhost:4200`, `http://localhost:4201`, `https://localhost:4201`.
 
-### 2. Patrón de validación (mismo esqueleto que `OutboxSettings`)
+### 2. Un único mecanismo de validación
 
 - **`src/Pos.Api/Options/CorsSettings.cs`**: POCO simple. Sin `IValidatableObject` y sin data annotations: la validación vive en una clase propia, no en el contenedor de datos.
-- **`src/Pos.Api/Options/CorsOriginsRules.cs`**: clase propia y **pura** (no lee configuración, no registra servicios, no depende del pipeline de CORS). Responsabilidad única: decidir si una lista de orígenes es válida y construir el mensaje de error.
+- **`src/Pos.Api/Options/CorsOriginsRules.cs`**: clase propia y **pura** (no lee configuración, no registra servicios, no depende del pipeline de CORS). Responsabilidad única: decidir si un origen es válido y construir el mensaje de error.
   - Reglas: lista no vacía; cada origen es una URI absoluta; esquema `http` o `https`; host presente; sin path (ni el `/` final), sin query, sin fragment y sin userinfo; no se admiten `*` ni `null`.
-- **`src/Pos.Api/Options/CorsOriginsOptionsValidator.cs`**: adaptador de las reglas puras al mecanismo de opciones del hosting (`IValidateOptions<CorsSettings>`). Es la única forma de obtener un **mensaje dinámico** en .NET 10: `OptionsBuilder<T>.Validate` sólo admite un `string` estático capturado en el registro, por lo que el mensaje con el valor ofensor se construye en tiempo de validación.
-- **Registro en `Program.cs`** (mismo patrón que `OutboxSettings`):
+- **`src/Pos.Api/Options/CorsOriginsOptionsValidator.cs`**: **único** mecanismo de validación. Implementa `IValidateOptions<CorsSettings>` y traduce las reglas puras a `ValidateOptionsResult`, construyendo el mensaje con la clave `CorsSettings:AllowedOrigins` y el origen ofensor concreto.
+- **Registro en `Program.cs`** (un solo mecanismo, sin `.Validate(...)`):
 
 ```csharp
 builder.Services.AddSingleton<IValidateOptions<CorsSettings>, CorsOriginsOptionsValidator>();
 builder.Services.AddOptions<CorsSettings>()
     .Bind(builder.Configuration.GetSection(CorsSettings.SectionName))
-    .Validate(settings => CorsOriginsRules.HasValidOrigins(settings.AllowedOrigins), CorsOriginsRules.ValidationFailureMessage)
     .ValidateOnStart();
 ```
 
-- **Mensajes de error**: la clave `CorsSettings:AllowedOrigins` y el valor ofensor (origen concreto) aparecen en el mensaje; el predicado registrado en `.Validate(...)` aporta el mensaje genérico con las reglas y el validador `IValidateOptions` añade el detalle del origen ofensor.
-- **Orden de fail-fast**: tras `builder.Build()` las opciones CORS se resuelven y validan **antes** de `InitializeDatabaseAsync()`. Así un error de configuración no se enmascare con un fallo de base de datos. `ValidateOnStart()` mantiene además el fail-fast del host para el resto de caminos de arranque.
+- **Por qué `IValidateOptions` y no `OptionsBuilder<T>.Validate(...)`**: en .NET 10 `Validate(Func<TOptions, bool>, string)` sólo admite un mensaje **estático** capturado en el registro; no existe sobrecarga con mensaje dinámico. El único punto donde se puede inyectar el origen ofensor es la validación en tiempo de ejecución, es decir, `IValidateOptions<TOptions>`. Registrar además `.Validate(...)` duplicaría el mecanismo y produciría dos mensajes para el mismo fallo.
+- **Mensaje de error**: siempre incluye la clave `CorsSettings:AllowedOrigins` y, cuando existe, el origen ofensor; una lista vacía se reporta como lista vacía (no hay origen ofensor).
+- **Orden de fail-fast**: tras `builder.Build()` se ejecuta `IStartupValidator.Validate()` **antes** de `InitializeDatabaseAsync()`. Así se ejecutan todas las validaciones registradas con `ValidateOnStart()` (CORS incluido) y un error de configuración no se enmascara con un fallo de base de datos. `ValidateOnStart()` mantiene además el fail-fast del host para el resto de caminos de arranque.
 
 ### 3. Política CORS construida desde opciones validadas
 
@@ -50,6 +50,7 @@ builder.Services.AddOptions<CorsSettings>()
 - **Proxy de Angular como sustituto de CORS**: arquitectura rechazada; CORS es el mecanismo correcto.
 - **`ValidateDataAnnotations()` sobre el POCO**: no valida nada (el POCO no lleva anotaciones); la validación real es la de `CorsOriginsRules`.
 - **Data annotations en `CorsSettings`**: acopla el POCO a `System.ComponentModel.DataAnnotations` y devuelve el problema al contenedor de datos; se mantiene el POCO simple.
+- **`.Validate(...)` además de `IValidateOptions`**: dos mecanismos para la misma regla, con dos mensajes distintos para un único fallo; se descarta y queda sólo `IValidateOptions`.
 - **Mensaje estático con el origen ofensor**: imposible con `OptionsBuilder<T>.Validate` en .NET 10 (sólo admite `string` estático); resuelto con `IValidateOptions<CorsSettings>`.
 
 ### 5. SameSite=Strict y cookies con `Path=/api/v1/auth`
@@ -70,6 +71,7 @@ Al usar `CorsSettings` con orígenes de `localhost` en puertos distintos (4200/4
 | Usar `Configure<CorsOptions>` directamente | Duplica validación; rompe patrón Outbox/RefreshToken |
 | `ValidateDataAnnotations()` sobre POCO sin anotaciones | No valida nada: el arranque deja de ser fail-fast |
 | Data annotations en `CorsSettings` | Acopla el POCO al contenedor de datos; la regla vive en `CorsOriginsRules` |
+| `.Validate(...)` además de `IValidateOptions<CorsSettings>` | Dos mecanismos para la misma regla y dos mensajes para un único fallo |
 | CORS via proxy Angular | Arquitectura anti-patrón; CORS es nativo |
 
 ## Notas de despliegue
@@ -77,4 +79,4 @@ Al usar `CorsSettings` con orígenes de `localhost` en puertos distintos (4200/4
 - Desarrollo: `appsettings.Development.json` con 4 orígenes localhost:4200/4201.
 - Producción: configurar `CorsSettings:AllowedOrigins` por entorno (no lista vacía).
 - Nunca commitear lista vacía a producción sin configurar orígenes reales.
-- Las pruebas de integración deben declarar `CorsSettings:AllowedOrigins:0` en su fábrica: la lista vacía de `appsettings.json` aborta el arranque por diseño.
+- Las pruebas de integración declaran `CorsSettings:AllowedOrigins:0` en su fábrica (entorno Testing no aporta orígenes); las pruebas de Development sin override usan los 4 orígenes de `appsettings.Development.json`.

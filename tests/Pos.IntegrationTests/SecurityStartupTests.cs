@@ -83,6 +83,32 @@ public class SecurityStartupTests
     }
 
     [Fact]
+    public void App_FailsToStart_WhenCorsIsInvalidAndDatabaseIsUnreachable_FailsOnOptionsFirst()
+    {
+        // Orden de fail-fast (ADR 0035): IStartupValidator.Validate() se ejecuta antes de
+        // InitializeDatabaseAsync(), así que un origen CORS inválido debe fallar como
+        // OptionsValidationException y no como error de conexión a SQL Server.
+        const string unreachableConnection =
+            "Server=127.0.0.1,65535;Database=NalunPos_OrderingTests;User Id=sa;Password=Your_password123!;TrustServerCertificate=True;Connect Timeout=1;";
+
+        using var factory = CreateBaseFactory(builder =>
+        {
+            builder.UseSetting("ConnectionStrings:DefaultConnection", unreachableConnection);
+            builder.UseSetting("CorsSettings:AllowedOrigins:0", "http://localhost:4200/");
+        });
+
+        Action act = () => _ = factory.CreateClient();
+
+        Exception exception = act.Should().Throw<Exception>().Which;
+        string text = exception.ToString();
+
+        text.Should().Contain("CorsSettings:AllowedOrigins");
+        text.Should().Contain("http://localhost:4200/");
+        text.Should().NotContain("127.0.0.1,65535");
+        text.Should().NotContain("Microsoft.Data.SqlClient");
+    }
+
+    [Fact]
     public void App_FailsToStart_WhenOutboxSettingsAreInvalid()
     {
         using var factory = CreateBaseFactory(builder =>
