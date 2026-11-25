@@ -1,32 +1,42 @@
+using Microsoft.AspNetCore.Cors.Infrastructure;
+using Microsoft.Extensions.Options;
 using Pos.Api.Options;
 
 namespace Pos.Api.Extensions;
 
+/// <summary>
+/// Extensión para registrar la política CORS "AllowFrontend" desde las opciones
+/// <see cref="CorsSettings"/> ya validadas en <c>Program.cs</c> (ValidateOnStart).
+/// </summary>
 public static class CorsExtensions
 {
-    public static IServiceCollection AddCustomCors(this IServiceCollection services, IConfiguration configuration)
+    /// <summary>Nombre de la política de CORS (contrato con el middleware <c>app.UseCors</c>).</summary>
+    public const string AllowFrontendPolicy = "AllowFrontend";
+
+    /// <summary>Métodos permitidos por la política (coinciden con los controladores).</summary>
+    private static readonly string[] s_allowedMethods = ["GET", "POST", "PATCH", "OPTIONS"];
+
+    /// <summary>
+    /// Registra la política de CORS desde las opciones <b>ya validadas</b> de
+    /// <see cref="CorsSettings"/> (ValidateOnStart). La extensión no lee configuración
+    /// cruda ni duplica la comprobación de la lista: la fuente única de verdad son las
+    /// opciones validadas en <c>Program.cs</c>.
+    /// </summary>
+    public static IServiceCollection AddCustomCors(this IServiceCollection services)
     {
-        var settings = configuration.GetSection(CorsSettings.SectionName).Get<CorsSettings>() ?? new CorsSettings();
+        services.AddCors();
 
-        // Filtrar vacíos o nulos
-        settings.AllowedOrigins = settings.AllowedOrigins.Where(o => !string.IsNullOrWhiteSpace(o)).ToList();
-
-        if (settings.AllowedOrigins.Count == 0)
-        {
-            throw new InvalidOperationException("CorsSettings:AllowedOrigins debe estar configurado con al menos un origen. No se permite SetIsOriginAllowed(_ => true).");
-        }
-
-        services.AddCors(options =>
-        {
-            options.AddPolicy("AllowFrontend", policy =>
+        // Nombre por defecto: así lo resuelve DefaultCorsPolicyProvider al evaluar
+        // app.UseCors("AllowFrontend") (mismo registro que AddCors(Action<CorsOptions>)).
+        services.AddOptions<CorsOptions>()
+            .Configure<IOptions<CorsSettings>>((corsOptions, settingsAccessor) =>
             {
-                policy.WithOrigins(settings.AllowedOrigins.ToArray())
-                      // ELIMINADO: .SetIsOriginAllowed(_ => true) por vulnerabilidad
-                      .AllowAnyHeader()
-                      .WithMethods("GET", "POST", "PATCH", "OPTIONS")
-                      .AllowCredentials();
+                corsOptions.AddPolicy(AllowFrontendPolicy, policy => policy
+                    .WithOrigins(settingsAccessor.Value.AllowedOrigins.ToArray())
+                    .AllowAnyHeader()
+                    .WithMethods(s_allowedMethods)
+                    .AllowCredentials());
             });
-        });
 
         return services;
     }

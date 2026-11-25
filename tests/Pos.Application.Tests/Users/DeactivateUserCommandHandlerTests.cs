@@ -25,6 +25,28 @@ public class DeactivateUserCommandHandlerTests
     }
 
     [Fact]
+    public async Task HandleAsync_WhenRevocationThrowsAfterSave_ShouldPropagateAndKeepUserInactive()
+    {
+        // Arrange
+        var user = CreateActiveUser();
+        _userRepository.Users.Add(user);
+        _revoker.ExceptionToThrow = new InvalidOperationException("Simulated revocation failure after save");
+
+        // Act: la excepción de la revocación se propaga sin convertirse en Result (ADR 0034).
+        var thrown = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _handler.HandleAsync(new DeactivateUserCommand(user.Id), CancellationToken.None));
+
+        // Assert
+        Assert.Equal("Simulated revocation failure after save", thrown.Message);
+        // El guardado ya ocurrió antes de la revocación y el usuario queda inactivo.
+        Assert.Equal(1, _unitOfWork.SaveChangesCount);
+        Assert.False(user.IsActive);
+        Assert.Equal(1, _revoker.CallCount);
+        Assert.Equal(user.Id, _revoker.LastUserId);
+        Assert.Equal(RefreshTokenRevocationReasons.UserDeactivated, _revoker.LastReason);
+    }
+
+    [Fact]
     public async Task HandleAsync_WhenUserDoesNotExist_ShouldReturnNotFoundAndNotRevoke()
     {
         // Act
@@ -90,13 +112,12 @@ public class DeactivateUserCommandHandlerTests
         Assert.Equal(1, saveCountAtRevoke);
     }
 
-    private static User CreateActiveUser() =>
-        User.Create(
-            new Email($"deactivate_{Guid.NewGuid():N}@nalunpos.test"),
-            new PasswordHash("hashedPassword"),
-            Guid.NewGuid(),
-            Guid.NewGuid(),
-            "Usuario",
-            "Desactivar",
-            TimeProvider.System);
+    private static User CreateActiveUser() => User.Create(
+        new Email($"deactivate_{Guid.NewGuid():N}@nalunpos.test"),
+        new PasswordHash("hashedPassword"),
+        Guid.NewGuid(),
+        Guid.NewGuid(),
+        "Usuario",
+        "Desactivar",
+        TimeProvider.System);
 }

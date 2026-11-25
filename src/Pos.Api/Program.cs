@@ -78,8 +78,13 @@ builder.Services.AddHostedService<RefreshTokenPurgeBackgroundService>();
 // 7. Autenticación JWT y Autorización Fail-Closed
 builder.Services.AddCustomAuthentication(builder.Configuration);
 
-// 8. Configuración de CORS
-builder.Services.AddCustomCors(builder.Configuration);
+// 8. Configuración de CORS. Mismo patrón que OutboxSettings.
+builder.Services.AddOptions<CorsSettings>()
+    .Bind(builder.Configuration.GetSection(CorsSettings.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+
+builder.Services.AddCustomCors();
 
 // 9. Configuración de Controladores y ProblemDetails
 builder.Services.AddControllers(options =>
