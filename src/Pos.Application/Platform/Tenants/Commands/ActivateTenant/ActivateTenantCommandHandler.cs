@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Pos.Application.Common.Interfaces;
 using Pos.Domain.Common;
 using Pos.Domain.Interfaces;
@@ -11,15 +12,21 @@ public class ActivateTenantCommandHandler : ICommandHandler<ActivateTenantComman
 {
     private readonly ITenantRepository _tenantRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ITenantStatusCacheInvalidator _cacheInvalidator;
+    private readonly ILogger<ActivateTenantCommandHandler> _logger;
     private readonly TimeProvider _timeProvider;
 
     public ActivateTenantCommandHandler(
         ITenantRepository tenantRepository,
         IUnitOfWork unitOfWork,
+        ITenantStatusCacheInvalidator cacheInvalidator,
+        ILogger<ActivateTenantCommandHandler> logger,
         TimeProvider timeProvider)
     {
         _tenantRepository = tenantRepository ?? throw new ArgumentNullException(nameof(tenantRepository));
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _cacheInvalidator = cacheInvalidator ?? throw new ArgumentNullException(nameof(cacheInvalidator));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
@@ -43,6 +50,20 @@ public class ActivateTenantCommandHandler : ICommandHandler<ActivateTenantComman
 
         _tenantRepository.Update(tenant);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        try
+        {
+            await _cacheInvalidator.InvalidateAsync(tenant.Id, cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            // El cambio de estado ya está confirmado: no se revierte. El TTL de la caché
+            // (TenantStatusOptions.TenantStatusCacheTtlSeconds) actúa como cota de seguridad.
+            _logger.LogError(
+                exception,
+                "El tenant {TenantId} se activó correctamente, pero la invalidación de la caché de estado falló; el TTL acotará la propagación.",
+                tenant.Id);
+        }
 
         return Result.Ok(true);
     }

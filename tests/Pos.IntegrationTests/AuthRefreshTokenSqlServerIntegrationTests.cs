@@ -397,9 +397,7 @@ public class AuthRefreshTokenSqlServerIntegrationTests : IAsyncLifetime
             new ChangeStatusRequest(false));
         Assert.Equal(HttpStatusCode.OK, suspendResponse.StatusCode);
 
-        // Invalidar caché de estado de tenant de forma determinista
-        await TenantStatusCacheControl.InvalidateAsync(_factory.Services, tenantId);
-
+        // La invalidación de la caché la realiza el handler de suspensión (sin invalidación manual).
         // Refresh con tenant suspendido → 403
         using var refreshClient = CreateClient();
         AttachRefreshCookie(refreshClient, refreshToken);
@@ -429,9 +427,7 @@ public class AuthRefreshTokenSqlServerIntegrationTests : IAsyncLifetime
             new ChangeStatusRequest(true));
         Assert.Equal(HttpStatusCode.OK, activateResponse.StatusCode);
 
-        // Invalidar caché de estado de tenant de forma determinista
-        await TenantStatusCacheControl.InvalidateAsync(_factory.Services, tenantId);
-
+        // La invalidación de la caché la realiza el handler de activación (sin invalidación manual).
         // El MISMO token debe refrescar con éxito ahora
         using var refreshClient3 = CreateClient();
         AttachRefreshCookie(refreshClient3, refreshToken);

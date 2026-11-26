@@ -639,6 +639,39 @@ public class TenantGovernanceTests
     }
 
     [Fact]
+    public void TenantStatusCacheKey_MustOnlyBeKnownBy_CachingInfrastructure()
+    {
+        var srcDir = Path.Combine(SolutionDirectory.Root, "src");
+        Assert.True(Directory.Exists(srcDir), $"El directorio de código fuente '{srcDir}' no existe.");
+
+        string cachingDir = Path.GetFullPath(Path.Combine(srcDir, "Pos.Infrastructure", "Caching"));
+        string cachingPrefix = cachingDir + Path.DirectorySeparatorChar;
+
+        var violations = new List<string>();
+
+        foreach (var file in Directory.GetFiles(srcDir, "*.cs", SearchOption.AllDirectories))
+        {
+            string fullPath = Path.GetFullPath(file);
+            if (fullPath.StartsWith(cachingPrefix, StringComparison.OrdinalIgnoreCase))
+            {
+                // La clave y su lectura/invalidación viven exclusivamente en Pos.Infrastructure/Caching.
+                continue;
+            }
+
+            string content = File.ReadAllText(file);
+            if (content.Contains("TenantStatusForTenant", StringComparison.Ordinal))
+            {
+                var relPath = Path.GetRelativePath(SolutionDirectory.Root, file);
+                violations.Add($"- {relPath} referencia TenantCacheKeys.TenantStatusForTenant");
+            }
+        }
+
+        Assert.True(
+            violations.Count == 0,
+            $"Solo las clases de 'src/Pos.Infrastructure/Caching' pueden conocer 'TenantCacheKeys.TenantStatusForTenant' (ADR 0028):\n{string.Join("\n", violations)}");
+    }
+
+    [Fact]
     public void Only_Authorized_Ports_And_Platform_Components_May_Invoke_IgnoreQueryFilters()
     {
         // Lista CERRADA y sellada de componentes de infraestructura autorizados para omitir filtros de consulta globales.

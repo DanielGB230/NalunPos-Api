@@ -259,7 +259,8 @@ public class TenantStatusEnforcementSqlServerIntegrationTests : IAsyncLifetime
         db.Tenants.Remove(tenantToDelete);
         await db.SaveChangesAsync();
 
-        // Invalidar caché de estado para forzar lectura fresca (null = inexistente)
+        // Invalidar caché de estado para forzar lectura fresca (null = inexistente).
+        // Se conserva el helper porque este escenario borra el tenant directamente en BD, sin pasar por handlers.
         await TenantStatusCacheControl.InvalidateAsync(_factory.Services, tenantId);
 
         // Act: petición autenticada con tenantId inexistente → 403 Tenant.NotActive
@@ -331,8 +332,7 @@ public class TenantStatusEnforcementSqlServerIntegrationTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.OK, suspendResponse.StatusCode);
         Assert.Equal(TenantStatus.Suspended, await GetTenantStatusAsync(tenantId));
 
-        // Invalidar caché de estado para forzar lectura fresca (suspendido → denegar)
-        await TenantStatusCacheControl.InvalidateAsync(_factory.Services, tenantId);
+        // Sin invalidación manual: el handler de suspensión debe invalidar la caché de estado.
 
         // Act (c1): el MISMO token → 403 Tenant.Suspended
         using var tenantClient = CreateClient(token);
@@ -369,6 +369,14 @@ public class TenantStatusEnforcementSqlServerIntegrationTests : IAsyncLifetime
             new ChangeStatusRequest(false));
         Assert.Equal(TenantStatus.Suspended, await GetTenantStatusAsync(tenantId));
 
+        // Un login válido mientras está suspendido lee y cachea el estado Suspended.
+        using (var suspendedClient = CreateClient())
+        {
+            var suspendedLogin = await LoginAsync(suspendedClient, adminEmail, adminPassword);
+            Assert.Equal(HttpStatusCode.Forbidden, suspendedLogin.StatusCode);
+            Assert.Equal(TenantAccessPolicy.SuspendedCode, await ReadProblemCodeAsync(suspendedLogin));
+        }
+
         // Reactivar
         var reactivateResponse = await superAdminClient.PatchAsJsonAsync(
             $"/api/v1/platform/tenants/{tenantId}/status",
@@ -376,8 +384,7 @@ public class TenantStatusEnforcementSqlServerIntegrationTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.OK, reactivateResponse.StatusCode);
         Assert.Equal(TenantStatus.Active, await GetTenantStatusAsync(tenantId));
 
-        // Invalidar caché de estado para forzar lectura fresca (activo → permitir)
-        await TenantStatusCacheControl.InvalidateAsync(_factory.Services, tenantId);
+        // Sin invalidación manual: el handler de activación debe invalidar la caché de estado.
 
         // Act: login y petición → 200
         using var client = CreateClient();

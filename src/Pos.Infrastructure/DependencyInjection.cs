@@ -117,6 +117,7 @@ public static class DependencyInjection
         services.AddScoped<IOutboxLeaseClaimer, Pos.Infrastructure.Persistence.Outbox.SqlOutboxLeaseClaimer>();
         services.AddScoped<Pos.Application.Common.Authorization.ICurrentUserPermissions, CurrentUserPermissions>();
         services.AddScoped<ITenantStatusReader, TenantStatusReader>();
+        services.AddScoped<ITenantStatusCacheInvalidator, TenantStatusCacheInvalidator>();
 
         // ── Refresh Token (F1.G) ──────────────────────────────────────────────
         services.AddScoped<IRefreshTokenGenerator, RefreshTokenGenerator>();

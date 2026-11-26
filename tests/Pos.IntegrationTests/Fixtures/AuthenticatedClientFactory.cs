@@ -80,9 +80,6 @@ public static class AuthenticatedClientFactory
         db.Users.Add(user);
         await db.SaveChangesAsync();
 
-        // Invalidar caché de estado para forzar lectura fresca en el middleware
-        await TenantStatusCacheControl.InvalidateAsync(factory.Services, effectiveTenantId);
-
         string token = generator.GenerateToken(user, role.Name).Token;
         return (token, user);
     }
